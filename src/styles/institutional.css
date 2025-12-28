@@ -6,7 +6,7 @@
   --institutional-bg-tertiary: #2d2d2d;
   --institutional-bg-card: #1e1e1e;
   --institutional-bg-hover: #2a2a2a;
-  
+
   /* Professional Color Palette */
   --institutional-accent: #00d4aa;
   --institutional-accent-hover: #00b894;
@@ -14,33 +14,33 @@
   --institutional-warning: #ffb800;
   --institutional-error: #ff4757;
   --institutional-info: #3742fa;
-  
+
   /* Text Colors */
   --institutional-text-primary: #ffffff;
   --institutional-text-secondary: #b0b0b0;
   --institutional-text-muted: #808080;
   --institutional-text-disabled: #555555;
-  
+
   /* Border Colors */
   --institutional-border: #333333;
   --institutional-border-light: #404040;
   --institutional-border-accent: #00d4aa;
-  
+
   /* Chart Colors */
   --institutional-chart-green: #00ff88;
   --institutional-chart-red: #ff4757;
   --institutional-chart-blue: #3742fa;
   --institutional-chart-yellow: #ffb800;
   --institutional-chart-purple: #a55eea;
-  
+
   /* Risk Colors */
   --risk-low: #00ff88;
   --risk-medium: #ffb800;
   --risk-high: #ff4757;
   --risk-critical: #ff3838;
-  
+
   /* Typography */
-  --font-institutional: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-institutional: 'Electrolize', 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 }
 
@@ -271,6 +271,7 @@
 }
 
 @media (max-width: 768px) {
+
   .institutional-grid-2,
   .institutional-grid-3,
   .institutional-grid-4 {
@@ -317,6 +318,7 @@
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }

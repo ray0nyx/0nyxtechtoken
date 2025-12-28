@@ -22,12 +22,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Copy, 
-  Zap, 
-  TrendingUp, 
-  Activity, 
-  Settings, 
+import {
+  Copy,
+  Zap,
+  TrendingUp,
+  Activity,
+  Settings,
   BarChart3,
   Shield,
   AlertTriangle,
@@ -640,14 +640,14 @@ const generateMockFollowerRelationships = (): FollowerRelationship[] => {
 function CopyTrader() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   // State management
   const [activeTab, setActiveTab] = useState('discovery');
   const [configs, setConfigs] = useState<CopyTradingConfig[]>([]);
   const [exchanges, setExchanges] = useState<ExchangeConnection[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Copy Trading State
   const [masterTraders, setMasterTraders] = useState<MasterTraderProfile[]>([]);
   const [followerRelationships, setFollowerRelationships] = useState<FollowerRelationship[]>([]);
@@ -657,7 +657,7 @@ function CopyTrader() {
   const [copyTradingSessions, setCopyTradingSessions] = useState<CopyTradingSession[]>([]);
   const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics | null>(null);
   const [riskLimits, setRiskLimits] = useState<RiskLimits | null>(null);
-  
+
   // UI State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStrategy, setSelectedStrategy] = useState<string>('all');
@@ -667,11 +667,11 @@ function CopyTrader() {
   const [showFilters, setShowFilters] = useState(false);
   const [isRealtimeEnabled, setIsRealtimeEnabled] = useState(true);
   const [selectedMasterTrader, setSelectedMasterTrader] = useState<string | null>(null);
-  
+
   // Real-time updates
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'error'>('connected');
-  
+
   // Platform login state
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedBroker, setSelectedBroker] = useState<string | null>(null);
@@ -680,7 +680,7 @@ function CopyTrader() {
   const [authMethods, setAuthMethods] = useState<{ [key: string]: any[] }>({});
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<string>('');
   const [showVerificationModal, setShowVerificationModal] = useState(false);
-  
+
   // Load initial data
   useEffect(() => {
     loadInitialData();
@@ -692,20 +692,20 @@ function CopyTrader() {
       const interval = setInterval(() => {
         loadRealtimeData();
       }, 5000); // Update every 5 seconds
-      
+
       return () => clearInterval(interval);
     }
   }, [isRealtimeEnabled]);
-  
+
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
       // Load all copy trading data in parallel
       const [
-        configsData, 
-        exchangesData, 
-        masterTradersData, 
-        relationshipsData, 
+        configsData,
+        exchangesData,
+        masterTradersData,
+        relationshipsData,
         connectionsData,
         metricsData,
         riskLimitsData
@@ -718,7 +718,7 @@ function CopyTrader() {
         loadPerformanceMetrics(),
         loadRiskLimits()
       ]);
-      
+
       setConfigs(configsData);
       setExchanges(exchangesData);
       setMasterTraders(masterTradersData);
@@ -726,7 +726,7 @@ function CopyTrader() {
       setPlatformConnections(connectionsData);
       setPerformanceMetrics(metricsData);
       setRiskLimits(riskLimitsData);
-      
+
       // Select first config if available
       if (configsData.length > 0 && !selectedConfig) {
         setSelectedConfig(configsData[0].id);
@@ -742,7 +742,7 @@ function CopyTrader() {
       setIsLoading(false);
     }
   };
-  
+
   const loadRealtimeData = async () => {
     try {
       const [signalsData, resultsData, sessionsData, metricsData] = await Promise.all([
@@ -751,7 +751,7 @@ function CopyTrader() {
         loadCopyTradingSessions(),
         loadPerformanceMetrics()
       ]);
-      
+
       setTradeSignals(signalsData);
       setExecutionResults(resultsData);
       setCopyTradingSessions(sessionsData);
@@ -762,7 +762,7 @@ function CopyTrader() {
       setConnectionStatus('error');
     }
   };
-  
+
   // Data loading functions
   // Helper to check if response is HTML (404 page) and handle gracefully
   const handleApiResponse = async <T,>(response: Response, fallback: () => T): Promise<T> => {
@@ -778,7 +778,7 @@ function CopyTrader() {
       return fallback();
     }
   };
-  
+
   const loadCopyTradingConfigs = async (): Promise<CopyTradingConfig[]> => {
     try {
       const response = await fetch('/api/institutional/copy-trading/configs');
@@ -792,7 +792,7 @@ function CopyTrader() {
       return [];
     }
   };
-  
+
   const loadExchanges = async (): Promise<ExchangeConnection[]> => {
     try {
       const response = await fetch('/api/institutional/exchanges');
@@ -804,7 +804,7 @@ function CopyTrader() {
       return [];
     }
   };
-  
+
   const loadMasterTraders = async (): Promise<MasterTraderProfile[]> => {
     try {
       const response = await fetch('/api/copy-trading/master-traders');
@@ -900,22 +900,22 @@ function CopyTrader() {
       return generateMockRiskLimits();
     }
   };
-  
+
   // Action handlers
   const handleConfigCreated = (newConfig: CopyTradingConfig) => {
     setConfigs(prev => [newConfig, ...prev]);
     setSelectedConfig(newConfig.id);
     setActiveTab('dashboard');
-    
+
     toast({
       title: 'Copy Trading Config Created',
       description: `Configuration "${newConfig.name}" has been created successfully.`,
     });
   };
-  
+
   const handleExchangeLinked = (newExchange: ExchangeConnection) => {
     setExchanges(prev => [...prev, newExchange]);
-    
+
     toast({
       title: 'Exchange Linked',
       description: `Successfully connected to ${newExchange.exchange_name}.`,
@@ -949,7 +949,7 @@ function CopyTrader() {
 
       const newRelationship = await response.json();
       setFollowerRelationships(prev => [...prev, newRelationship]);
-      
+
       toast({
         title: 'Trader Followed',
         description: `You are now following ${masterTraders.find(t => t.id === traderId)?.profileName}.`,
@@ -972,7 +972,7 @@ function CopyTrader() {
       if (!response.ok) throw new Error('Failed to unfollow trader');
 
       setFollowerRelationships(prev => prev.filter(r => r.id !== relationshipId));
-      
+
       toast({
         title: 'Trader Unfollowed',
         description: 'You have stopped following this trader.',
@@ -996,10 +996,10 @@ function CopyTrader() {
 
       if (!response.ok) throw new Error('Failed to start copy trading');
 
-      setFollowerRelationships(prev => 
+      setFollowerRelationships(prev =>
         prev.map(r => r.id === relationshipId ? { ...r, status: 'active' } : r)
       );
-      
+
       toast({
         title: 'Copy Trading Started',
         description: 'Copy trading has been started successfully.',
@@ -1023,10 +1023,10 @@ function CopyTrader() {
 
       if (!response.ok) throw new Error('Failed to stop copy trading');
 
-      setFollowerRelationships(prev => 
+      setFollowerRelationships(prev =>
         prev.map(r => r.id === relationshipId ? { ...r, status: 'stopped' } : r)
       );
-      
+
       toast({
         title: 'Copy Trading Stopped',
         description: 'Copy trading has been stopped successfully.',
@@ -1050,10 +1050,10 @@ function CopyTrader() {
 
       if (!response.ok) throw new Error('Failed to pause copy trading');
 
-      setFollowerRelationships(prev => 
+      setFollowerRelationships(prev =>
         prev.map(r => r.id === relationshipId ? { ...r, status: 'paused' } : r)
       );
-      
+
       toast({
         title: 'Copy Trading Paused',
         description: 'Copy trading has been paused successfully.',
@@ -1079,7 +1079,7 @@ function CopyTrader() {
 
       const newConnection = await response.json();
       setPlatformConnections(prev => [...prev, newConnection]);
-      
+
       toast({
         title: 'Platform Connected',
         description: `Successfully connected to ${platform}.`,
@@ -1102,7 +1102,7 @@ function CopyTrader() {
       if (!response.ok) throw new Error('Failed to disconnect platform');
 
       setPlatformConnections(prev => prev.filter(c => c.id !== connectionId));
-      
+
       toast({
         title: 'Platform Disconnected',
         description: 'Platform has been disconnected successfully.',
@@ -1127,7 +1127,7 @@ function CopyTrader() {
       if (!response.ok) throw new Error('Failed to update risk limits');
 
       setRiskLimits(limits);
-      
+
       toast({
         title: 'Risk Limits Updated',
         description: 'Your risk limits have been updated successfully.',
@@ -1172,10 +1172,10 @@ function CopyTrader() {
 
     try {
       setIsLoading(true);
-      
+
       // Simulate API call to connect broker
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // Add to platform connections
       const newConnection: PlatformConnection = {
         id: `conn_${Date.now()}`,
@@ -1187,14 +1187,14 @@ function CopyTrader() {
         latency: Math.floor(Math.random() * 50) + 25,
         isActive: true
       };
-      
+
       setPlatformConnections(prev => [...prev, newConnection]);
-      
+
       toast({
         title: "Broker Connected",
         description: `Successfully connected to ${SUPPORTED_BROKERS.find(b => b.id === selectedBroker)?.name}`,
       });
-      
+
       setShowLoginModal(false);
       setSelectedBroker(null);
       setLoginCredentials({});
@@ -1226,12 +1226,12 @@ function CopyTrader() {
   // Alternative authentication handlers
   const handleBrokerSelectWithAuth = async (brokerId: string) => {
     setSelectedBroker(brokerId);
-    
+
     try {
       // Fetch available authentication methods for this broker
       const response = await fetch(`/api/verification/auth/methods/${brokerId}`);
       const data = await response.json();
-      
+
       if (data.success) {
         setAuthMethods(prev => ({ ...prev, [brokerId]: data.auth_methods }));
         setShowLoginModal(true);
@@ -1258,7 +1258,7 @@ function CopyTrader() {
 
     try {
       setIsLoading(true);
-      
+
       const response = await fetch('/api/verification/auth/authenticate', {
         method: 'POST',
         headers: {
@@ -1272,7 +1272,7 @@ function CopyTrader() {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         // Handle different auth responses
         if (data.auth_data.authorization_url) {
@@ -1301,14 +1301,14 @@ function CopyTrader() {
             latency: Math.floor(Math.random() * 50) + 25,
             isActive: true
           };
-          
+
           setPlatformConnections(prev => [...prev, newConnection]);
-          
+
           toast({
             title: "Broker Connected",
             description: `Successfully connected to ${SUPPORTED_BROKERS.find(b => b.id === selectedBroker)?.name} using ${selectedAuthMethod}`,
           });
-          
+
           setShowLoginModal(false);
           setSelectedBroker(null);
           setSelectedAuthMethod('');
@@ -1332,7 +1332,7 @@ function CopyTrader() {
   const handleRunVerification = async () => {
     try {
       setIsLoading(true);
-      
+
       const response = await fetch('/api/verification/run-tests', {
         method: 'POST',
         headers: {
@@ -1344,7 +1344,7 @@ function CopyTrader() {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         toast({
           title: "Verification Started",
@@ -1365,19 +1365,19 @@ function CopyTrader() {
       setIsLoading(false);
     }
   };
-  
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
-  
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-black">
       {/* Enhanced Header for Universal Copy Trading */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+      <header className="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo and Title */}
@@ -1393,27 +1393,26 @@ function CopyTrader() {
                   Multi-Platform Trade Replication & Risk Management
                 </p>
               </div>
-              
-              <Badge 
-                variant="secondary" 
+
+              <Badge
+                variant="secondary"
                 className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 border-blue-200"
               >
                 <Zap className="w-3 h-3 mr-1" />
                 Pro
               </Badge>
             </div>
-            
+
             {/* Right Side Actions */}
             <div className="flex items-center space-x-4">
               {/* Real-time Status */}
               <div className="hidden sm:flex items-center space-x-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <div className={`w-2 h-2 rounded-full ${
-                  connectionStatus === 'connected' ? 'bg-green-500 animate-pulse' :
+                <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500 animate-pulse' :
                   connectionStatus === 'disconnected' ? 'bg-yellow-500' : 'bg-red-500'
-                }`}></div>
+                  }`}></div>
                 <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                  {connectionStatus === 'connected' ? 'Live Trading' : 
-                   connectionStatus === 'disconnected' ? 'Disconnected' : 'Error'}
+                  {connectionStatus === 'connected' ? 'Live Trading' :
+                    connectionStatus === 'disconnected' ? 'Disconnected' : 'Error'}
                 </span>
               </div>
 
@@ -1429,19 +1428,19 @@ function CopyTrader() {
               </Button>
 
               {/* Refresh Button */}
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleRefreshData}
                 disabled={isLoading}
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
+
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleRunVerification}
                 disabled={isLoading}
                 className="ml-2"
@@ -1459,7 +1458,7 @@ function CopyTrader() {
           </div>
         </div>
       </header>
-      
+
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Content */}
@@ -1467,26 +1466,26 @@ function CopyTrader() {
             {/* Performance Overview */}
             {performanceMetrics && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
-                        <CardContent className="p-4">
+                <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
+                  <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Trades</p>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">
                           {performanceMetrics.totalTrades.toLocaleString()}
                         </p>
-                          </div>
+                      </div>
                       <BarChart3 className="h-8 w-8 text-blue-500" />
-                            </div>
+                    </div>
                     <div className="mt-2">
                       <span className="text-sm text-green-600 font-medium">
                         {performanceMetrics.successRate.toFixed(1)}% Success Rate
-                              </span>
-                            </div>
+                      </span>
+                    </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+                <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -1498,16 +1497,15 @@ function CopyTrader() {
                       <DollarSign className="h-8 w-8 text-green-500" />
                     </div>
                     <div className="mt-2">
-                      <span className={`text-sm font-medium ${
-                        performanceMetrics.dailyPnl >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
+                      <span className={`text-sm font-medium ${performanceMetrics.dailyPnl >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
                         {performanceMetrics.dailyPnl >= 0 ? '+' : ''}${performanceMetrics.dailyPnl.toFixed(2)} Today
                       </span>
-                          </div>
-                        </CardContent>
-                      </Card>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+                <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -1522,11 +1520,11 @@ function CopyTrader() {
                       <span className="text-sm text-blue-600 font-medium">
                         Sub-100ms Target
                       </span>
-                  </div>
-                </CardContent>
-              </Card>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+                <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -1548,7 +1546,7 @@ function CopyTrader() {
             )}
 
             {/* Search and Filters */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardContent className="p-4">
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="flex-1">
@@ -1562,7 +1560,7 @@ function CopyTrader() {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-2">
                     <Select value={selectedStrategy} onValueChange={setSelectedStrategy}>
                       <SelectTrigger className="w-40">
@@ -1625,9 +1623,9 @@ function CopyTrader() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Enhanced Tab Navigation */}
-            <Card className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black rounded-xl shadow-sm border-gray-200 dark:border-gray-900">
               <div className="border-b border-gray-200 dark:border-gray-700">
                 <nav className="flex space-x-8 px-6 overflow-x-auto">
                   {[
@@ -1642,11 +1640,10 @@ function CopyTrader() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex items-center ${
-                        activeTab === tab.id
-                          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                      }`}
+                      className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex items-center ${activeTab === tab.id
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
                     >
                       <span className="mr-2">{tab.icon}</span>
                       {tab.label}
@@ -1654,7 +1651,7 @@ function CopyTrader() {
                   ))}
                 </nav>
               </div>
-              
+
               {/* Tab Content */}
               <div className="p-6">
                 {activeTab === 'discovery' && (
@@ -1681,9 +1678,9 @@ function CopyTrader() {
                     onUnfollowTrader={handleUnfollowTrader}
                   />
                 )}
-                
+
                 {activeTab === 'dashboard' && (
-                  <CopyTradingDashboard 
+                  <CopyTradingDashboard
                     configId={selectedConfig}
                     onConfigChange={setSelectedConfig}
                     tradeSignals={tradeSignals}
@@ -1692,7 +1689,7 @@ function CopyTrader() {
                     performanceMetrics={performanceMetrics}
                   />
                 )}
-                
+
                 {activeTab === 'analytics' && (
                   <PerformanceAnalytics
                     performanceMetrics={performanceMetrics}
@@ -1727,16 +1724,16 @@ function CopyTrader() {
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {SUPPORTED_BROKERS.filter(broker => broker.type === 'crypto').map((broker) => (
-                            <Card 
-                              key={broker.id} 
-                              className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer group"
+                            <Card
+                              key={broker.id}
+                              className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900 hover:shadow-md transition-shadow cursor-pointer group"
                               onClick={() => handleBrokerSelectWithAuth(broker.id)}
                             >
                               <CardContent className="p-6">
                                 <div className="flex flex-col items-center text-center space-y-4">
                                   <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-600 transition-colors">
-                                    <img 
-                                      src={broker.logo} 
+                                    <img
+                                      src={broker.logo}
                                       alt={broker.name}
                                       className="w-10 h-10 object-contain"
                                       onError={(e) => {
@@ -1765,8 +1762,8 @@ function CopyTrader() {
                                       </Badge>
                                     ))}
                                   </div>
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     className="w-full group-hover:bg-blue-600 group-hover:text-white transition-colors"
                                   >
                                     <Lock className="w-4 h-4 mr-2" />
@@ -1787,16 +1784,16 @@ function CopyTrader() {
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {SUPPORTED_BROKERS.filter(broker => broker.type === 'futures').map((broker) => (
-                            <Card 
-                              key={broker.id} 
-                              className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer group"
+                            <Card
+                              key={broker.id}
+                              className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900 hover:shadow-md transition-shadow cursor-pointer group"
                               onClick={() => handleBrokerSelectWithAuth(broker.id)}
                             >
                               <CardContent className="p-6">
                                 <div className="flex flex-col items-center text-center space-y-4">
                                   <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-600 transition-colors">
-                                    <img 
-                                      src={broker.logo} 
+                                    <img
+                                      src={broker.logo}
                                       alt={broker.name}
                                       className="w-10 h-10 object-contain"
                                       onError={(e) => {
@@ -1825,8 +1822,8 @@ function CopyTrader() {
                                       </Badge>
                                     ))}
                                   </div>
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     className="w-full group-hover:bg-blue-600 group-hover:text-white transition-colors"
                                   >
                                     <Lock className="w-4 h-4 mr-2" />
@@ -1847,16 +1844,16 @@ function CopyTrader() {
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {SUPPORTED_BROKERS.filter(broker => broker.type === 'traditional').map((broker) => (
-                            <Card 
-                              key={broker.id} 
-                              className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer group"
+                            <Card
+                              key={broker.id}
+                              className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900 hover:shadow-md transition-shadow cursor-pointer group"
                               onClick={() => handleBrokerSelectWithAuth(broker.id)}
                             >
                               <CardContent className="p-6">
                                 <div className="flex flex-col items-center text-center space-y-4">
                                   <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-600 transition-colors">
-                                    <img 
-                                      src={broker.logo} 
+                                    <img
+                                      src={broker.logo}
                                       alt={broker.name}
                                       className="w-10 h-10 object-contain"
                                       onError={(e) => {
@@ -1885,8 +1882,8 @@ function CopyTrader() {
                                       </Badge>
                                     ))}
                                   </div>
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     className="w-full group-hover:bg-blue-600 group-hover:text-white transition-colors"
                                   >
                                     <Lock className="w-4 h-4 mr-2" />
@@ -1909,17 +1906,17 @@ function CopyTrader() {
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {platformConnections.map((connection) => (
-                            <Card key={connection.id} className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+                            <Card key={connection.id} className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
                               <CardContent className="p-4">
                                 <div className="flex items-center justify-between mb-2">
                                   <h4 className="font-medium text-gray-900 dark:text-white">
                                     {connection.platform}
                                   </h4>
-                                  <Badge 
+                                  <Badge
                                     variant={
                                       connection.syncStatus === 'connected' ? 'default' :
-                                      connection.syncStatus === 'syncing' ? 'secondary' :
-                                      'destructive'
+                                        connection.syncStatus === 'syncing' ? 'secondary' :
+                                          'destructive'
                                     }
                                   >
                                     {connection.syncStatus}
@@ -1955,7 +1952,7 @@ function CopyTrader() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => {/* Test connection */}}
+                                    onClick={() => {/* Test connection */ }}
                                   >
                                     Test
                                   </Button>
@@ -1968,9 +1965,9 @@ function CopyTrader() {
                     )}
                   </div>
                 )}
-                
+
                 {activeTab === 'risk' && (
-                  <RiskManagement 
+                  <RiskManagement
                     exchanges={exchanges}
                     riskLimits={riskLimits}
                     onUpdateRiskLimits={handleUpdateRiskLimits}
@@ -1978,10 +1975,10 @@ function CopyTrader() {
                     performanceMetrics={performanceMetrics}
                   />
                 )}
-                
+
                 {activeTab === 'settings' && (
                   <div className="space-y-6">
-                    <Card className="bg-gray-50 dark:bg-gray-700">
+                    <Card className="bg-gray-50 dark:bg-black border dark:border-gray-900">
                       <CardHeader>
                         <CardTitle className="text-lg font-semibold text-gray-700 dark:text-gray-300">
                           Copy Trading Settings
@@ -2005,7 +2002,7 @@ function CopyTrader() {
                               {isRealtimeEnabled ? 'Enabled' : 'Disabled'}
                             </Button>
                           </div>
-                          
+
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-medium">Auto-reconciliation</h4>
@@ -2013,7 +2010,7 @@ function CopyTrader() {
                             </div>
                             <Badge variant="default">Enabled</Badge>
                           </div>
-                          
+
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-medium">Error notifications</h4>
@@ -2021,7 +2018,7 @@ function CopyTrader() {
                             </div>
                             <Badge variant="default">Enabled</Badge>
                           </div>
-                          
+
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-medium">Performance monitoring</h4>
@@ -2041,7 +2038,7 @@ function CopyTrader() {
                       </CardContent>
                     </Card>
 
-                    <Card className="bg-gray-50 dark:bg-gray-700">
+                    <Card className="bg-gray-50 dark:bg-black border dark:border-gray-900">
                       <CardHeader>
                         <CardTitle className="text-lg font-semibold text-gray-700 dark:text-gray-300">
                           Platform Settings
@@ -2085,11 +2082,11 @@ function CopyTrader() {
               </div>
             </Card>
           </div>
-          
+
           {/* Enhanced Sidebar */}
           <div className="space-y-6">
             {/* Real-time Metrics */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-blue-600 dark:text-blue-400">
                   Live Metrics
@@ -2105,7 +2102,7 @@ function CopyTrader() {
                     {followerRelationships.filter(r => r.status === 'active').length}
                   </Badge>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Users className="w-4 h-4 text-blue-500" />
@@ -2113,7 +2110,7 @@ function CopyTrader() {
                   </div>
                   <Badge variant="default">{masterTraders.length}</Badge>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Settings className="w-4 h-4 text-purple-500" />
@@ -2135,9 +2132,9 @@ function CopyTrader() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Performance Summary */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-green-600 dark:text-green-400">
                   Performance
@@ -2153,19 +2150,19 @@ function CopyTrader() {
                     {performanceMetrics?.successRate.toFixed(1) || '0'}%
                   </Badge>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <DollarSign className="w-4 h-4 text-green-500" />
                     <span className="text-sm">Total P&L</span>
                   </div>
-                  <Badge 
+                  <Badge
                     variant={performanceMetrics?.totalPnl && performanceMetrics.totalPnl >= 0 ? "default" : "destructive"}
                   >
                     ${performanceMetrics?.totalPnl.toFixed(2) || '0.00'}
                   </Badge>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <BarChart3 className="w-4 h-4 text-blue-500" />
@@ -2187,9 +2184,9 @@ function CopyTrader() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Recent Activity */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-purple-600 dark:text-purple-400">
                   Recent Activity
@@ -2199,31 +2196,30 @@ function CopyTrader() {
                 <div className="space-y-3">
                   {executionResults.slice(0, 5).map((result, index) => (
                     <div key={result.id} className="flex items-center space-x-3">
-                      <div className={`w-2 h-2 rounded-full ${
-                        result.success ? 'bg-green-500' : 'bg-red-500'
-                      }`}></div>
-                    <div className="flex-1">
+                      <div className={`w-2 h-2 rounded-full ${result.success ? 'bg-green-500' : 'bg-red-500'
+                        }`}></div>
+                      <div className="flex-1">
                         <p className="text-sm font-medium">
                           {result.success ? 'Trade executed' : 'Trade failed'}
                         </p>
                         <p className="text-xs text-gray-500">
                           {result.platform} • {new Date(result.executionTime).toLocaleTimeString()}
                         </p>
+                      </div>
                     </div>
-                  </div>
                   ))}
-                  
+
                   {executionResults.length === 0 && (
                     <div className="text-center text-gray-500 text-sm py-4">
                       No recent activity
                     </div>
                   )}
-                  </div>
+                </div>
               </CardContent>
             </Card>
 
             {/* Platform Status */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-orange-600 dark:text-orange-400">
                   Platform Status
@@ -2234,24 +2230,23 @@ function CopyTrader() {
                   {platformConnections.slice(0, 3).map((connection) => (
                     <div key={connection.id} className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          connection.syncStatus === 'connected' ? 'bg-green-500' :
+                        <div className={`w-2 h-2 rounded-full ${connection.syncStatus === 'connected' ? 'bg-green-500' :
                           connection.syncStatus === 'syncing' ? 'bg-yellow-500' : 'bg-red-500'
-                        }`}></div>
+                          }`}></div>
                         <span className="text-sm font-medium">{connection.platform}</span>
-                    </div>
-                      <Badge 
+                      </div>
+                      <Badge
                         variant={
                           connection.syncStatus === 'connected' ? 'default' :
-                          connection.syncStatus === 'syncing' ? 'secondary' : 'destructive'
+                            connection.syncStatus === 'syncing' ? 'secondary' : 'destructive'
                         }
                         className="text-xs"
                       >
                         {connection.syncStatus}
                       </Badge>
-                  </div>
+                    </div>
                   ))}
-                  
+
                   {platformConnections.length === 0 && (
                     <div className="text-center text-gray-500 text-sm py-4">
                       No platforms connected
@@ -2262,46 +2257,46 @@ function CopyTrader() {
             </Card>
 
             {/* Quick Actions */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">
                   Quick Actions
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full justify-start"
                   onClick={() => setActiveTab('discovery')}
                 >
                   <Users className="w-4 h-4 mr-2" />
                   Find Master Traders
                 </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full justify-start"
                   onClick={() => setActiveTab('platforms')}
                 >
                   <Settings className="w-4 h-4 mr-2" />
                   Connect Platform
                 </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full justify-start"
                   onClick={() => setActiveTab('risk')}
                 >
                   <Shield className="w-4 h-4 mr-2" />
                   Risk Settings
                 </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full justify-start"
                   onClick={handleRefreshData}
                   disabled={isLoading}
@@ -2318,13 +2313,13 @@ function CopyTrader() {
       {/* Secure Login Modal */}
       {showLoginModal && selectedBroker && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+          <div className="bg-white dark:bg-black border dark:border-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                    <img 
-                      src={SUPPORTED_BROKERS.find(b => b.id === selectedBroker)?.logo} 
+                    <img
+                      src={SUPPORTED_BROKERS.find(b => b.id === selectedBroker)?.logo}
                       alt={SUPPORTED_BROKERS.find(b => b.id === selectedBroker)?.name}
                       className="w-6 h-6 object-contain"
                       onError={(e) => {
@@ -2369,11 +2364,10 @@ function CopyTrader() {
                         <button
                           key={method.method}
                           onClick={() => handleAuthMethodSelect(method.method)}
-                          className={`p-3 text-left border rounded-lg transition-colors ${
-                            selectedAuthMethod === method.method
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                          }`}
+                          className={`p-3 text-left border rounded-lg transition-colors ${selectedAuthMethod === method.method
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                            }`}
                         >
                           <div className="font-medium text-gray-900 dark:text-white">
                             {method.name}
@@ -2610,7 +2604,7 @@ function CopyTrader() {
                     }
                   }}
                   disabled={
-                    !selectedAuthMethod || 
+                    !selectedAuthMethod ||
                     (selectedAuthMethod === 'api_key' && (!loginCredentials.apiKey || !loginCredentials.secretKey)) ||
                     (selectedAuthMethod === 'broker_credentials' && (!loginCredentials.username || !loginCredentials.password)) ||
                     (selectedAuthMethod === 'demo_account' && !loginCredentials.userId) ||
@@ -2640,7 +2634,7 @@ function CopyTrader() {
       {/* Verification Modal */}
       {showVerificationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4">
+          <div className="bg-white dark:bg-black border dark:border-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
@@ -2724,9 +2718,9 @@ function CopyTrader() {
                   </div>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <div className="bg-gray-50 dark:bg-black border dark:border-gray-900 p-4 rounded-lg">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    <strong>Note:</strong> Verification tests typically take 2-5 minutes to complete. 
+                    <strong>Note:</strong> Verification tests typically take 2-5 minutes to complete.
                     You can close this modal and check the results later via the API or dashboard.
                   </p>
                 </div>

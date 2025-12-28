@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTheme } from '@/components/ThemeProvider';
-import { 
-  Wifi, 
-  WifiOff, 
-  CheckCircle, 
+import {
+  Wifi,
+  WifiOff,
+  CheckCircle,
   ExternalLink,
   Loader2,
   AlertCircle
@@ -178,8 +178,8 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
     { id: 'stocks', name: 'Stock Brokers', count: AVAILABLE_BROKERS.filter(b => b.category === 'stocks').length }
   ];
 
-  const filteredBrokers = selectedCategory === 'all' 
-    ? AVAILABLE_BROKERS 
+  const filteredBrokers = selectedCategory === 'all'
+    ? AVAILABLE_BROKERS
     : AVAILABLE_BROKERS.filter(broker => broker.category === selectedCategory);
 
   const handleBrokerClick = (broker: Broker) => {
@@ -225,8 +225,8 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent 
-          className="max-w-4xl max-h-[80vh] overflow-hidden border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-900"
+        <DialogContent
+          className="max-w-4xl max-h-[80vh] overflow-hidden border-white/10 bg-black"
         >
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -252,7 +252,7 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
                   className={
                     selectedCategory === category.id
                       ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500'
-                      : 'bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-700 hover:border-gray-400 dark:hover:border-slate-600'
+                      : 'bg-neutral-900 hover:bg-neutral-800 text-slate-300 border-white/10 hover:border-white/20'
                   }
                 >
                   {category.name} ({category.count})
@@ -263,9 +263,9 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
             {/* Brokers Grid */}
             <div className="flex-1 overflow-y-auto max-h-96 relative">
               {/* Scroll indicator */}
-              <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white dark:from-slate-900 to-transparent z-10 pointer-events-none"></div>
-              <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white dark:from-slate-900 to-transparent z-10 pointer-events-none"></div>
-              
+              <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-black to-transparent z-10 pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-black to-transparent z-10 pointer-events-none"></div>
+
               {/* Scroll hint */}
               {filteredBrokers.length > 6 && (
                 <div className="absolute top-2 right-2 z-20">
@@ -274,16 +274,15 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
                   </div>
                 </div>
               )}
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4 pt-2">
                 {filteredBrokers.map((broker) => (
                   <Card
                     key={broker.id}
-                    className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 bg-white dark:bg-slate-800/50 border-gray-200 dark:border-slate-700/50 backdrop-blur-sm ${
-                      broker.status === 'available' 
-                        ? 'hover:border-emerald-500/50 hover:shadow-emerald-500/20' 
+                    className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 bg-neutral-900 border-white/10 backdrop-blur-sm ${broker.status === 'available'
+                        ? 'hover:border-emerald-500/50 hover:shadow-emerald-500/20'
                         : 'opacity-60 cursor-not-allowed'
-                    }`}
+                      }`}
                     onClick={() => handleBrokerClick(broker)}
                   >
                     <CardContent className="p-4">
@@ -298,8 +297,8 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
                             }}
                           />
                           <div>
-                            <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{broker.name}</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">{broker.description}</p>
+                            <h3 className="font-semibold text-lg text-white">{broker.name}</h3>
+                            <p className="text-sm text-gray-400">{broker.description}</p>
                           </div>
                         </div>
                         <div className="flex flex-col items-end space-y-1">
@@ -311,7 +310,7 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
                       <div className="space-y-2">
                         <div className="flex flex-wrap gap-1">
                           {broker.features.map((feature, index) => (
-                            <Badge key={index} variant="outline" className="text-xs bg-gray-100 dark:bg-slate-800/50 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-700">
+                            <Badge key={index} variant="outline" className="text-xs bg-black/50 text-slate-300 border-white/10">
                               {feature}
                             </Badge>
                           ))}
@@ -337,7 +336,7 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
                             <Button
                               variant="outline"
                               size="sm"
-                              className="bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-700 hover:border-gray-400 dark:hover:border-slate-600"
+                              className="bg-neutral-800 hover:bg-neutral-700 text-slate-300 border-white/10 hover:border-white/20"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 window.open(broker.website, '_blank');
@@ -363,11 +362,11 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200 dark:border-slate-700/50">
-              <Button 
-                variant="outline" 
+            <div className="flex justify-end space-x-2 pt-4 border-t border-white/10">
+              <Button
+                variant="outline"
                 onClick={onClose}
-                className="bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-700 hover:border-gray-400 dark:hover:border-slate-600"
+                className="bg-neutral-800 hover:bg-neutral-700 text-slate-300 border-white/10 hover:border-white/20"
               >
                 Cancel
               </Button>

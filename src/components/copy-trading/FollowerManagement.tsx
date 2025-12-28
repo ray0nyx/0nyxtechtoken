@@ -211,7 +211,7 @@ export const FollowerManagement: React.FC<FollowerManagementProps> = ({
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -225,7 +225,7 @@ export const FollowerManagement: React.FC<FollowerManagementProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -239,7 +239,7 @@ export const FollowerManagement: React.FC<FollowerManagementProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -255,7 +255,7 @@ export const FollowerManagement: React.FC<FollowerManagementProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -271,7 +271,7 @@ export const FollowerManagement: React.FC<FollowerManagementProps> = ({
       </div>
 
       {/* Filters */}
-      <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
@@ -305,7 +305,7 @@ export const FollowerManagement: React.FC<FollowerManagementProps> = ({
           if (!masterTrader) return null;
 
           return (
-            <Card key={relationship.id} className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card key={relationship.id} className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

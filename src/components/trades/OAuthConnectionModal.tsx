@@ -129,7 +129,7 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
     setTimeout(() => {
       setSuccess(true);
       onConnectionSuccess?.(broker.id);
-      
+
       setTimeout(() => {
         onClose();
         setSuccess(false);
@@ -238,18 +238,18 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
 
       // Call success callback
       onConnectionSuccess?.(broker.id);
-      
+
       // Close modal after a short delay
       setTimeout(() => {
         onClose();
         setSuccess(false);
-        setCredentials({ 
-          username: '', 
-          password: '', 
-          apiKey: '', 
-          secret: '', 
-          passphrase: '', 
-          rememberMe: false 
+        setCredentials({
+          username: '',
+          password: '',
+          apiKey: '',
+          secret: '',
+          passphrase: '',
+          rememberMe: false
         });
       }, 2000);
 
@@ -263,13 +263,13 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
     if (!isLoading) {
       setError('');
       setSuccess(false);
-      setCredentials({ 
-        username: '', 
-        password: '', 
-        apiKey: '', 
-        secret: '', 
-        passphrase: '', 
-        rememberMe: false 
+      setCredentials({
+        username: '',
+        password: '',
+        apiKey: '',
+        secret: '',
+        passphrase: '',
+        rememberMe: false
       });
       onClose();
     }
@@ -299,9 +299,9 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md bg-black border-white/10">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-3">
+          <DialogTitle className="flex items-center space-x-3 text-white">
             <img
               src={broker.logo}
               alt={broker.name}
@@ -316,9 +316,9 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
 
         <div className="space-y-4">
           {/* Broker Info */}
-          <div className="p-3 bg-muted rounded-lg">
-            <h4 className="font-medium text-sm">{broker.name}</h4>
-            <p className="text-sm text-muted-foreground mt-1">
+          <div className="p-3 bg-neutral-900 rounded-lg border border-white/10">
+            <h4 className="font-medium text-sm text-white">{broker.name}</h4>
+            <p className="text-sm text-gray-400 mt-1">
               {getOAuthDescription()}
             </p>
           </div>
@@ -328,7 +328,7 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
             <>
               {/* API Key */}
               <div className="space-y-2">
-                <Label htmlFor="apiKey">API Key *</Label>
+                <Label htmlFor="apiKey" className="text-gray-300">API Key *</Label>
                 <Input
                   id="apiKey"
                   type="password"
@@ -336,12 +336,13 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
                   value={credentials.apiKey}
                   onChange={(e) => setCredentials(prev => ({ ...prev, apiKey: e.target.value }))}
                   disabled={isLoading}
+                  className="bg-neutral-900 border-white/10 text-white placeholder:text-gray-600"
                 />
               </div>
 
               {/* Secret Key */}
               <div className="space-y-2">
-                <Label htmlFor="secret">Secret Key *</Label>
+                <Label htmlFor="secret" className="text-gray-300">Secret Key *</Label>
                 <Input
                   id="secret"
                   type="password"
@@ -349,13 +350,14 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
                   value={credentials.secret}
                   onChange={(e) => setCredentials(prev => ({ ...prev, secret: e.target.value }))}
                   disabled={isLoading}
+                  className="bg-neutral-900 border-white/10 text-white placeholder:text-gray-600"
                 />
               </div>
 
               {/* Passphrase (for Coinbase, KuCoin, OKX, Bitget) */}
               {(broker.id === 'coinbase' || broker.id === 'kucoin' || broker.id === 'okx' || broker.id === 'bitget') && (
                 <div className="space-y-2">
-                  <Label htmlFor="passphrase">Passphrase</Label>
+                  <Label htmlFor="passphrase" className="text-gray-300">Passphrase</Label>
                   <Input
                     id="passphrase"
                     type="password"
@@ -363,6 +365,7 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
                     value={credentials.passphrase}
                     onChange={(e) => setCredentials(prev => ({ ...prev, passphrase: e.target.value }))}
                     disabled={isLoading}
+                    className="bg-neutral-900 border-white/10 text-white placeholder:text-gray-600"
                   />
                 </div>
               )}
@@ -371,7 +374,7 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
             <>
               {/* Username */}
               <div className="space-y-2">
-                <Label htmlFor="username">Username/Email *</Label>
+                <Label htmlFor="username" className="text-gray-300">Username/Email *</Label>
                 <Input
                   id="username"
                   type="text"
@@ -379,12 +382,13 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
                   value={credentials.username}
                   onChange={(e) => setCredentials(prev => ({ ...prev, username: e.target.value }))}
                   disabled={isLoading}
+                  className="bg-neutral-900 border-white/10 text-white placeholder:text-gray-600"
                 />
               </div>
 
               {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="password">Password *</Label>
+                <Label htmlFor="password" className="text-gray-300">Password *</Label>
                 <Input
                   id="password"
                   type="password"
@@ -392,6 +396,7 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
                   value={credentials.password}
                   onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
                   disabled={isLoading}
+                  className="bg-neutral-900 border-white/10 text-white placeholder:text-gray-600"
                 />
               </div>
             </>
@@ -407,7 +412,7 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
               disabled={isLoading}
               className="rounded border-gray-300"
             />
-            <Label htmlFor="rememberMe" className="text-sm">
+            <Label htmlFor="rememberMe" className="text-sm text-gray-400">
               Remember me for future sessions
             </Label>
           </div>
@@ -436,6 +441,7 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
               variant="outline"
               onClick={handleClose}
               disabled={isLoading}
+              className="bg-neutral-800 hover:bg-neutral-700 text-slate-300 border-white/10 hover:border-white/20"
             >
               Cancel
             </Button>
@@ -460,7 +466,7 @@ export function OAuthConnectionModal({ isOpen, onClose, onConnectionSuccess, bro
               variant="link"
               size="sm"
               onClick={() => window.open(broker.website, '_blank')}
-              className="text-muted-foreground"
+              className="text-gray-500 hover:text-gray-400"
             >
               <ExternalLink className="h-3 w-3 mr-1" />
               Visit {broker.name} Website

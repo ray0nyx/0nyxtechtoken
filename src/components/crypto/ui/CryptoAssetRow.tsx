@@ -56,8 +56,8 @@ export default function CryptoAssetRow({
     <div
       className={cn(
         'flex items-center gap-4 p-4 rounded-xl border transition-colors',
-        isDark 
-          ? 'bg-[#1a1f2e] border-[#1f2937] hover:border-[#374151]' 
+        isDark
+          ? 'bg-black border-white/10 hover:border-white/20'
           : 'bg-white border-gray-200 hover:border-gray-300',
         className
       )}
@@ -78,10 +78,10 @@ export default function CryptoAssetRow({
             }}
           />
         ) : null}
-        <div 
+        <div
           className={cn(
             "w-10 h-10 rounded-full flex items-center justify-center",
-            isDark ? "bg-[#374151]" : "bg-gray-100",
+            isDark ? "bg-neutral-900" : "bg-gray-100",
             typeof icon === 'string' && icon ? "hidden" : ""
           )}
           style={{ display: typeof icon === 'string' && icon ? 'none' : 'flex' }}
@@ -137,7 +137,7 @@ export default function CryptoAssetRow({
         ) : (
           <div className={cn(
             "w-[100px] h-[40px] rounded animate-pulse",
-            isDark ? "bg-[#1f2937]" : "bg-gray-100"
+            isDark ? "bg-neutral-900" : "bg-gray-100"
           )} />
         )}
       </div>
@@ -150,8 +150,8 @@ export default function CryptoAssetRow({
           onClick={onSend}
           className={cn(
             "bg-transparent",
-            isDark 
-              ? "border-[#374151] text-[#9ca3af] hover:text-white hover:border-[#6b7280]"
+            isDark
+              ? "border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-neutral-900"
               : "border-gray-300 text-gray-700 hover:text-gray-900 hover:border-gray-400"
           )}
         >
@@ -163,8 +163,8 @@ export default function CryptoAssetRow({
           onClick={onReceive}
           className={cn(
             "bg-transparent",
-            isDark 
-              ? "border-[#374151] text-[#9ca3af] hover:text-white hover:border-[#6b7280]"
+            isDark
+              ? "border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-neutral-900"
               : "border-gray-300 text-gray-700 hover:text-gray-900 hover:border-gray-400"
           )}
         >

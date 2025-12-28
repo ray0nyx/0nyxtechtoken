@@ -131,7 +131,7 @@ export const RealTimeMetrics: React.FC<RealTimeMetricsProps> = ({
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* P&L Metrics */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-gray-900 dark:text-white">P&L Performance</h4>
@@ -171,7 +171,7 @@ export const RealTimeMetrics: React.FC<RealTimeMetricsProps> = ({
         </Card>
 
         {/* Trading Metrics */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-gray-900 dark:text-white">Trading Performance</h4>
@@ -211,7 +211,7 @@ export const RealTimeMetrics: React.FC<RealTimeMetricsProps> = ({
         </Card>
 
         {/* Latency Metrics */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-gray-900 dark:text-white">Execution Speed</h4>
@@ -250,7 +250,7 @@ export const RealTimeMetrics: React.FC<RealTimeMetricsProps> = ({
         </Card>
 
         {/* System Status */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-gray-900 dark:text-white">System Status</h4>
@@ -282,7 +282,7 @@ export const RealTimeMetrics: React.FC<RealTimeMetricsProps> = ({
       </div>
 
       {/* Performance Summary */}
-      <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-medium text-gray-900 dark:text-white">Performance Summary</h4>
@@ -318,7 +318,7 @@ export const RealTimeMetrics: React.FC<RealTimeMetricsProps> = ({
       </Card>
 
       {/* Quick Actions */}
-      <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-medium text-gray-900 dark:text-white">Quick Actions</h4>

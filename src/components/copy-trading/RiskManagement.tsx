@@ -125,7 +125,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
 
       {/* Risk Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -139,7 +139,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -153,7 +153,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -167,7 +167,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -192,7 +192,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
         </TabsList>
 
         <TabsContent value="limits" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-red-600 dark:text-red-400">
                 Risk Limits
@@ -286,7 +286,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
         </TabsContent>
 
         <TabsContent value="position" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-blue-600 dark:text-blue-400">
                 Position Sizing
@@ -359,7 +359,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
         </TabsContent>
 
         <TabsContent value="execution" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-green-600 dark:text-green-400">
                 Execution Controls
@@ -464,7 +464,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
         </TabsContent>
 
         <TabsContent value="monitoring" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-purple-600 dark:text-purple-400">
                 Risk Monitoring
@@ -476,7 +476,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
             <CardContent>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <div className="p-4 border border-gray-200 dark:border-gray-900 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium text-gray-900 dark:text-white">Current Exposure</h4>
                       <BarChart3 className="w-5 h-5 text-blue-500" />
@@ -497,7 +497,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <div className="p-4 border border-gray-200 dark:border-gray-900 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium text-gray-900 dark:text-white">Risk Alerts</h4>
                       <AlertTriangle className="w-5 h-5 text-orange-500" />

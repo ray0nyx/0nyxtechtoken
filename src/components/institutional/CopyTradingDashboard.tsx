@@ -267,7 +267,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
 
   if (!configId) {
     return (
-      <Card className="bg-white dark:bg-gray-800 shadow-lg border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-black shadow-lg border-gray-200 dark:border-gray-900">
         <CardContent className="p-6">
           <div className="text-center text-gray-500 dark:text-gray-400">
             <Settings className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -281,7 +281,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
   return (
     <div className="space-y-6">
       {/* Status Overview */}
-      <Card className="bg-white dark:bg-gray-800 shadow-lg border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-black shadow-lg border-gray-200 dark:border-gray-900">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
             <CardTitle className="text-xl font-semibold text-cyan-600 dark:text-cyan-400">
@@ -360,7 +360,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
       </Card>
 
       {/* Control Panel */}
-      <Card className="bg-white dark:bg-gray-800 shadow-lg border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-black shadow-lg border-gray-200 dark:border-gray-900">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-purple-600 dark:text-purple-400">
             Control Panel
@@ -412,7 +412,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
         </TabsList>
         
         <TabsContent value="trades" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-lg border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-lg border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-blue-600 dark:text-blue-400">
                 Recent Trade Executions
@@ -467,7 +467,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
         </TabsContent>
         
         <TabsContent value="reconciliation" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-lg border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-lg border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-orange-600 dark:text-orange-400">
                 Trade Reconciliation History
@@ -513,7 +513,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
         </TabsContent>
         
         <TabsContent value="performance" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-lg border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-lg border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-green-600 dark:text-green-400">
                 Performance Metrics

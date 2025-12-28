@@ -266,7 +266,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -282,7 +282,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -301,7 +301,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -320,7 +320,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -352,7 +352,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Active Relationships */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-blue-600 dark:text-blue-400">
                   Active Relationships
@@ -366,7 +366,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
                   {activeRelationships.slice(0, 5).map((relationship) => {
                     const master = masterTraders.find(t => t.id === relationship.masterTraderId);
                     return (
-                      <div key={relationship.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <div key={relationship.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-900 rounded-lg">
                         <div className="flex items-center space-x-3">
                           <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                             <Users className="w-4 h-4 text-blue-600" />
@@ -409,7 +409,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
             </Card>
 
             {/* Recent Activity */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-green-600 dark:text-green-400">
                   Recent Activity
@@ -421,9 +421,9 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
               <CardContent>
                 <div className="space-y-3">
                   {copyTradingSessions.slice(0, 5).map((session) => (
-                    <div key={session.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div key={session.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-900 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                        <div className="w-8 h-8 bg-gray-100 dark:bg-black rounded-full flex items-center justify-center">
                           {getStatusIcon(session.status)}
                         </div>
                         <div>
@@ -452,7 +452,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
         </TabsContent>
 
         <TabsContent value="sessions" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-purple-600 dark:text-purple-400">
                 Copy Trading Sessions
@@ -464,10 +464,10 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
             <CardContent>
               <div className="space-y-4">
                 {copyTradingSessions.map((session) => (
-                  <div key={session.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <div key={session.id} className="border border-gray-200 dark:border-gray-900 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                        <div className="w-10 h-10 bg-gray-100 dark:bg-black rounded-full flex items-center justify-center">
                           {getStatusIcon(session.status)}
                         </div>
                         <div>
@@ -525,7 +525,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
         </TabsContent>
 
         <TabsContent value="signals" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-orange-600 dark:text-orange-400">
                 Trade Signals
@@ -537,7 +537,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
             <CardContent>
               <div className="space-y-4">
                 {tradeSignals.slice(0, 10).map((signal) => (
-                  <div key={signal.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <div key={signal.id} className="border border-gray-200 dark:border-gray-900 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -598,7 +598,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
         </TabsContent>
 
         <TabsContent value="executions" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">
                 Execution Results
@@ -610,7 +610,7 @@ export const CopyTradingDashboard: React.FC<CopyTradingDashboardProps> = ({
             <CardContent>
               <div className="space-y-4">
                 {executionResults.slice(0, 10).map((result) => (
-                  <div key={result.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <div key={result.id} className="border border-gray-200 dark:border-gray-900 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${

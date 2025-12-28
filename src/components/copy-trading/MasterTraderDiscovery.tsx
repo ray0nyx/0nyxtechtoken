@@ -289,7 +289,7 @@ export const MasterTraderDiscovery: React.FC<MasterTraderDiscoveryProps> = ({
           const isCurrentlyFollowing = isFollowing(trader.id);
 
           return (
-            <Card key={trader.id} className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+            <Card key={trader.id} className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900 hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -422,7 +422,7 @@ export const MasterTraderDiscovery: React.FC<MasterTraderDiscoveryProps> = ({
 
                 {/* Status for following traders */}
                 {isCurrentlyFollowing && relationship && (
-                  <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <div className="pt-2 border-t border-gray-200 dark:border-gray-900">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">Status</span>
                       <Badge 
@@ -459,7 +459,7 @@ export const MasterTraderDiscovery: React.FC<MasterTraderDiscoveryProps> = ({
       {/* Follow Modal */}
       {followModalOpen && selectedTrader && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md bg-white dark:bg-gray-800">
+          <Card className="w-full max-w-md bg-white dark:bg-black">
             <CardHeader>
               <CardTitle>Follow Master Trader</CardTitle>
               <CardDescription>

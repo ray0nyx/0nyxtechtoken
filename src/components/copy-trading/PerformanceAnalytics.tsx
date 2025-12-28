@@ -323,7 +323,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -346,7 +346,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -365,7 +365,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -384,7 +384,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -417,7 +417,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Daily Performance Chart */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-blue-600 dark:text-blue-400">
                   Daily Performance
@@ -455,7 +455,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
             </Card>
 
             {/* Performance Summary */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-green-600 dark:text-green-400">
                   Performance Summary
@@ -515,7 +515,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
         </TabsContent>
 
         <TabsContent value="platforms" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-purple-600 dark:text-purple-400">
                 Platform Performance
@@ -527,7 +527,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
             <CardContent>
               <div className="space-y-4">
                 {analyticsData.platformStats.map((platform) => (
-                  <div key={platform.platform} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <div key={platform.platform} className="border border-gray-200 dark:border-gray-900 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-medium text-gray-900 dark:text-white">
                         {platform.platform}
@@ -570,7 +570,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
         </TabsContent>
 
         <TabsContent value="strategies" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-orange-600 dark:text-orange-400">
                 Strategy Performance
@@ -582,7 +582,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
             <CardContent>
               <div className="space-y-4">
                 {Object.entries(analyticsData.strategyPerformance).map(([strategy, stats]) => (
-                  <div key={strategy} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <div key={strategy} className="border border-gray-200 dark:border-gray-900 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-medium text-gray-900 dark:text-white capitalize">
                         {strategy.replace('_', ' ')}
@@ -622,7 +622,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
 
         <TabsContent value="risk" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-red-600 dark:text-red-400">
                   Risk Metrics
@@ -666,7 +666,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
               </CardContent>
             </Card>
 
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+            <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-blue-600 dark:text-blue-400">
                   Risk Alerts
@@ -708,7 +708,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
         </TabsContent>
 
         <TabsContent value="latency" className="space-y-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-black shadow-sm border-gray-200 dark:border-gray-900">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-purple-600 dark:text-purple-400">
                 Latency Analysis
@@ -720,21 +720,21 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({
             <CardContent>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <div className="text-center p-4 border border-gray-200 dark:border-gray-900 rounded-lg">
                     <Clock className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                     <p className="text-sm text-gray-500">Average Latency</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
                       {performanceMetrics.averageLatencyMs.toFixed(0)}ms
                     </p>
                   </div>
-                  <div className="text-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <div className="text-center p-4 border border-gray-200 dark:border-gray-900 rounded-lg">
                     <Zap className="w-8 h-8 text-green-500 mx-auto mb-2" />
                     <p className="text-sm text-gray-500">Target Latency</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
                       &lt;100ms
                     </p>
                   </div>
-                  <div className="text-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <div className="text-center p-4 border border-gray-200 dark:border-gray-900 rounded-lg">
                     <Target className="w-8 h-8 text-purple-500 mx-auto mb-2" />
                     <p className="text-sm text-gray-500">Performance</p>
                     <p className={`text-2xl font-bold ${

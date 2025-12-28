@@ -451,7 +451,7 @@ export function RiskManagement({ exchanges }: RiskManagementProps) {
               {exchanges.map((exchange) => (
                 <div
                   key={exchange.id}
-                  className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
+                  className="p-4 border border-gray-200 dark:border-gray-900 rounded-lg"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div>

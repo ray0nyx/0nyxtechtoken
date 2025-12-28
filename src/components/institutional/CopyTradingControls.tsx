@@ -330,7 +330,7 @@ export function CopyTradingControls({ backtests, exchanges, selectedBacktest }: 
                   className={`p-4 border rounded-lg cursor-pointer transition-all ${
                     settings.selectedExchanges.includes(exchange.id)
                       ? 'border-cyan-400 bg-cyan-50 dark:bg-cyan-900/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                      : 'border-gray-200 dark:border-gray-900 hover:border-gray-300'
                   }`}
                   onClick={() => handleExchangeToggle(exchange.id)}
                 >

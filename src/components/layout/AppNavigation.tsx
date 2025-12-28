@@ -9,7 +9,6 @@ import {
     Search,
     Search as Bell,
     Search as Star,
-    Search as Wallet,
     ChevronDown,
     Search as Menu,
     Search as LayoutDashboard,
@@ -21,10 +20,8 @@ import {
     TrendingUp,
     Plus,
     Zap as Coins,
-    Search as Copy,
     Zap as Activity,
     BarChart2,
-    Search as Users,
     Wifi,
     Search as AlignJustify, // Extra safety
     Search as LayoutGrid, // Extra safety
@@ -33,7 +30,11 @@ import {
     Search as Bookmark, // Extra safety
     Zap as CircleDollarSign, // Extra safety
     Search as Clipboard, // Extra safety
-    Settings as Shield // For admin (aliased)
+    Shield, // For admin
+    FileText, // For taxes
+    Share2, // For affiliates
+    Wallet, // For wallet tracker
+    Users // For copy trading
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -101,19 +102,18 @@ export function AppNavigation() {
         { name: "Journal", href: "/app/journal", icon: BookOpen },
         { name: "Analytics", href: "/app/performance", icon: BarChart3 },
         { name: "Backtesting", href: "/app/backtesting", icon: TrendingUp },
-        { name: "Quantbacktesting", href: "/app/quantbacktesting", icon: Activity },
+        { name: "Algo Deployment", href: "/app/quantbacktesting", icon: Activity },
     ];
 
     const secondaryNavigation = [
-        ...(isAffiliate ? [{ name: "Affiliates", href: "/app/affiliate", icon: Users }] : []),
+        ...(isAffiliate ? [{ name: "Affiliates", href: "/app/affiliate", icon: Share2 }] : []),
         ...(isAdmin ? [{ name: "Admin", href: "/admin", icon: Shield }] : []),
-        { name: "Taxes", href: "/app/pl-statements", icon: BookMarked },
+        { name: "Taxes", href: "/app/pl-statements", icon: FileText },
     ];
 
     const cryptoNavigation = [
-        { name: "Crypto Dashboard", href: "/crypto/dashboard", icon: Coins },
-        { name: "Wallets", href: "/crypto/wallets", icon: Wallet },
-        { name: "Copy Trading", href: "/crypto/copy-trading", icon: Copy },
+        { name: "Wallet Tracker", href: "/crypto/wallets", icon: Wallet },
+        { name: "Copy Trading", href: "/crypto/copy-trading", icon: Users },
         { name: "On-Chain", href: "/crypto/on-chain", icon: Activity },
     ];
 

@@ -371,7 +371,7 @@ export function ExchangeLinking({ exchanges, onExchangeLinked, onRefresh }: Exch
                     {exchanges.map((exchange) => (
                       <div
                         key={exchange.id}
-                        className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+                        className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-900 rounded-lg"
                       >
                         <div className="flex items-center space-x-3">
                           {getStatusIcon(exchange.is_active)}
@@ -434,7 +434,7 @@ export function ExchangeLinking({ exchanges, onExchangeLinked, onRefresh }: Exch
                 {supportedExchanges.filter(ex => ex.oauth).map((exchange) => (
                   <div
                     key={exchange.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
+                    className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-900 rounded-lg"
                   >
                     <div className="flex items-center space-x-3">
                       <span className="text-2xl">{exchange.icon}</span>

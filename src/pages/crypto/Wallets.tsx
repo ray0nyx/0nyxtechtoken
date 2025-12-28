@@ -9,9 +9,9 @@ import { createClient } from '@/lib/supabase/client';
 import { fetchAggregatedCryptoData, type AggregatedCryptoStats } from '@/lib/crypto-aggregation-service';
 import { useTheme } from '@/components/ThemeProvider';
 import { cn } from '@/lib/utils';
-import { 
-  fetchUserTrackedWallets, 
-  fetchTokenPrices, 
+import {
+  fetchUserTrackedWallets,
+  fetchTokenPrices,
   generateSparklineData,
   type WalletBalance,
   type TokenPrice
@@ -71,7 +71,7 @@ export default function CryptoWallets() {
         fetchUserTrackedWallets(user.id),
         new Promise<Array<WalletBalance>>((resolve) => setTimeout(() => resolve([]), 10000)) // 10s timeout
       ]);
-      
+
       if (walletBalances.length === 0) {
         setAssets([]);
         setTotalBalance(0);
@@ -122,11 +122,11 @@ export default function CryptoWallets() {
         const priceData = prices[symbol];
         const currentPrice = priceData?.price || 0;
         const change24h = priceData?.change24h || 0;
-        
+
         // Use image from CoinGecko if available, otherwise fallback to local config
         const config = assetConfigs[symbol] || { icon: '', color: '#6b7280' };
         let icon = priceData?.image || config.icon;
-        
+
         // Simple sparkline: just use current price (no network calls on initial load)
         // Sparklines can be loaded later if needed
         const simpleSparkline = Array.from({ length: 24 }, () => currentPrice);
@@ -134,13 +134,13 @@ export default function CryptoWallets() {
         return {
           id: symbol,
           icon: icon,
-          name: priceData?.name || (symbol === 'BTC' ? 'Bitcoin' : 
-                symbol === 'SOL' ? 'Solana' : 
-                symbol === 'ETH' ? 'Ethereum' : 
-                symbol === 'ADA' ? 'Cardano' : 
-                symbol === 'USDT' ? 'Tether' :
-                symbol === 'USDC' ? 'USD Coin' :
-                symbol),
+          name: priceData?.name || (symbol === 'BTC' ? 'Bitcoin' :
+            symbol === 'SOL' ? 'Solana' :
+              symbol === 'ETH' ? 'Ethereum' :
+                symbol === 'ADA' ? 'Cardano' :
+                  symbol === 'USDT' ? 'Tether' :
+                    symbol === 'USDC' ? 'USD Coin' :
+                      symbol),
           symbol,
           amount: balance.amount,
           price: currentPrice,
@@ -157,14 +157,14 @@ export default function CryptoWallets() {
       // Only include assets with valid values and non-zero total
       let totalChange = 0;
       if (assetList.length > 0 && totalUsdValue > 0) {
-        const validAssets = assetList.filter(asset => 
-          asset.priceUsd > 0 && 
-          !isNaN(asset.change24h) && 
+        const validAssets = assetList.filter(asset =>
+          asset.priceUsd > 0 &&
+          !isNaN(asset.change24h) &&
           isFinite(asset.change24h) &&
           asset.change24h !== null &&
           asset.change24h !== undefined
         );
-        
+
         if (validAssets.length > 0) {
           totalChange = validAssets.reduce((sum, asset) => {
             const weight = asset.priceUsd / totalUsdValue;
@@ -177,7 +177,7 @@ export default function CryptoWallets() {
       setAssets(assetList);
       setTotalBalance(totalUsdValue);
       setTotalChange(totalChange);
-      
+
       setIsLoading(false); // Set loading to false immediately after setting assets
 
       // Load sparklines and images in background (non-blocking)
@@ -189,8 +189,8 @@ export default function CryptoWallets() {
             generateSparklineData(asset.symbol, '1h', 24)
               .then(sparkline => {
                 if (sparkline.length > 0) {
-                  setAssets(prev => prev.map(a => 
-                    a.symbol === asset.symbol 
+                  setAssets(prev => prev.map(a =>
+                    a.symbol === asset.symbol
                       ? { ...a, sparklineData: sparkline }
                       : a
                   ));
@@ -247,7 +247,7 @@ export default function CryptoWallets() {
         )}>Wallets</div>
         <div className={cn(
           "rounded-xl border p-6 h-32 animate-pulse mb-6",
-          isDark ? "bg-[#1a1f2e] border-[#1f2937]" : "bg-white border-gray-200"
+          isDark ? "bg-black border-white/10" : "bg-white border-gray-200"
         )}>
           <div className={cn(
             "h-4 w-24 rounded mb-2",
@@ -262,7 +262,7 @@ export default function CryptoWallets() {
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className={cn(
               "rounded-xl border p-4 h-20 animate-pulse",
-              isDark ? "bg-[#1a1f2e] border-[#1f2937]" : "bg-white border-gray-200"
+              isDark ? "bg-black border-white/10" : "bg-white border-gray-200"
             )}></div>
           ))}
         </div>
@@ -277,11 +277,11 @@ export default function CryptoWallets() {
         "text-2xl font-bold",
         isDark ? "text-white" : "text-gray-900"
       )}>Wallets</div>
-      
+
       {/* Total Balance Header */}
       <div className={cn(
         "rounded-xl border p-6",
-        isDark ? "bg-[#1a1f2e] border-[#1f2937]" : "bg-white border-gray-200"
+        isDark ? "bg-black border-white/10" : "bg-white border-gray-200"
       )}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -300,19 +300,18 @@ export default function CryptoWallets() {
                 "text-lg",
                 isDark ? "text-[#6b7280]" : "text-gray-500"
               )}>USD</span>
-              <div className={`flex items-center gap-1 px-2 py-1 rounded text-sm ${
-                (totalChange >= 0 && !isNaN(totalChange))
-                  ? 'bg-[#10b981]/20 text-[#10b981]' 
+              <div className={`flex items-center gap-1 px-2 py-1 rounded text-sm ${(totalChange >= 0 && !isNaN(totalChange))
+                  ? 'bg-[#10b981]/20 text-[#10b981]'
                   : 'bg-[#ef4444]/20 text-[#ef4444]'
-              }`}>
+                }`}>
                 {(totalChange >= 0 && !isNaN(totalChange)) ? (
                   <TrendingUp className="w-4 h-4" />
                 ) : (
                   <TrendingDown className="w-4 h-4" />
                 )}
                 <span>
-                  {isNaN(totalChange) || !isFinite(totalChange) 
-                    ? '0.00' 
+                  {isNaN(totalChange) || !isFinite(totalChange)
+                    ? '0.00'
                     : `${totalChange >= 0 ? '+' : ''}${totalChange.toFixed(2)}`
                   }%
                 </span>
@@ -324,12 +323,12 @@ export default function CryptoWallets() {
             <Select value={timePeriod} onValueChange={(v: any) => setTimePeriod(v)}>
               <SelectTrigger className={cn(
                 "w-[140px]",
-                isDark ? "bg-[#0f1419] border-[#374151] text-[#9ca3af]" : "bg-gray-50 border-gray-300 text-gray-700"
+                isDark ? "bg-neutral-900 border-white/10 text-slate-300" : "bg-gray-50 border-gray-300 text-gray-700"
               )}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className={cn(
-                isDark ? "bg-[#1a1f2e] border-[#374151]" : "bg-white border-gray-200"
+                isDark ? "bg-neutral-900 border-white/10" : "bg-white border-gray-200"
               )}>
                 <SelectItem value="24h">24h change</SelectItem>
                 <SelectItem value="7d">7d change</SelectItem>
@@ -351,12 +350,12 @@ export default function CryptoWallets() {
       {/* Asset List */}
       <div className={cn(
         "rounded-xl border overflow-hidden",
-        isDark ? "bg-[#1a1f2e] border-[#1f2937]" : "bg-white border-gray-200"
+        isDark ? "bg-black border-white/10" : "bg-white border-gray-200"
       )}>
         {/* Table Header */}
         <div className={cn(
           "hidden md:grid md:grid-cols-4 gap-4 px-6 py-3 border-b text-sm",
-          isDark ? "border-[#1f2937] text-[#6b7280]" : "border-gray-200 text-gray-600"
+          isDark ? "border-white/10 text-gray-500" : "border-gray-200 text-gray-600"
         )}>
           <span>Asset</span>
           <span>Price</span>
@@ -367,16 +366,16 @@ export default function CryptoWallets() {
         {/* Asset Rows */}
         <div className={cn(
           "divide-y",
-          isDark ? "divide-[#1f2937]" : "divide-gray-200"
+          isDark ? "divide-white/10" : "divide-gray-200"
         )}>
           {isLoading ? (
             // Loading skeletons
             Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="flex items-center gap-4 p-4">
-                <div className="w-10 h-10 rounded-full bg-[#374151] animate-pulse" />
+                <div className="w-10 h-10 rounded-full bg-neutral-900 animate-pulse" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 w-32 bg-[#374151] rounded animate-pulse" />
-                  <div className="h-3 w-20 bg-[#374151] rounded animate-pulse" />
+                  <div className="h-4 w-32 bg-neutral-900 rounded animate-pulse" />
+                  <div className="h-3 w-20 bg-neutral-900 rounded animate-pulse" />
                 </div>
               </div>
             ))

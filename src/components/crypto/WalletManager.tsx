@@ -6,16 +6,16 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { 
-  Wallet, 
-  Plus, 
-  Trash2, 
+import {
+  Wallet,
+  Plus,
+  Trash2,
   Bitcoin,
   Zap,
   CheckCircle,
-  XCircle,
+  AlertCircle,
   Loader2,
-  Eye,
+  Search,
   ExternalLink
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -39,11 +39,11 @@ interface WalletManagerProps {
 export default function WalletManager({ isOpen, onClose, onWalletsUpdated }: WalletManagerProps) {
   const supabase = createClient();
   const { toast } = useToast();
-  
+
   const [wallets, setWallets] = useState<TrackedWallet[]>([]);
   const [loading, setLoading] = useState(false);
   const [isAddingWallet, setIsAddingWallet] = useState(false);
-  
+
   // Form state
   const [newWalletAddress, setNewWalletAddress] = useState('');
   const [newWalletLabel, setNewWalletLabel] = useState('');
@@ -141,10 +141,10 @@ export default function WalletManager({ isOpen, onClose, onWalletsUpdated }: Wal
       // Reset form
       setNewWalletAddress('');
       setNewWalletLabel('');
-      
+
       // Refresh list
       await fetchWallets();
-      
+
       // Notify parent
       if (onWalletsUpdated) {
         onWalletsUpdated();
@@ -175,7 +175,7 @@ export default function WalletManager({ isOpen, onClose, onWalletsUpdated }: Wal
       });
 
       await fetchWallets();
-      
+
       if (onWalletsUpdated) {
         onWalletsUpdated();
       }
@@ -203,7 +203,7 @@ export default function WalletManager({ isOpen, onClose, onWalletsUpdated }: Wal
       });
 
       await fetchWallets();
-      
+
       if (onWalletsUpdated) {
         onWalletsUpdated();
       }
@@ -223,35 +223,35 @@ export default function WalletManager({ isOpen, onClose, onWalletsUpdated }: Wal
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-black border-white/10">
         <DialogHeader>
-          <DialogTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+          <DialogTitle className="text-white flex items-center gap-2">
             <Wallet className="w-5 h-5 text-emerald-400" />
             Manage Crypto Wallets
           </DialogTitle>
-          <DialogDescription className="text-gray-600 dark:text-slate-400">
+          <DialogDescription className="text-gray-400">
             Add multiple Solana and Bitcoin wallet addresses to aggregate your crypto analytics
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
           {/* Add Wallet Form */}
-          <Card className="bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700">
+          <Card className="bg-neutral-900 border-white/10">
             <CardHeader>
-              <CardTitle className="text-lg text-gray-900 dark:text-white">Add New Wallet</CardTitle>
+              <CardTitle className="text-lg text-white">Add New Wallet</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-gray-700 dark:text-slate-300">Blockchain</Label>
+                  <Label className="text-slate-300">Blockchain</Label>
                   <Select
                     value={newWalletBlockchain}
                     onValueChange={(value: 'solana' | 'bitcoin') => setNewWalletBlockchain(value)}
                   >
-                    <SelectTrigger className="bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white">
+                    <SelectTrigger className="bg-black border-white/10 text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-neutral-900 border-white/10">
                       <SelectItem value="solana">
                         <div className="flex items-center gap-2">
                           <Zap className="w-4 h-4 text-emerald-400" />
@@ -260,8 +260,10 @@ export default function WalletManager({ isOpen, onClose, onWalletsUpdated }: Wal
                       </SelectItem>
                       <SelectItem value="bitcoin">
                         <div className="flex items-center gap-2">
-                          <Bitcoin className="w-4 h-4 text-amber-400" />
-                          Bitcoin
+                          <div className="flex items-center gap-2">
+                            <Bitcoin className="w-4 h-4 text-amber-400" />
+                            Bitcoin
+                          </div>
                         </div>
                       </SelectItem>
                     </SelectContent>
@@ -269,23 +271,23 @@ export default function WalletManager({ isOpen, onClose, onWalletsUpdated }: Wal
                 </div>
 
                 <div>
-                  <Label className="text-gray-700 dark:text-slate-300">Label (Optional)</Label>
+                  <Label className="text-slate-300">Label (Optional)</Label>
                   <Input
                     placeholder="e.g., Main Trading Wallet"
                     value={newWalletLabel}
                     onChange={(e) => setNewWalletLabel(e.target.value)}
-                    className="bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-slate-500"
+                    className="bg-black border-white/10 text-white placeholder:text-gray-600 font-mono"
                   />
                 </div>
               </div>
 
               <div>
-                <Label className="text-gray-700 dark:text-slate-300">Wallet Address</Label>
+                <Label className="text-slate-300">Wallet Address</Label>
                 <Input
                   placeholder={newWalletBlockchain === 'solana' ? 'Enter Solana wallet address...' : 'Enter Bitcoin wallet address...'}
                   value={newWalletAddress}
                   onChange={(e) => setNewWalletAddress(e.target.value)}
-                  className="bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-slate-500 font-mono"
+                  className="bg-black border-white/10 text-white placeholder:text-gray-600 font-mono"
                 />
               </div>
 
@@ -310,9 +312,9 @@ export default function WalletManager({ isOpen, onClose, onWalletsUpdated }: Wal
           </Card>
 
           {/* Wallets List */}
-          <Card className="bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700">
+          <Card className="bg-neutral-900 border-white/10">
             <CardHeader>
-              <CardTitle className="text-lg text-gray-900 dark:text-white">Tracked Wallets ({wallets.length})</CardTitle>
+              <CardTitle className="text-lg text-white">Tracked Wallets ({wallets.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -321,38 +323,36 @@ export default function WalletManager({ isOpen, onClose, onWalletsUpdated }: Wal
                 </div>
               ) : wallets.length === 0 ? (
                 <div className="text-center py-8">
-                  <Wallet className="w-12 h-12 text-gray-400 dark:text-slate-600 mx-auto mb-3" />
-                  <p className="text-gray-600 dark:text-slate-400">No wallets added yet</p>
-                  <p className="text-gray-500 dark:text-slate-500 text-sm mt-1">Add your first wallet to start tracking</p>
+                  <Wallet className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-400">No wallets added yet</p>
+                  <p className="text-gray-500 text-sm mt-1">Add your first wallet to start tracking</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {wallets.map((wallet) => (
-                    <div 
+                    <div
                       key={wallet.id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-white dark:bg-slate-900/50 border border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 transition-colors"
+                      className="flex items-center justify-between p-4 rounded-lg bg-black/50 border border-white/10 hover:border-white/20 transition-colors"
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          wallet.blockchain === 'solana' 
-                            ? 'bg-emerald-500/10' 
-                            : 'bg-amber-500/10'
-                        }`}>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${wallet.blockchain === 'solana'
+                          ? 'bg-emerald-500/10'
+                          : 'bg-amber-500/10'
+                          }`}>
                           {wallet.blockchain === 'solana' ? (
                             <Zap className="w-5 h-5 text-emerald-400" />
                           ) : (
                             <Bitcoin className="w-5 h-5 text-amber-400" />
                           )}
                         </div>
-                        
+
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <p className="font-medium text-gray-900 dark:text-white truncate">{wallet.label}</p>
-                            <Badge variant="outline" className={`text-xs capitalize ${
-                              wallet.blockchain === 'solana'
-                                ? 'border-emerald-500/30 text-emerald-400'
-                                : 'border-amber-500/30 text-amber-400'
-                            }`}>
+                            <p className="font-medium text-white truncate">{wallet.label}</p>
+                            <Badge variant="outline" className={`text-xs capitalize ${wallet.blockchain === 'solana'
+                              ? 'border-emerald-500/30 text-emerald-400'
+                              : 'border-amber-500/30 text-amber-400'
+                              }`}>
                               {wallet.blockchain}
                             </Badge>
                             {wallet.is_active ? (
@@ -362,12 +362,12 @@ export default function WalletManager({ isOpen, onClose, onWalletsUpdated }: Wal
                               </Badge>
                             ) : (
                               <Badge variant="outline" className="text-xs border-gray-500/30 text-gray-400">
-                                <XCircle className="w-3 h-3 mr-1" />
+                                <AlertCircle className="w-3 h-3 mr-1" />
                                 Disabled
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-slate-400 font-mono truncate">
+                          <p className="text-sm text-gray-400 font-mono truncate">
                             {truncateAddress(wallet.wallet_address)}
                           </p>
                         </div>
@@ -387,7 +387,7 @@ export default function WalletManager({ isOpen, onClose, onWalletsUpdated }: Wal
                           className="text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
                           title={`View on ${wallet.blockchain === 'solana' ? 'Solscan' : 'Blockstream'}`}
                         >
-                          <Eye className="w-4 h-4" />
+                          <Search className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -418,7 +418,7 @@ export default function WalletManager({ isOpen, onClose, onWalletsUpdated }: Wal
           <Button
             onClick={onClose}
             variant="outline"
-            className="border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-slate-800"
+            className="border-white/10 text-slate-300 hover:bg-neutral-800"
           >
             Done
           </Button>
