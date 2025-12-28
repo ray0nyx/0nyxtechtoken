@@ -1,0 +1,61 @@
+[package]
+name = "backtest-engine"
+version = "0.1.0"
+edition = "2021"
+authors = ["WagYu Team"]
+description = "High-performance event-driven backtesting engine"
+
+[lib]
+name = "backtest_engine"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Python bindings
+pyo3 = { version = "0.20", features = ["extension-module"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Data formats
+parquet = "49.0"
+arrow = "49.0"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Numeric
+rust_decimal = { version = "1.33", features = ["serde"] }
+
+# Random (for slippage simulation)
+rand = "0.8"
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Parallel processing
+rayon = "1.8"
+
+# Crossbeam for channels
+crossbeam-channel = "0.5"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "engine_benchmark"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+

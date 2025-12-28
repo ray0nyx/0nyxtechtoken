@@ -1,0 +1,20 @@
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-env",
+    "deploy": "supabase functions deploy"
+  },
+  "imports": {
+    "http/": "https://deno.land/std@0.177.0/http/",
+    "std/": "https://deno.land/std@0.177.0/",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.38.4",
+    "@types/http": "https://deno.land/x/types@0.177.0/http/server.d.ts",
+    "@types/supabase": "https://esm.sh/@types/supabase__supabase-js@2.38.4/index.d.ts"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "lib": ["deno.window", "dom"],
+    "types": ["./calculate-pnl/deno.d.ts"]
+  }
+} 

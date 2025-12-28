@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://wagyu.trade/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://wagyu.trade/images/wagyu-trading-journal-logo.png</image:loc>
+      <image:title>WagYu Trading Journal Logo</image:title>
+      <image:caption>WagYu Trading Journal Logo</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://wagyu.trade/icons/og-image.png</image:loc>
+      <image:title>WagYu Trading Journal Banner</image:title>
+      <image:caption>Professional trading journal platform for tracking and analytics</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://wagyu.trade/pricing</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://wagyu.trade/images/wagyu-trading-journal-logo.png</image:loc>
+      <image:title>WagYu Trading Journal Logo</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://wagyu.trade/signup</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://wagyu.trade/signin</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://wagyu.trade/app/analytics</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+</urlset> 

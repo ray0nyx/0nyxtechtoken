@@ -1,0 +1,292 @@
+-- Fix for the TopstepX parameter handling issue
+-- This script creates a wrapper function that can handle both stringified and non-stringified JSON
+
+-- First drop existing functions
+DO $$
+BEGIN
+  BEGIN
+    DROP FUNCTION IF EXISTS process_topstepx_csv_batch(uuid, jsonb, uuid);
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Could not drop process_topstepx_csv_batch(uuid, jsonb, uuid): %', SQLERRM;
+  END;
+  
+  BEGIN
+    DROP FUNCTION IF EXISTS process_topstepx_csv_batch(jsonb);
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Could not drop process_topstepx_csv_batch(jsonb): %', SQLERRM;
+  END;
+END $$;
+
+-- Create helper function to ensure account exists
+CREATE OR REPLACE FUNCTION ensure_account_exists(
+  p_user_id UUID,
+  p_account_name TEXT DEFAULT 'TopstepX Account'
+) RETURNS UUID AS $$
+DECLARE
+  v_account_id UUID;
+BEGIN
+  -- Check if user already has an account
+  SELECT id INTO v_account_id
+  FROM accounts
+  WHERE user_id = p_user_id
+  AND (name LIKE '%TopstepX%' OR platform = 'topstepx')
+  LIMIT 1;
+  
+  -- If no account found, create one
+  IF v_account_id IS NULL THEN
+    INSERT INTO accounts (
+      user_id,
+      name,
+      platform,
+      balance,
+      created_at,
+      updated_at
+    ) VALUES (
+      p_user_id,
+      p_account_name,
+      'topstepx',
+      0,
+      NOW(),
+      NOW()
+    )
+    RETURNING id INTO v_account_id;
+    
+    RAISE NOTICE 'Created new TopstepX account % for user %', v_account_id, p_user_id;
+  END IF;
+  
+  RETURN v_account_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create a robust function that can handle various parameter formats
+CREATE OR REPLACE FUNCTION process_topstepx_csv_batch(
+  p_user_id UUID,
+  p_rows JSONB,
+  p_account_id UUID DEFAULT NULL
+) RETURNS JSONB AS $$
+DECLARE
+  v_row JSONB;
+  v_success_count INTEGER := 0;
+  v_error_count INTEGER := 0;
+  v_results JSONB[] := '{}';
+  v_account_id UUID := p_account_id;
+  v_parsed_rows JSONB := p_rows;
+  v_trade_id UUID;
+  v_debug TEXT;
+  
+  -- Fields for each trade
+  v_symbol TEXT;
+  v_side TEXT;
+  v_quantity NUMERIC;
+  v_entry_price NUMERIC;
+  v_exit_price NUMERIC;
+  v_pnl NUMERIC;
+  v_entry_date TIMESTAMP;
+  v_exit_date TIMESTAMP;
+  v_fees NUMERIC;
+  v_date DATE;
+BEGIN
+  -- Debug info for input parameters
+  RAISE NOTICE 'Debug input: user_id=%', p_user_id;
+  RAISE NOTICE 'Debug input: account_id=%', p_account_id;
+  RAISE NOTICE 'Debug input: rows_type=%', jsonb_typeof(p_rows);
+  
+  -- Try to handle both array and string inputs
+  IF jsonb_typeof(p_rows) = 'string' THEN
+    BEGIN
+      -- If p_rows is a string, try to parse it as JSON
+      v_parsed_rows := p_rows#>>'{}' :: JSONB;
+      RAISE NOTICE 'Parsed string input to JSONB: %', jsonb_typeof(v_parsed_rows);
+    EXCEPTION WHEN OTHERS THEN
+      RETURN jsonb_build_object(
+        'success', FALSE,
+        'message', 'Error parsing JSON string: ' || SQLERRM,
+        'processed', 0
+      );
+    END;
+  END IF;
+  
+  -- Ensure we have a proper JSONB array
+  IF jsonb_typeof(v_parsed_rows) != 'array' THEN
+    RETURN jsonb_build_object(
+      'success', FALSE,
+      'message', 'Input is not a valid trades array. Got ' || jsonb_typeof(v_parsed_rows),
+      'processed', 0
+    );
+  END IF;
+  
+  -- Find or create an account if none provided
+  IF v_account_id IS NULL THEN
+    SELECT ensure_account_exists(p_user_id) INTO v_account_id;
+    v_debug := 'Auto-created account ID: ' || v_account_id::TEXT;
+    RAISE NOTICE '%', v_debug;
+  END IF;
+  
+  -- Process each row in the batch
+  FOR i IN 0..jsonb_array_length(v_parsed_rows) - 1 LOOP
+    BEGIN
+      -- Extract the current row
+      v_row := v_parsed_rows->i;
+      
+      -- Extract and validate required fields
+      BEGIN
+        -- Get required fields
+        v_symbol := v_row->>'contract_name';
+        IF v_symbol IS NULL THEN
+          RAISE EXCEPTION 'Missing contract_name field in row %', i;
+        END IF;
+        
+        v_entry_price := (v_row->>'entry_price')::NUMERIC;
+        IF v_entry_price IS NULL THEN
+          RAISE EXCEPTION 'Missing entry_price field in row %', i;
+        END IF;
+        
+        v_exit_price := (v_row->>'exit_price')::NUMERIC;
+        IF v_exit_price IS NULL THEN
+          RAISE EXCEPTION 'Missing exit_price field in row %', i;
+        END IF;
+        
+        -- Get optional fields with defaults
+        v_side := COALESCE(v_row->>'type', 'long');
+        v_quantity := COALESCE((v_row->>'size')::NUMERIC, 1);
+        v_pnl := COALESCE((v_row->>'pnl')::NUMERIC, 0);
+        v_entry_date := COALESCE((v_row->>'entered_at')::TIMESTAMP, NOW());
+        v_exit_date := COALESCE((v_row->>'exited_at')::TIMESTAMP, NOW());
+        v_fees := COALESCE((v_row->>'fees')::NUMERIC, 2.50);
+        
+        -- Set the trade date
+        v_date := COALESCE((v_row->>'trade_day')::DATE, v_entry_date::DATE);
+        
+        -- Normalize the side value
+        IF v_side ILIKE '%long%' OR v_side ILIKE '%buy%' THEN
+          v_side := 'long';
+        ELSIF v_side ILIKE '%short%' OR v_side ILIKE '%sell%' THEN
+          v_side := 'short';
+        ELSE
+          v_side := 'long'; -- Default to long if unspecified
+        END IF;
+        
+        -- Insert the trade 
+        INSERT INTO trades (
+          user_id,
+          account_id,
+          symbol,
+          side,
+          quantity,
+          entry_price,
+          exit_price,
+          pnl,
+          entry_time,
+          exit_time,
+          fees,
+          trade_date,
+          created_at,
+          updated_at,
+          platform,
+          original_data
+        ) VALUES (
+          p_user_id,
+          v_account_id,
+          v_symbol,
+          v_side,
+          v_quantity,
+          v_entry_price,
+          v_exit_price,
+          v_pnl,
+          v_entry_date,
+          v_exit_date,
+          v_fees,
+          v_date,
+          NOW(),
+          NOW(),
+          'topstepx',
+          v_row
+        ) RETURNING id INTO v_trade_id;
+        
+        -- Increment success counter
+        v_success_count := v_success_count + 1;
+        
+        -- Add to results
+        v_results := array_append(v_results, jsonb_build_object(
+          'id', v_trade_id,
+          'symbol', v_symbol,
+          'success', TRUE
+        ));
+      EXCEPTION WHEN OTHERS THEN
+        -- Handle errors for this row
+        v_error_count := v_error_count + 1;
+        
+        -- Add error to results
+        v_results := array_append(v_results, jsonb_build_object(
+          'row', i + 1,
+          'error', SQLERRM,
+          'success', FALSE
+        ));
+      END;
+    EXCEPTION WHEN OTHERS THEN
+      -- Handle any unexpected errors
+      v_error_count := v_error_count + 1;
+      v_results := array_append(v_results, jsonb_build_object(
+        'row', i + 1,
+        'error', 'Unexpected error: ' || SQLERRM,
+        'success', FALSE
+      ));
+    END;
+  END LOOP;
+  
+  -- Try to refresh analytics if trades were processed successfully
+  IF v_success_count > 0 THEN
+    BEGIN
+      PERFORM refresh_user_analytics(p_user_id);
+    EXCEPTION WHEN OTHERS THEN
+      RAISE NOTICE 'Failed to refresh analytics: %', SQLERRM;
+    END;
+  END IF;
+  
+  -- Return the results
+  RETURN jsonb_build_object(
+    'success', v_error_count = 0 AND v_success_count > 0,
+    'processed', v_success_count,
+    'errors', v_error_count,
+    'results', to_jsonb(v_results),
+    'account_id', v_account_id,
+    'message', CASE 
+      WHEN v_success_count = 0 THEN 'No trades were processed'
+      WHEN v_error_count = 0 THEN 'All trades processed successfully'
+      ELSE format('%s trades processed, %s trades had errors', v_success_count, v_error_count)
+    END
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create simpler legacy API for old code
+CREATE OR REPLACE FUNCTION process_topstepx_csv_batch(p_rows JSONB) 
+RETURNS JSONB AS $$
+DECLARE
+  v_user_id UUID;
+BEGIN
+  -- Extract user ID from the first trade
+  IF jsonb_array_length(p_rows) > 0 AND p_rows->0->>'user_id' IS NOT NULL THEN
+    v_user_id := (p_rows->0->>'user_id')::UUID;
+    -- Call main function
+    RETURN process_topstepx_csv_batch(v_user_id, p_rows, NULL);
+  ELSE
+    RETURN jsonb_build_object(
+      'success', FALSE,
+      'message', 'No user_id found in trades data',
+      'processed', 0
+    );
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object(
+    'success', FALSE,
+    'message', 'Error in process_topstepx_csv_batch wrapper: ' || SQLERRM,
+    'processed', 0
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant necessary permissions
+GRANT EXECUTE ON FUNCTION process_topstepx_csv_batch(UUID, JSONB, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION process_topstepx_csv_batch(JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION ensure_account_exists(UUID, TEXT) TO authenticated; 

@@ -1,0 +1,52 @@
+# Market Data & Trading Libraries
+ccxt==4.2.25
+yfinance==0.2.28
+alpha-vantage==2.3.1
+pandas>=2.2.0  # Python 3.13 compatible
+numpy>=1.26.0  # Python 3.13 compatible
+requests==2.31.0
+
+# Web Framework
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic>=2.9.0  # Updated for Python 3.13
+
+# Data Processing
+# Note: ta-lib requires TA-Lib C library: brew install ta-lib
+# ta-lib 0.4.28 may have Python 3.13 issues - try installing separately if needed
+# ta-lib==0.4.28
+ta>=0.11.0  # Technical analysis library
+scipy>=1.13.0
+scikit-learn>=1.4.0
+
+# Async Support
+aiohttp==3.9.1
+asyncio-throttle==1.0.2
+
+# Caching
+redis==5.0.1
+python-multipart==0.0.6
+
+# Environment & Config
+python-dotenv==1.0.0
+pydantic-settings==2.1.0
+certifi>=2024.2.2
+
+# Quantitative Finance
+# empyrical 0.5.5 incompatible with Python 3.13 (uses deprecated SafeConfigParser)
+# Comment out if not critical, or use alternative metrics library
+# empyrical==0.5.5
+# pyfolio-reloaded==0.9.5  # May also have Python 3.13 issues
+
+# WebSocket Support
+websockets==12.0
+
+# Data Storage
+pyarrow>=17.0.0  # Python 3.13 compatible
+h5py>=3.11.0  # Python 3.13 compatible
+
+# Development
+pytest==7.4.3
+black==23.11.0
+flake8==6.1.0
+maturin==1.4.0

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Remove Service Worker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        .success {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #4caf50;
+        }
+        .warning {
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+        .log {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💥 Force Remove Service Worker</h1>
+        
+        <div class="warning">
+            <h3>⚠️ Service Worker Still Causing Errors</h3>
+            <p>The service worker is deeply cached and still causing errors. This tool will force remove it completely.</p>
+        </div>
+
+        <h2>Actions</h2>
+        <button onclick="forceRemove()">Force Remove Everything</button>
+        <button onclick="nuclearOption()">Nuclear Option</button>
+        <button onclick="reloadPage()">Reload Page</button>
+        <button onclick="testPasswordReset()">Test Password Reset</button>
+
+        <div id="log" class="log"></div>
+
+        <div class="success">
+            <h3>✅ After Force Removal</h3>
+            <p>Once everything is force removed:</p>
+            <ol>
+                <li>Test the password reset with the modified URL</li>
+                <li>Check browser console - should be clean</li>
+                <li>Go to <a href="http://localhost:8080/app/settings">Settings</a></li>
+                <li>Click "Reset Password" for a fresh token</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message) {
+            log.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            log.scrollTop = log.scrollHeight;
+        }
+
+        async function forceRemove() {
+            addLog('Force removing everything...');
+            
+            try {
+                // Step 1: Unregister all service workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    addLog(`Found ${registrations.length} service worker registrations`);
+                    
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        addLog('Force unregistered service worker');
+                    }
+                }
+                
+                // Step 2: Clear all caches
+                const cacheNames = await caches.keys();
+                addLog(`Found ${cacheNames.length} caches`);
+                
+                for (let cacheName of cacheNames) {
+                    await caches.delete(cacheName);
+                    addLog('Force deleted cache: ' + cacheName);
+                }
+                
+                // Step 3: Clear all storage
+                localStorage.clear();
+                sessionStorage.clear();
+                addLog('Cleared all storage');
+                
+                // Step 4: Clear IndexedDB
+                if ('indexedDB' in window) {
+                    try {
+                        const databases = await indexedDB.databases();
+                        for (let db of databases) {
+                            await new Promise((resolve, reject) => {
+                                const deleteReq = indexedDB.deleteDatabase(db.name);
+                                deleteReq.onsuccess = () => resolve();
+                                deleteReq.onerror = () => reject(deleteReq.error);
+                            });
+                            addLog('Force deleted IndexedDB: ' + db.name);
+                        }
+                    } catch (e) {
+                        addLog('IndexedDB clear error: ' + e.message);
+                    }
+                }
+                
+                // Step 5: Clear cookies
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                addLog('Cleared all cookies');
+                
+                addLog('✅ Force removal completed');
+                
+            } catch (error) {
+                addLog('❌ Error during force removal: ' + error.message);
+            }
+        }
+
+        async function nuclearOption() {
+            addLog('Nuclear option - clearing everything...');
+            
+            try {
+                // Clear everything
+                await forceRemove();
+                
+                // Additional aggressive clearing
+                if ('serviceWorker' in navigator) {
+                    // Try to unregister with different methods
+                    try {
+                        await navigator.serviceWorker.register('/sw-empty.js');
+                        await navigator.serviceWorker.getRegistrations().then(registrations => {
+                            registrations.forEach(registration => registration.unregister());
+                        });
+                        addLog('Nuclear: Replaced service worker');
+                    } catch (e) {
+                        addLog('Nuclear: Service worker replacement failed: ' + e.message);
+                    }
+                }
+                
+                addLog('✅ Nuclear option completed');
+                
+                // Force reload after nuclear option
+                setTimeout(() => {
+                    addLog('Force reloading in 3 seconds...');
+                    window.location.href = window.location.href;
+                }, 3000);
+                
+            } catch (error) {
+                addLog('❌ Nuclear option error: ' + error.message);
+            }
+        }
+
+        function reloadPage() {
+            addLog('Force reloading page...');
+            window.location.href = window.location.href;
+        }
+
+        function testPasswordReset() {
+            addLog('Opening password reset test page...');
+            window.open('http://localhost:8080/test-password-reset-final.html', '_blank');
+        }
+
+        // Auto-force remove on page load
+        window.addEventListener('load', () => {
+            addLog('Page loaded - force removing service worker...');
+            forceRemove();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuclear Service Worker Removal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .nuclear-button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            transition: all 0.3s ease;
+        }
+        .nuclear-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .success {
+            background: rgba(46, 204, 113, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #2ecc71;
+        }
+        .warning {
+            background: rgba(231, 76, 60, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #e74c3c;
+        }
+        .test-link {
+            display: inline-block;
+            background: rgba(52, 152, 219, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        .test-link:hover {
+            background: rgba(52, 152, 219, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💥 NUCLEAR SERVICE WORKER REMOVAL</h1>
+        
+        <div class="warning">
+            <h3>⚠️ CRITICAL: Service Worker Still Causing Errors</h3>
+            <p>The service worker is deeply cached and causing persistent errors. This nuclear option will completely eliminate it.</p>
+        </div>
+
+        <button class="nuclear-button" onclick="nuclearOption()">
+            💥 NUCLEAR OPTION - FORCE REMOVE EVERYTHING
+        </button>
+
+        <button class="nuclear-button" onclick="checkStatus()">
+            🔍 CHECK STATUS
+        </button>
+
+        <button class="nuclear-button" onclick="testPasswordReset()">
+            🧪 TEST PASSWORD RESET
+        </button>
+
+        <div id="log" class="log">Ready to execute nuclear option...</div>
+
+        <div class="success">
+            <h3>✅ After Nuclear Option</h3>
+            <p>Once executed, you should have:</p>
+            <ul>
+                <li>✅ No service worker errors in console</li>
+                <li>✅ Clean browser cache</li>
+                <li>✅ Working password reset flow</li>
+                <li>✅ No addAll errors</li>
+            </ul>
+        </div>
+
+        <h3>🧪 Test Links (After Nuclear Option)</h3>
+        <a href="https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=30876e93e1f264e590f614f304d8ce623d8849d9710b317f8f063&type=recovery&redirect_to=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Freset" class="test-link">
+            🔗 Test Modified Supabase Link
+        </a>
+        
+        <a href="http://localhost:8080/auth/reset?token=30876e93e1f264e590f614f304d8ce623d8849d9710b317f8f063&type=recovery" class="test-link">
+            🔗 Test Direct Reset Link
+        </a>
+
+        <a href="http://localhost:8080/debug/password-reset-diagnostic" class="test-link">
+            🔍 Diagnostic Tool
+        </a>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            log.textContent += `[${timestamp}] ${message}\n`;
+            log.scrollTop = log.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        async function nuclearOption() {
+            addLog('💥 INITIATING NUCLEAR OPTION...');
+            addLog('This will completely remove all service workers and caches');
+            
+            try {
+                // Step 1: Force unregister all service workers
+                addLog('Step 1: Force unregistering all service workers...');
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    addLog(`Found ${registrations.length} service worker registrations`);
+                    
+                    for (let i = 0; i < registrations.length; i++) {
+                        const registration = registrations[i];
+                        try {
+                            await registration.unregister();
+                            addLog(`✅ Unregistered service worker ${i + 1}`);
+                        } catch (error) {
+                            addLog(`❌ Failed to unregister service worker ${i + 1}: ${error.message}`);
+                        }
+                    }
+                } else {
+                    addLog('Service workers not supported');
+                }
+
+                // Step 2: Clear all caches aggressively
+                addLog('Step 2: Clearing all caches...');
+                try {
+                    const cacheNames = await caches.keys();
+                    addLog(`Found ${cacheNames.length} caches to clear`);
+                    
+                    for (let i = 0; i < cacheNames.length; i++) {
+                        const cacheName = cacheNames[i];
+                        try {
+                            await caches.delete(cacheName);
+                            addLog(`✅ Deleted cache: ${cacheName}`);
+                        } catch (error) {
+                            addLog(`❌ Failed to delete cache ${cacheName}: ${error.message}`);
+                        }
+                    }
+                } catch (error) {
+                    addLog(`❌ Cache clearing error: ${error.message}`);
+                }
+
+                // Step 3: Clear all storage
+                addLog('Step 3: Clearing all storage...');
+                try {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    addLog('✅ Cleared localStorage and sessionStorage');
+                } catch (error) {
+                    addLog(`❌ Storage clearing error: ${error.message}`);
+                }
+
+                // Step 4: Clear IndexedDB
+                addLog('Step 4: Clearing IndexedDB...');
+                try {
+                    if ('indexedDB' in window) {
+                        const databases = await indexedDB.databases();
+                        addLog(`Found ${databases.length} IndexedDB databases`);
+                        
+                        for (let i = 0; i < databases.length; i++) {
+                            const db = databases[i];
+                            try {
+                                await new Promise((resolve, reject) => {
+                                    const deleteReq = indexedDB.deleteDatabase(db.name);
+                                    deleteReq.onsuccess = () => resolve();
+                                    deleteReq.onerror = () => reject(deleteReq.error);
+                                });
+                                addLog(`✅ Deleted IndexedDB: ${db.name}`);
+                            } catch (error) {
+                                addLog(`❌ Failed to delete IndexedDB ${db.name}: ${error.message}`);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    addLog(`❌ IndexedDB clearing error: ${error.message}`);
+                }
+
+                // Step 5: Clear cookies
+                addLog('Step 5: Clearing cookies...');
+                try {
+                    document.cookie.split(";").forEach(function(c) { 
+                        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                    });
+                    addLog('✅ Cleared all cookies');
+                } catch (error) {
+                    addLog(`❌ Cookie clearing error: ${error.message}`);
+                }
+
+                // Step 6: Register empty service worker
+                addLog('Step 6: Registering empty service worker...');
+                try {
+                    if ('serviceWorker' in navigator) {
+                        await navigator.serviceWorker.register('/sw-empty.js');
+                        addLog('✅ Registered empty service worker');
+                    }
+                } catch (error) {
+                    addLog(`❌ Failed to register empty service worker: ${error.message}`);
+                }
+
+                addLog('💥 NUCLEAR OPTION COMPLETED!');
+                addLog('All service workers and caches have been eliminated');
+                addLog('The page will reload in 3 seconds...');
+
+                // Force reload after nuclear option
+                setTimeout(() => {
+                    addLog('🔄 FORCE RELOADING...');
+                    window.location.href = window.location.href;
+                }, 3000);
+
+            } catch (error) {
+                addLog(`💥 NUCLEAR OPTION FAILED: ${error.message}`);
+                addLog('Please try manual removal via DevTools');
+            }
+        }
+
+        async function checkStatus() {
+            addLog('🔍 Checking current status...');
+            
+            try {
+                // Check service workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    if (registrations.length > 0) {
+                        addLog(`❌ ${registrations.length} service workers still active`);
+                        for (let i = 0; i < registrations.length; i++) {
+                            addLog(`  - Service worker ${i + 1}: ${registrations[i].scope}`);
+                        }
+                    } else {
+                        addLog('✅ No service workers active');
+                    }
+                } else {
+                    addLog('✅ Service workers not supported');
+                }
+
+                // Check caches
+                const cacheNames = await caches.keys();
+                if (cacheNames.length > 0) {
+                    addLog(`❌ ${cacheNames.length} caches still present`);
+                    for (let cacheName of cacheNames) {
+                        addLog(`  - Cache: ${cacheName}`);
+                    }
+                } else {
+                    addLog('✅ No caches present');
+                }
+
+                // Check storage
+                const localStorageSize = localStorage.length;
+                const sessionStorageSize = sessionStorage.length;
+                addLog(`Storage - localStorage: ${localStorageSize} items, sessionStorage: ${sessionStorageSize} items`);
+
+            } catch (error) {
+                addLog(`❌ Status check error: ${error.message}`);
+            }
+        }
+
+        function testPasswordReset() {
+            addLog('🧪 Opening password reset test...');
+            window.open('http://localhost:8080/test-bypass-sw.html', '_blank');
+        }
+
+        // Auto-check status on page load
+        window.addEventListener('load', () => {
+            addLog('🚀 Nuclear Service Worker Removal Tool Loaded');
+            checkStatus();
+        });
+    </script>
+</body>
+</html>

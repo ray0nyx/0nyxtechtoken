@@ -1,0 +1,277 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
+import { PnLCalendar } from "@/components/analytics/PnLCalendar";
+import { CumulativePnLChart } from "@/components/analytics/CumulativePnLChart";
+
+interface TradeStats {
+  totalTrades: number;
+  winRate: number;
+  totalPnl: number;
+  averagePnl: number;
+  winningTrades: number;
+  losingTrades: number;
+  largestWin: number;
+  largestLoss: number;
+}
+
+export default function Analytics() {
+  const [stats, setStats] = useState<TradeStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("No authenticated user");
+      }
+      
+      // Fetch trades for the user
+      const { data: trades, error: tradesError } = await supabase
+        .from("trades")
+        .select("*")
+        .eq("user_id", user.id);
+      
+      if (tradesError) {
+        throw tradesError;
+      }
+      
+      if (!trades || trades.length === 0) {
+        setStats({
+          totalTrades: 0,
+          winRate: 0,
+          totalPnl: 0,
+          averagePnl: 0,
+          winningTrades: 0,
+          losingTrades: 0,
+          largestWin: 0,
+          largestLoss: 0
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Calculate statistics
+      const winningTrades = trades.filter(trade => trade.pnl > 0);
+      const losingTrades = trades.filter(trade => trade.pnl < 0);
+      const totalPnl = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+      const winRate = trades.length > 0 ? (winningTrades.length / trades.length) * 100 : 0;
+      const averagePnl = trades.length > 0 ? totalPnl / trades.length : 0;
+      
+      // Find largest win and loss
+      const pnlValues = trades.map(trade => trade.pnl || 0);
+      const largestWin = Math.max(...pnlValues.filter(pnl => pnl > 0), 0);
+      const largestLoss = Math.min(...pnlValues.filter(pnl => pnl < 0), 0);
+      
+      setStats({
+        totalTrades: trades.length,
+        winRate,
+        totalPnl,
+        averagePnl,
+        winningTrades: winningTrades.length,
+        losingTrades: losingTrades.length,
+        largestWin,
+        largestLoss
+      });
+    } catch (err) {
+      console.error("Error fetching analytics data:", err);
+      setError("Failed to load analytics data. Please try again later.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      signDisplay: 'auto',
+    }).format(amount);
+  };
+
+  const formatPercentage = (value: number) => {
+    return `${value.toFixed(2)}%`;
+  };
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">Trading Analytics</h1>
+      
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+          {error}
+        </div>
+      )}
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card className="rounded-xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Trades</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-2xl font-bold">{stats?.totalTrades || 0}</div>
+            )}
+          </CardContent>
+        </Card>
+        
+        <Card className="rounded-xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-2xl font-bold">{formatPercentage(stats?.winRate || 0)}</div>
+            )}
+          </CardContent>
+        </Card>
+        
+        <Card className="rounded-xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total P&L</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className={`text-2xl font-bold ${(stats?.totalPnl || 0) >= 0 ? 'text-blue-500' : 'text-fuchsia-500'}`}>
+                {formatCurrency(stats?.totalPnl || 0)}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        
+        <Card className="rounded-xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Average P&L</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className={`text-2xl font-bold ${(stats?.averagePnl || 0) >= 0 ? 'text-blue-500' : 'text-fuchsia-500'}`}>
+                {formatCurrency(stats?.averagePnl || 0)}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <Card className="rounded-xl">
+          <CardHeader>
+            <CardTitle>Win/Loss Ratio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-[200px] w-full" />
+            ) : (
+              <div className="flex items-center justify-center h-[200px]">
+                <div className="flex items-end h-full w-full max-w-[300px]">
+                  <div className="flex-1 flex flex-col items-center">
+                    <div className="text-lg font-semibold">{stats?.winningTrades || 0}</div>
+                    <div 
+                      className="w-full bg-blue-500 rounded-t-md" 
+                      style={{ height: `${stats?.winningTrades ? Math.min(stats.winningTrades / (stats.totalTrades || 1) * 150, 150) : 0}px` }}
+                    ></div>
+                    <div className="mt-2 text-sm">Wins</div>
+                  </div>
+                  <div className="flex-1 flex flex-col items-center">
+                    <div className="text-lg font-semibold">{stats?.losingTrades || 0}</div>
+                    <div 
+                      className="w-full bg-fuchsia-500 rounded-t-md" 
+                      style={{ height: `${stats?.losingTrades ? Math.min(stats.losingTrades / (stats.totalTrades || 1) * 150, 150) : 0}px` }}
+                    ></div>
+                    <div className="mt-2 text-sm">Losses</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        
+        <Card className="rounded-xl">
+          <CardHeader>
+            <CardTitle>Best & Worst Trades</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-[200px] w-full" />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[200px]">
+                <div className="grid grid-cols-2 gap-8 w-full max-w-md">
+                  <div className="text-center">
+                    <div className="text-sm text-gray-500 mb-2">Largest Win</div>
+                    <div className="text-2xl font-bold text-blue-500">
+                      {formatCurrency(stats?.largestWin || 0)}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-sm text-gray-500 mb-2">Largest Loss</div>
+                    <div className="text-2xl font-bold text-fuchsia-500">
+                      {formatCurrency(stats?.largestLoss || 0)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* PnL Calendar */}
+      <div className="mb-8">
+        {isLoading ? (
+          <Skeleton className="h-[500px] w-full" />
+        ) : (
+          <PnLCalendar />
+        )}
+      </div>
+      
+      {/* Cumulative P&L Chart */}
+      {isLoading ? (
+        <Skeleton className="h-[350px] w-full mb-8" />
+      ) : (
+        <CumulativePnLChart />
+      )}
+      
+      <Card className="rounded-xl">
+        <CardHeader>
+          <CardTitle>Trading Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-[100px] w-full" />
+          ) : (
+            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-md">
+              <p className="mb-2">
+                You've made a total of <strong>{stats?.totalTrades || 0}</strong> trades with a win rate of <strong>{formatPercentage(stats?.winRate || 0)}</strong>.
+              </p>
+              <p className="mb-2">
+                Your total P&L is <strong className={`${(stats?.totalPnl || 0) >= 0 ? 'text-blue-500' : 'text-fuchsia-500'}`}>{formatCurrency(stats?.totalPnl || 0)}</strong> with an average of <strong>{formatCurrency(stats?.averagePnl || 0)}</strong> per trade.
+              </p>
+              <p>
+                Your best trade made <strong className="text-blue-500">{formatCurrency(stats?.largestWin || 0)}</strong> while your worst trade lost <strong className="text-fuchsia-500">{formatCurrency(Math.abs(stats?.largestLoss || 0))}</strong>.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+} 

@@ -1,0 +1,10 @@
+{
+  "name": "create-checkout-session",
+  "version": "1.0.0",
+  "description": "Stripe checkout session creation for TraderLog",
+  "main": "index.ts",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "stripe": "^12.0.0"
+  }
+} 

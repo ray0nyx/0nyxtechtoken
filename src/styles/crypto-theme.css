@@ -1,0 +1,84 @@
+/* Crypto Dashboard Theme Variables */
+:root {
+  /* Main backgrounds */
+  --crypto-bg-main: #0a0e17;
+  --crypto-bg-sidebar: #0f1419;
+  --crypto-bg-card: #1a1f2e;
+  --crypto-bg-card-hover: #252b3d;
+  --crypto-bg-input: #0f1419;
+  
+  /* Accent colors */
+  --crypto-accent-blue: #3b82f6;
+  --crypto-accent-green: #10b981;
+  --crypto-accent-red: #ef4444;
+  --crypto-accent-purple: #8b5cf6;
+  --crypto-accent-orange: #f59e0b;
+  --crypto-accent-teal: #14b8a6;
+  
+  /* Text colors */
+  --crypto-text-primary: #ffffff;
+  --crypto-text-secondary: #9ca3af;
+  --crypto-text-muted: #6b7280;
+  
+  /* Border colors */
+  --crypto-border: #374151;
+  --crypto-border-light: #1f2937;
+  
+  /* Chart colors */
+  --crypto-chart-green: #22c55e;
+  --crypto-chart-red: #ef4444;
+  --crypto-chart-blue: #3b82f6;
+  --crypto-chart-orange: #f59e0b;
+  --crypto-chart-purple: #a855f7;
+}
+
+/* Crypto-specific utility classes */
+.crypto-card {
+  background-color: var(--crypto-bg-card);
+  border: 1px solid var(--crypto-border-light);
+  border-radius: 0.75rem;
+}
+
+.crypto-card-hover:hover {
+  background-color: var(--crypto-bg-card-hover);
+}
+
+.crypto-text-positive {
+  color: var(--crypto-accent-green);
+}
+
+.crypto-text-negative {
+  color: var(--crypto-accent-red);
+}
+
+.crypto-gradient-green {
+  background: linear-gradient(135deg, var(--crypto-accent-green) 0%, #059669 100%);
+}
+
+.crypto-gradient-blue {
+  background: linear-gradient(135deg, var(--crypto-accent-blue) 0%, #2563eb 100%);
+}
+
+.crypto-gradient-purple {
+  background: linear-gradient(135deg, var(--crypto-accent-purple) 0%, #7c3aed 100%);
+}
+
+/* Scrollbar styling for crypto dashboard */
+.crypto-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.crypto-scrollbar::-webkit-scrollbar-track {
+  background: var(--crypto-bg-sidebar);
+}
+
+.crypto-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--crypto-border);
+  border-radius: 3px;
+}
+
+.crypto-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--crypto-text-muted);
+}
+

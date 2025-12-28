@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Production Token</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .url-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .test-link {
+            display: inline-block;
+            background: rgba(46, 204, 113, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+        }
+        .test-link:hover {
+            background: rgba(46, 204, 113, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(46, 204, 113, 0.5);
+        }
+        .success {
+            background: rgba(46, 204, 113, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #2ecc71;
+        }
+        .warning {
+            background: rgba(231, 76, 60, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #e74c3c;
+        }
+        button {
+            background: rgba(52, 152, 219, 0.8);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        button:hover {
+            background: rgba(52, 152, 219, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Production Token</h1>
+        
+        <div class="warning">
+            <h3>⚠️ Issue Identified</h3>
+            <p>The Supabase link is redirecting to production instead of localhost. This page will fix that.</p>
+        </div>
+
+        <h3>📋 Original URL (Production Redirect):</h3>
+        <div class="url-display">
+            https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=d107c46dc0c11a0d78e84d989ddf4f007e854569f0212c24ea76d9a2&type=recovery&redirect_to=https://wagyu-orcin.vercel.app
+        </div>
+
+        <h3>✅ Fixed URL (Localhost Redirect):</h3>
+        <div class="url-display">
+            https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=d107c46dc0c11a0d78e84d989ddf4f007e854569f0212c24ea76d9a2&type=recovery&redirect_to=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Freset
+        </div>
+
+        <h3>🧪 Test the Fixed URL:</h3>
+        <a href="https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=d107c46dc0c11a0d78e84d989ddf4f007e854569f0212c24ea76d9a2&type=recovery&redirect_to=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Freset" class="test-link">
+            🔗 Test Fixed URL (Should Work!)
+        </a>
+
+        <h3>🔍 Alternative: Direct Test</h3>
+        <p>If the above doesn't work, try this direct approach:</p>
+        <a href="http://localhost:8080/auth/reset?token=d107c46dc0c11a0d78e84d989ddf4f007e854569f0212c24ea76d9a2&type=recovery" class="test-link">
+            🔗 Direct Reset Link
+        </a>
+
+        <h3>🛠️ Debug Tools</h3>
+        <a href="http://localhost:8080/debug/password-reset-diagnostic" class="test-link">
+            🔍 Password Reset Diagnostic
+        </a>
+
+        <a href="http://localhost:8080/debug/url" class="test-link">
+            🔍 URL Debugger
+        </a>
+
+        <div class="success">
+            <h3>✅ Expected Results</h3>
+            <p>After clicking the fixed URL:</p>
+            <ul>
+                <li>✅ Supabase processes the token</li>
+                <li>✅ Redirects to localhost:8080/auth/reset</li>
+                <li>✅ PasswordResetHandler processes it</li>
+                <li>✅ Redirects to /reset-password page</li>
+                <li>✅ You can set your new password</li>
+            </ul>
+        </div>
+
+        <button onclick="copyFixedUrl()">📋 Copy Fixed URL</button>
+        <button onclick="testDirect()">🧪 Test Direct</button>
+    </div>
+
+    <script>
+        function copyFixedUrl() {
+            const fixedUrl = 'https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=d107c46dc0c11a0d78e84d989ddf4f007e854569f0212c24ea76d9a2&type=recovery&redirect_to=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Freset';
+            navigator.clipboard.writeText(fixedUrl).then(() => {
+                alert('Fixed URL copied to clipboard!');
+            }).catch(() => {
+                alert('Failed to copy URL. Please copy it manually from above.');
+            });
+        }
+
+        function testDirect() {
+            window.open('http://localhost:8080/auth/reset?token=d107c46dc0c11a0d78e84d989ddf4f007e854569f0212c24ea76d9a2&type=recovery', '_blank');
+        }
+
+        // Auto-copy fixed URL on page load
+        window.addEventListener('load', () => {
+            console.log('🔧 Test Production Token Page Loaded');
+            console.log('Fixed URL ready for testing');
+        });
+    </script>
+</body>
+</html>

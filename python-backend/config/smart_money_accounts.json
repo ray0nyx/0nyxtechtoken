@@ -1,0 +1,17 @@
+{
+  "accounts": [
+    "blknoiz06",
+    "0xMaki",
+    "Ansem",
+    "CryptoWendyO",
+    "rektcapital",
+    "TheCryptoDog",
+    "CryptoCred",
+    "CryptoBirb",
+    "CryptoYoda1338",
+    "CryptoWendyO"
+  ],
+  "description": "Curated list of smart money Twitter accounts to monitor for alpha signals",
+  "update_frequency_seconds": 30,
+  "min_engagement_threshold": 10
+}

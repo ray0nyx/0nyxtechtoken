@@ -1,0 +1,84 @@
+/* Quill Editor Dark Theme */
+.quill {
+  background-color: rgb(24, 24, 27);
+  border-radius: 0.5rem;
+  color: white;
+}
+
+.ql-toolbar.ql-snow {
+  border: 1px solid rgb(63, 63, 70) !important;
+  background-color: rgb(39, 39, 42);
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+}
+
+.ql-container.ql-snow {
+  border: 1px solid rgb(63, 63, 70) !important;
+  border-top: none !important;
+  background-color: rgb(24, 24, 27);
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  min-height: 400px;
+}
+
+.ql-editor {
+  color: rgb(244, 244, 245);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.ql-editor.ql-blank::before {
+  color: rgb(161, 161, 170) !important;
+  font-style: normal !important;
+}
+
+.ql-snow .ql-stroke {
+  stroke: rgb(161, 161, 170) !important;
+}
+
+.ql-snow .ql-fill {
+  fill: rgb(161, 161, 170) !important;
+}
+
+.ql-snow .ql-picker {
+  color: rgb(161, 161, 170) !important;
+}
+
+.ql-snow .ql-picker-options {
+  background-color: rgb(39, 39, 42) !important;
+  border-color: rgb(63, 63, 70) !important;
+}
+
+.ql-snow .ql-tooltip {
+  background-color: rgb(39, 39, 42) !important;
+  border-color: rgb(63, 63, 70) !important;
+  color: rgb(244, 244, 245) !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.ql-snow .ql-tooltip input[type=text] {
+  background-color: rgb(24, 24, 27) !important;
+  border-color: rgb(63, 63, 70) !important;
+  color: rgb(244, 244, 245) !important;
+}
+
+/* Magenta accent color for active states */
+.ql-snow .ql-picker.ql-expanded .ql-picker-label,
+.ql-snow .ql-picker.ql-expanded .ql-picker-options,
+.ql-snow .ql-picker-label:hover,
+.ql-snow .ql-picker-item:hover,
+.ql-snow .ql-picker-options .ql-selected,
+.ql-snow.ql-toolbar button:hover,
+.ql-snow.ql-toolbar button.ql-active {
+  color: rgb(236, 72, 153) !important;
+}
+
+.ql-snow.ql-toolbar button:hover .ql-stroke,
+.ql-snow.ql-toolbar button.ql-active .ql-stroke {
+  stroke: rgb(236, 72, 153) !important;
+}
+
+.ql-snow.ql-toolbar button:hover .ql-fill,
+.ql-snow.ql-toolbar button.ql-active .ql-fill {
+  fill: rgb(236, 72, 153) !important;
+} 

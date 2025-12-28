@@ -1,0 +1,125 @@
+version: '3.8'
+
+services:
+  lean-backtesting:
+    build: .
+    container_name: lean-backtesting-service
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - TIMESCALE_URL=postgresql://wagyu_app:secure_password_here@timescaledb:5432/wagyu_market_data
+      - SUPABASE_URL=${SUPABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - POLYGON_API_KEY=${POLYGON_API_KEY}
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_SECRET=${BINANCE_SECRET}
+      - COINBASE_API_KEY=${COINBASE_API_KEY}
+      - COINBASE_SECRET=${COINBASE_SECRET}
+      - COINBASE_PASSPHRASE=${COINBASE_PASSPHRASE}
+      - KRAKEN_API_KEY=${KRAKEN_API_KEY}
+      - KRAKEN_SECRET=${KRAKEN_SECRET}
+      - ALLOWED_ORIGINS=http://localhost:3000,https://your-domain.com
+      - ALLOWED_HOSTS=localhost,127.0.0.1,your-domain.com
+    volumes:
+      - lean_data:/app/data
+      - lean_results:/app/results
+      - lean_strategies:/app/strategies
+      - lean_logs:/app/logs
+    depends_on:
+      - timescaledb
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: timescaledb
+    environment:
+      - POSTGRES_DB=wagyu_market_data
+      - POSTGRES_USER=wagyu_app
+      - POSTGRES_PASSWORD=secure_password_here
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./scripts/setup-timescaledb.sql:/docker-entrypoint-initdb.d/setup-timescaledb.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wagyu_app -d wagyu_market_data"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    restart: unless-stopped
+
+volumes:
+  lean_data:
+  lean_results:
+  lean_strategies:
+  lean_logs:
+  timescale_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: lean-backtesting-network

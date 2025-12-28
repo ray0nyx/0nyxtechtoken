@@ -1,0 +1,94 @@
+name: Deploy Supabase Edge Functions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/functions/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: '1.40.2'  # Specify a recent version that supports lockfile v4
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('supabase/functions/**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Create .env file
+        run: |
+          cat << EOF > supabase/functions/scheduled-analytics/.env
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EOF
+
+      - name: Install Dependencies for create-checkout-session
+        working-directory: supabase/functions/create-checkout-session
+        run: npm install
+
+      - name: Install Dependencies for scheduled-analytics
+        working-directory: supabase/functions/scheduled-analytics
+        run: npm install
+
+      - name: Run Analytics Update
+        working-directory: supabase/functions/scheduled-analytics
+        run: node run-analytics.mjs
+
+      - name: Prepare calculate-pnl function
+        working-directory: supabase/functions/calculate-pnl
+        run: |
+          rm -f deno.lock  # Remove lockfile to let Deno recreate it with the correct version
+          # Verify the function works with direct imports
+          deno run --allow-net --allow-env --check index.ts
+
+      - name: Prepare register-user function
+        working-directory: supabase/functions/register-user
+        run: |
+          rm -f deno.lock  # Remove lockfile to let Deno recreate it with the correct version
+          # Verify the function works with direct imports
+          deno run --allow-net --allow-env --check index.ts
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy Edge Functions and Set Secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          # Deploy functions
+          supabase functions deploy create-checkout-session --project-ref "$SUPABASE_PROJECT_ID"
+          supabase functions deploy scheduled-analytics --project-ref "$SUPABASE_PROJECT_ID"
+          supabase functions deploy calculate-pnl --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+          supabase functions deploy populate_analytics_table --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+          supabase functions deploy register-user --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+          
+          # Set secrets
+          supabase secrets set --project-ref "$SUPABASE_PROJECT_ID" \
+            STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
+            SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
+            SUPABASE_ANON_KEY="${{ secrets.SUPABASE_ANON_KEY }}" \
+            SUPABASE_SERVICE_ROLE_KEY="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" 

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disable Service Worker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        .log {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚫 Disable Service Worker</h1>
+        <p>This will completely disable service workers for this site.</p>
+        
+        <button onclick="disableServiceWorker()">Disable Service Worker</button>
+        <button onclick="checkStatus()">Check Status</button>
+        <button onclick="testPasswordReset()">Test Password Reset</button>
+        
+        <div id="log" class="log">Ready to disable service worker...</div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message) {
+            log.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            log.scrollTop = log.scrollHeight;
+        }
+
+        async function disableServiceWorker() {
+            addLog('Disabling service worker...');
+            
+            try {
+                // Unregister all service workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    addLog(`Found ${registrations.length} service workers`);
+                    
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        addLog('Unregistered service worker');
+                    }
+                }
+                
+                // Clear all caches
+                const cacheNames = await caches.keys();
+                addLog(`Found ${cacheNames.length} caches`);
+                
+                for (let cacheName of cacheNames) {
+                    await caches.delete(cacheName);
+                    addLog('Deleted cache: ' + cacheName);
+                }
+                
+                addLog('✅ Service worker disabled successfully');
+                addLog('Reloading page in 2 seconds...');
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+                
+            } catch (error) {
+                addLog('❌ Error: ' + error.message);
+            }
+        }
+
+        async function checkStatus() {
+            addLog('Checking status...');
+            
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                if (registrations.length > 0) {
+                    addLog(`❌ ${registrations.length} service workers still active`);
+                } else {
+                    addLog('✅ No service workers active');
+                }
+            } else {
+                addLog('✅ Service workers not supported');
+            }
+        }
+
+        function testPasswordReset() {
+            addLog('Opening password reset test...');
+            window.open('http://localhost:8080/test-bypass-sw.html', '_blank');
+        }
+
+        // Auto-disable on page load
+        window.addEventListener('load', () => {
+            addLog('Page loaded - disabling service worker...');
+            disableServiceWorker();
+        });
+    </script>
+</body>
+</html>

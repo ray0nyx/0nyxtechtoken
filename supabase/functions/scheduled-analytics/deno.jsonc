@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "dev": "deno run --allow-net --allow-env --allow-read index.ts",
+    "deploy": "deployctl deploy --project=scheduled-analytics index.ts"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.ns", "dom"],
+    "strict": true
+  }
+} 

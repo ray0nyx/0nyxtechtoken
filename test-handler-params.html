@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Handler Parameters</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-link {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #1976d2;
+        }
+        .test-link:hover {
+            background: #bbdefb;
+        }
+        .success {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #4caf50;
+        }
+        .warning {
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+        .info {
+            background: #f3e5f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Handler Parameters</h1>
+        
+        <div class="info">
+            <h3>Current URL Analysis</h3>
+            <p>This page will analyze the current URL and show what parameters are detected.</p>
+        </div>
+
+        <div id="url-analysis"></div>
+
+        <h2>Test Links</h2>
+        <p>Click these links to test different parameter combinations:</p>
+
+        <a href="http://localhost:8083/auth/reset?token=test123&type=recovery" class="test-link">
+            ✅ Test 1: Token + Type (should work)
+        </a>
+
+        <a href="http://localhost:8083/auth/reset?code=test123&type=recovery" class="test-link">
+            ✅ Test 2: Code + Type (should work)
+        </a>
+
+        <a href="http://localhost:8083/auth/reset?token=test123" class="test-link">
+            ✅ Test 3: Token only (should work)
+        </a>
+
+        <a href="http://localhost:8083/auth/reset?code=test123" class="test-link">
+            ✅ Test 4: Code only (should work)
+        </a>
+
+        <a href="http://localhost:8083/auth/reset" class="test-link">
+            ❌ Test 5: No parameters (should show error)
+        </a>
+
+        <h2>Debug Tools</h2>
+        <a href="http://localhost:8083/debug/url" class="test-link">
+            🔍 URL Debugger - Analyze current URL
+        </a>
+
+        <a href="http://localhost:8083/debug/password-reset-diagnostic" class="test-link">
+            🔍 Password Reset Diagnostic - Full diagnostic
+        </a>
+
+        <div class="success">
+            <h3>✅ Expected Results</h3>
+            <p>When you click the test links, you should see:</p>
+            <ul>
+                <li><strong>Tests 1-4:</strong> Should redirect to password reset page</li>
+                <li><strong>Test 5:</strong> Should show error (no parameters)</li>
+                <li><strong>Debug tools:</strong> Should show detected parameters</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h3>⚠️ If Tests Fail</h3>
+            <p>If the test links don't work, check:</p>
+            <ul>
+                <li>Is the dev server running on port 8083?</li>
+                <li>Are there any console errors?</li>
+                <li>Is the service worker interfering?</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Analyze current URL
+        function analyzeUrl() {
+            const url = window.location.href;
+            const urlParams = new URLSearchParams(window.location.search);
+            const hash = window.location.hash;
+            
+            const token = urlParams.get('token');
+            const code = urlParams.get('code');
+            const type = urlParams.get('type');
+            const error = urlParams.get('error');
+            const resetToken = token || code;
+            
+            const analysis = `
+                <h3>Current URL Analysis</h3>
+                <p><strong>Full URL:</strong> ${url}</p>
+                <p><strong>Search Params:</strong> ${window.location.search || 'None'}</p>
+                <p><strong>Hash:</strong> ${hash || 'None'}</p>
+                <p><strong>Token:</strong> ${token || 'None'}</p>
+                <p><strong>Code:</strong> ${code || 'None'}</p>
+                <p><strong>Type:</strong> ${type || 'None'}</p>
+                <p><strong>Error:</strong> ${error || 'None'}</p>
+                <p><strong>Reset Token:</strong> ${resetToken || 'None'}</p>
+                <p><strong>Has Reset Params:</strong> ${resetToken ? '✅ Yes' : '❌ No'}</p>
+                <p><strong>Is Password Reset:</strong> ${(type === 'recovery' || !type) ? '✅ Yes' : '❌ No'}</p>
+            `;
+            
+            document.getElementById('url-analysis').innerHTML = analysis;
+        }
+
+        // Run analysis on page load
+        analyzeUrl();
+    </script>
+</body>
+</html>

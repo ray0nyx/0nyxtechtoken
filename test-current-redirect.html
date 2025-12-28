@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Current Redirect Configuration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .error {
+            background: rgba(231, 76, 60, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #e74c3c;
+        }
+        .success {
+            background: rgba(46, 204, 113, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #2ecc71;
+        }
+        .warning {
+            background: rgba(241, 196, 15, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #f1c40f;
+        }
+        .url-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .test-link {
+            display: inline-block;
+            background: rgba(46, 204, 113, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+        }
+        .test-link:hover {
+            background: rgba(46, 204, 113, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(46, 204, 113, 0.5);
+        }
+        .step {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border-left: 3px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Current Redirect Configuration Test</h1>
+        
+        <div class="error">
+            <h3>❌ Current Issue</h3>
+            <p>The email link you received is still pointing to the old Vercel URL:</p>
+            <div class="url-display">
+                https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=2073ea225a898b3b0d12b686e303727c7e334086d3b126a66695452e&type=recovery&redirect_to=https://wagyu-ncc44079l-raynayams-projects.vercel.app/
+            </div>
+        </div>
+
+        <div class="warning">
+            <h3>⚠️ Root Cause</h3>
+            <p>The Supabase Auth settings still have the old Vercel URL configured as the redirect URL. This needs to be updated in the Supabase dashboard.</p>
+        </div>
+
+        <h3>🔧 Immediate Fix Required</h3>
+        <div class="step">
+            <strong>Step 1:</strong> Go to <a href="https://supabase.com/dashboard" target="_blank" style="color: #3498db;">Supabase Dashboard</a>
+        </div>
+        <div class="step">
+            <strong>Step 2:</strong> Select project: <code>nlctxawkutljeimvjacp</code>
+        </div>
+        <div class="step">
+            <strong>Step 3:</strong> Go to Authentication → URL Configuration
+        </div>
+        <div class="step">
+            <strong>Step 4:</strong> Update Site URL to: <code>https://wagyutech.app</code>
+        </div>
+        <div class="step">
+            <strong>Step 5:</strong> Add Redirect URL: <code>https://wagyutech.app/reset-password</code>
+        </div>
+        <div class="step">
+            <strong>Step 6:</strong> Remove old Vercel URLs from redirect list
+        </div>
+
+        <h3>🧪 Test the Fix</h3>
+        <a href="https://wagyutech.app/signin" class="test-link">
+            🔗 Test Production Sign In
+        </a>
+
+        <a href="https://wagyutech.app/reset-password" class="test-link">
+            🔗 Test Production Reset Page
+        </a>
+
+        <h3>📧 Expected Email Link After Fix</h3>
+        <div class="url-display">
+            https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=TOKEN&type=recovery&redirect_to=https://wagyutech.app/reset-password
+        </div>
+
+        <div class="success">
+            <h3>✅ Fallback Solution</h3>
+            <p>The <code>RecoveryInterceptor</code> component will catch any recovery links and redirect them to the correct handler, but it's better to fix the Supabase configuration.</p>
+        </div>
+
+        <h3>🔄 Temporary Workaround</h3>
+        <p>If you can't update Supabase settings immediately, you can manually modify the email link:</p>
+        <div class="step">
+            <strong>Original Link:</strong><br>
+            <code>https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=2073ea225a898b3b0d12b686e303727c7e334086d3b126a66695452e&type=recovery&redirect_to=https://wagyu-ncc44079l-raynayams-projects.vercel.app/</code>
+        </div>
+        <div class="step">
+            <strong>Modified Link:</strong><br>
+            <code>https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=2073ea225a898b3b0d12b686e303727c7e334086d3b126a66695452e&type=recovery&redirect_to=https://wagyutech.app/reset-password</code>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', () => {
+            console.log('🔍 Current Redirect Configuration Test Page Loaded');
+            console.log('Issue: Email links still pointing to old Vercel URL');
+            console.log('Solution: Update Supabase Auth settings');
+        });
+    </script>
+</body>
+</html>

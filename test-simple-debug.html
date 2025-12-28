@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .url-display {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        .test-link {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #1976d2;
+        }
+        .test-link:hover {
+            background: #bbdefb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Simple Debug Test</h1>
+        
+        <h2>Current URL Analysis</h2>
+        <div id="analysis"></div>
+        
+        <h2>Test Links</h2>
+        <a href="http://localhost:8080/auth/reset?token=test123&type=recovery" class="test-link">
+            Test with token + type
+        </a>
+        
+        <a href="http://localhost:8080/auth/reset?code=test123&type=recovery" class="test-link">
+            Test with code + type
+        </a>
+        
+        <a href="http://localhost:8080/auth/reset?token=test123" class="test-link">
+            Test with token only
+        </a>
+        
+        <a href="http://localhost:8080/auth/reset" class="test-link">
+            Test with no parameters
+        </a>
+        
+        <h2>Debug Tools</h2>
+        <a href="http://localhost:8080/debug/url" class="test-link">
+            URL Debugger
+        </a>
+        
+        <a href="http://localhost:8080/debug/password-reset-diagnostic" class="test-link">
+            Password Reset Diagnostic
+        </a>
+    </div>
+
+    <script>
+        function analyzeUrl() {
+            const url = window.location.href;
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            const token = urlParams.get('token');
+            const code = urlParams.get('code');
+            const type = urlParams.get('type');
+            const error = urlParams.get('error');
+            const resetToken = token || code;
+            
+            const analysis = `
+                <h3>URL Information</h3>
+                <div class="url-display">
+                    <strong>Full URL:</strong><br>
+                    ${url}
+                </div>
+                
+                <p><strong>Search Params:</strong> ${window.location.search || 'None'}</p>
+                <p><strong>Hash:</strong> ${window.location.hash || 'None'}</p>
+                
+                <h4>Parameters:</h4>
+                <p><strong>Token:</strong> ${token || 'None'}</p>
+                <p><strong>Code:</strong> ${code || 'None'}</p>
+                <p><strong>Type:</strong> ${type || 'None'}</p>
+                <p><strong>Error:</strong> ${error || 'None'}</p>
+                <p><strong>Reset Token:</strong> ${resetToken || 'None'}</p>
+                
+                <h4>Status:</h4>
+                <p><strong>Has Reset Params:</strong> ${resetToken ? '✅ Yes' : '❌ No'}</p>
+                <p><strong>Is Password Reset:</strong> ${(type === 'recovery' || !type) ? '✅ Yes' : '❌ No'}</p>
+                
+                <h4>All Parameters:</h4>
+                <div class="url-display">
+                    ${JSON.stringify(Object.fromEntries(urlParams.entries()), null, 2)}
+                </div>
+            `;
+            
+            document.getElementById('analysis').innerHTML = analysis;
+        }
+
+        // Run analysis
+        analyzeUrl();
+        
+        // Log to console
+        console.log('🔍 Simple Debug Test');
+        console.log('URL:', window.location.href);
+        console.log('Search params:', window.location.search);
+        console.log('Hash:', window.location.hash);
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        console.log('All params:', Object.fromEntries(urlParams.entries()));
+        
+        const token = urlParams.get('token');
+        const code = urlParams.get('code');
+        const type = urlParams.get('type');
+        const resetToken = token || code;
+        
+        console.log('Token:', token);
+        console.log('Code:', code);
+        console.log('Type:', type);
+        console.log('Reset Token:', resetToken);
+        console.log('Has Reset Params:', !!resetToken);
+        console.log('Is Password Reset:', type === 'recovery' || !type);
+    </script>
+</body>
+</html>

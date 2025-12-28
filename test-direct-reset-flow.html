@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Direct Reset Flow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .success {
+            background: rgba(46, 204, 113, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #2ecc71;
+        }
+        .test-link {
+            display: inline-block;
+            background: rgba(46, 204, 113, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+        }
+        .test-link:hover {
+            background: rgba(46, 204, 113, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(46, 204, 113, 0.5);
+        }
+        .step {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border-left: 3px solid #3498db;
+        }
+        .url-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Direct Reset Password Flow</h1>
+        
+        <div class="success">
+            <h3>✅ New Simplified Flow</h3>
+            <p>Users now go directly from email link to reset password page - no intermediate steps!</p>
+        </div>
+
+        <h3>📋 Updated Flow</h3>
+        <div class="step">
+            <strong>Step 1:</strong> User clicks "Forgot Password" on sign-in page
+        </div>
+        <div class="step">
+            <strong>Step 2:</strong> User receives email with reset link
+        </div>
+        <div class="step">
+            <strong>Step 3:</strong> User clicks email link → Goes directly to /reset-password
+        </div>
+        <div class="step">
+            <strong>Step 4:</strong> ResetPassword component processes token automatically
+        </div>
+        <div class="step">
+            <strong>Step 5:</strong> User enters new password and submits
+        </div>
+        <div class="step">
+            <strong>Step 6:</strong> User is signed out and redirected to /signin
+        </div>
+
+        <h3>🧪 Test the New Flow</h3>
+        <p>First, request a fresh password reset email:</p>
+        <a href="https://wagyu-8jbrwp0i1-raynayams-projects.vercel.app/signin" class="test-link">
+            🔗 Go to Sign In Page
+        </a>
+
+        <h3>📧 Expected Email Link Format</h3>
+        <div class="url-display">
+            https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=FRESH_TOKEN&type=recovery&redirect_to=https://wagyu-8jbrwp0i1-raynayams-projects.vercel.app/reset-password
+        </div>
+
+        <h3>🔍 Test Direct Reset Page</h3>
+        <a href="https://wagyu-8jbrwp0i1-raynayams-projects.vercel.app/reset-password" class="test-link">
+            🔗 Test Reset Password Page (No Token)
+        </a>
+
+        <h3>🔧 Debug Tools</h3>
+        <a href="https://wagyu-8jbrwp0i1-raynayams-projects.vercel.app/debug/password-reset-diagnostic" class="test-link">
+            🔍 Password Reset Diagnostic
+        </a>
+
+        <div class="success">
+            <h3>✅ What Changed</h3>
+            <ul>
+                <li><strong>Settings.tsx:</strong> Redirect URL changed to `/reset-password`</li>
+                <li><strong>ResetPassword.tsx:</strong> Now processes tokens directly from URL</li>
+                <li><strong>No more intermediate steps:</strong> Direct from email to reset form</li>
+                <li><strong>Better UX:</strong> Users see loading state while token processes</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <strong>⚠️ Important:</strong> You need to request a fresh password reset email to test this flow, as the previous token expired.
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', () => {
+            console.log('🎯 Direct Reset Flow Test Page Loaded');
+            console.log('The flow now goes directly from email to reset password page');
+        });
+    </script>
+</body>
+</html>

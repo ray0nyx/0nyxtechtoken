@@ -1,0 +1,819 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { 
+  Users, 
+  TrendingUp, 
+  TrendingDown,
+  Search,
+  Filter,
+  CheckCircle,
+  Shield,
+  Target,
+  Eye,
+  Copy,
+  ArrowUpDown,
+  ExternalLink,
+  Settings
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Slider } from '@/components/ui/slider';
+import MetricCard from '@/components/crypto/ui/MetricCard';
+import MiniSparkline from '@/components/crypto/MiniSparkline';
+import CopyTraderSetup from '@/components/crypto/CopyTraderSetup';
+import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
+import { formatCurrency } from '@/lib/crypto-aggregation-service';
+import { useTheme } from '@/components/ThemeProvider';
+import { cn } from '@/lib/utils';
+
+interface LeaderboardTrader {
+  id: string;
+  wallet_address: string;
+  total_pnl: number;
+  roi: number;
+  win_rate: number;
+  total_trades: number;
+  max_drawdown: number;
+  sharpe_ratio: number | null;
+  assets_under_copy: number;
+  follower_count: number;
+  risk_score: number;
+  consistency_score: number;
+  pnl_30d: number;
+  roi_30d: number;
+  trades_30d: number;
+  is_verified: boolean;
+  last_trade_at: string;
+}
+
+export default function CopyTradingPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const supabase = createClient();
+  const { toast } = useToast();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  const [traders, setTraders] = useState<LeaderboardTrader[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'roi' | 'total_pnl' | 'win_rate' | 'sharpe_ratio' | 'follower_count'>('roi');
+  const [filterBlockchain, setFilterBlockchain] = useState<'all' | 'sol' | 'btc'>('all');
+  
+  // Filters
+  const [selectedRiskLevels, setSelectedRiskLevels] = useState<string[]>([]);
+  const [minWinRate, setMinWinRate] = useState<number>(0);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showCopySettings, setShowCopySettings] = useState(false);
+  const [selectedTrader, setSelectedTrader] = useState<LeaderboardTrader | null>(null);
+  const [showCopySetup, setShowCopySetup] = useState(false);
+  
+  // Copy Settings
+  const [copySettings, setCopySettings] = useState({
+    default_copy_mode: 'manual' as 'manual' | 'auto',
+    max_copy_amount_per_trade: 1000,
+    position_size_percentage: 10,
+    max_daily_trades: 10,
+    slippage_tolerance: 1.0,
+    max_price_impact: 5.0,
+    enable_stop_loss: false,
+    stop_loss_percentage: 10.0,
+    notifications_enabled: true,
+  });
+
+  // Stats
+  const [totalCopied, setTotalCopied] = useState(0);
+  const [activeTraders, setActiveTraders] = useState(0);
+  const [yourPnL, setYourPnL] = useState(0);
+
+  useEffect(() => {
+    loadTraders();
+    loadCopySettings();
+  }, [sortBy, filterBlockchain]);
+
+  const loadCopySettings = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('copy_trading_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (data) {
+        setCopySettings({
+          default_copy_mode: data.default_copy_mode || 'manual',
+          max_copy_amount_per_trade: parseFloat(data.max_copy_amount_per_trade) || 1000,
+          position_size_percentage: parseFloat(data.position_size_percentage) || 10,
+          max_daily_trades: data.max_daily_trades || 10,
+          slippage_tolerance: parseFloat(data.slippage_tolerance) || 1.0,
+          max_price_impact: parseFloat(data.max_price_impact) || 5.0,
+          enable_stop_loss: data.enable_stop_loss || false,
+          stop_loss_percentage: parseFloat(data.stop_loss_percentage) || 10.0,
+          notifications_enabled: data.notifications_enabled !== false,
+        });
+      }
+    } catch (error) {
+      // Use defaults if table doesn't exist
+    }
+  };
+
+  const saveCopySettings = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('copy_trading_settings')
+        .upsert({
+          user_id: user.id,
+          ...copySettings,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Settings saved',
+        description: 'Your copy trading settings have been updated',
+      });
+      setShowCopySettings(false);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to save settings',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const loadTraders = async () => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('copy_trading_leaderboard')
+        .select('*')
+        .order(sortBy, { ascending: false });
+
+      const { data, error } = await query.limit(50);
+
+      if (error) throw error;
+
+      setTraders(data || []);
+      setActiveTraders(data?.length || 0);
+      setTotalCopied(data?.reduce((sum, t) => sum + (t.assets_under_copy || 0), 0) || 0);
+      
+      // Calculate user's P&L from copy trading
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: copyPositions } = await supabase
+          .from('copy_trading_positions')
+          .select('current_pnl')
+          .eq('user_id', user.id);
+        
+        setYourPnL(copyPositions?.reduce((sum, p) => sum + (p.current_pnl || 0), 0) || 0);
+      }
+
+    } catch (error) {
+      console.error('Error loading traders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopyTrader = async (trader: LeaderboardTrader) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: 'Authentication required',
+        description: 'Please sign in to copy traders',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Open copy setup modal instead of directly copying
+    setSelectedTrader(trader);
+    setShowCopySetup(true);
+  };
+
+  const handleCopySetupComplete = () => {
+    setShowCopySetup(false);
+    setSelectedTrader(null);
+    loadTraders(); // Refresh to show updated stats
+    toast({
+      title: 'Success!',
+      description: 'Copy trading configuration saved',
+    });
+  };
+
+  const shortenAddress = (address: string) => {
+    if (!address) return 'Unknown';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  const getBlockchainBadge = (address: string) => {
+    if (address?.startsWith('0x')) return { label: 'ETH', color: 'bg-[#627eea]/20 text-[#627eea]' };
+    if (address?.length === 44) return { label: 'SOL', color: 'bg-[#8b5cf6]/20 text-[#8b5cf6]' };
+    return { label: 'BTC', color: 'bg-[#f59e0b]/20 text-[#f59e0b]' };
+  };
+
+  // Derive risk level from risk_score
+  const getRiskLevel = (riskScore: number): string => {
+    if (riskScore <= 3) return 'low';
+    if (riskScore <= 6) return 'medium';
+    return 'high';
+  };
+
+  const filteredTraders = traders.filter(t => {
+    if (searchQuery && !t.wallet_address?.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    if (filterBlockchain !== 'all') {
+      const badge = getBlockchainBadge(t.wallet_address);
+      if (filterBlockchain === 'sol' && badge.label !== 'SOL') return false;
+      if (filterBlockchain === 'btc' && badge.label !== 'BTC') return false;
+    }
+    
+    // Risk level filter
+    if (selectedRiskLevels.length > 0) {
+      const riskLevel = getRiskLevel(t.risk_score || 5);
+      if (!selectedRiskLevels.includes(riskLevel)) return false;
+    }
+    
+    // Win rate filter
+    if (minWinRate > 0 && (t.win_rate || 0) < minWinRate) {
+      return false;
+    }
+    
+    // Verified only filter
+    if (verifiedOnly && !t.is_verified) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className={cn(
+          "text-xl font-semibold mb-4",
+          isDark ? "text-white" : "text-gray-900"
+        )}>Copy Trading</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className={cn(
+              "rounded-xl border p-4 h-24 animate-pulse",
+              isDark ? "bg-[#1a1f2e] border-[#1f2937]" : "bg-white border-gray-200"
+            )}></div>
+          ))}
+        </div>
+        <div className={cn(
+          "rounded-xl border h-96 animate-pulse",
+          isDark ? "bg-[#1a1f2e] border-[#1f2937]" : "bg-white border-gray-200"
+        )}></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-4 md:p-6">
+      {/* Page Title */}
+      <div className={cn(
+        "text-2xl font-bold",
+        isDark ? "text-white" : "text-gray-900"
+      )}>Copy Trading</div>
+      
+      {/* Stats Header */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <MetricCard
+          label="Total Under Copy"
+          value={formatCurrency(totalCopied)}
+          icon={<Users className="w-5 h-5" />}
+        />
+        <MetricCard
+          label="Active Traders"
+          value={activeTraders.toString()}
+          icon={<Target className="w-5 h-5" />}
+        />
+        <MetricCard
+          label="Your P&L"
+          value={formatCurrency(yourPnL)}
+          change={yourPnL > 0 ? 12.5 : -5.2}
+          icon={<TrendingUp className="w-5 h-5" />}
+        />
+      </div>
+
+      {/* Filters */}
+      <div className="space-y-4">
+        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+          <div className="flex flex-1 gap-3 items-center">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
+              <Input
+                placeholder="Search by wallet address..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={cn(
+                  "pl-10",
+                  isDark 
+                    ? "bg-[#0f1419] border-[#374151] text-white placeholder:text-[#6b7280]"
+                    : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500"
+                )}
+              />
+            </div>
+            
+            <Select value={filterBlockchain} onValueChange={(v: any) => setFilterBlockchain(v)}>
+              <SelectTrigger className={cn(
+                "w-[120px]",
+                isDark ? "bg-[#0f1419] border-[#374151] text-[#9ca3af]" : "bg-white border-gray-300 text-gray-700"
+              )}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className={cn(
+                isDark ? "bg-[#1a1f2e] border-[#374151]" : "bg-white border-gray-200"
+              )}>
+                <SelectItem value="all">All Chains</SelectItem>
+                <SelectItem value="sol">Solana</SelectItem>
+                <SelectItem value="btc">Bitcoin</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className={cn(
+                isDark ? "border-[#374151] text-[#9ca3af]" : "border-gray-300 text-gray-700"
+              )}
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              Filters
+            </Button>
+
+            <Dialog open={showCopySettings} onOpenChange={setShowCopySettings}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    isDark ? "border-[#374151] text-[#9ca3af]" : "border-gray-300 text-gray-700"
+                  )}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
+              </DialogTrigger>
+              <DialogContent className={cn(
+                isDark ? "bg-[#1a1f2e] border-[#374151]" : "bg-white border-gray-200"
+              )}>
+                <DialogHeader>
+                  <DialogTitle className={cn(isDark ? "text-white" : "text-gray-900")}>
+                    Copy Trading Settings
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label className={cn(isDark ? "text-gray-300" : "text-gray-700")}>
+                      Default Copy Mode
+                    </Label>
+                    <Select
+                      value={copySettings.default_copy_mode}
+                      onValueChange={(v: any) => setCopySettings({ ...copySettings, default_copy_mode: v })}
+                    >
+                      <SelectTrigger className={cn(
+                        "mt-2",
+                        isDark ? "bg-[#0f1419] border-[#374151]" : "bg-white border-gray-300"
+                      )}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Manual</SelectItem>
+                        <SelectItem value="auto">Auto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className={cn(isDark ? "text-gray-300" : "text-gray-700")}>
+                      Max Copy Amount Per Trade: ${copySettings.max_copy_amount_per_trade}
+                    </Label>
+                    <Slider
+                      value={[copySettings.max_copy_amount_per_trade]}
+                      onValueChange={(v) => setCopySettings({ ...copySettings, max_copy_amount_per_trade: v[0] })}
+                      min={100}
+                      max={10000}
+                      step={100}
+                      className="mt-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className={cn(isDark ? "text-gray-300" : "text-gray-700")}>
+                      Position Size Percentage: {copySettings.position_size_percentage}%
+                    </Label>
+                    <Slider
+                      value={[copySettings.position_size_percentage]}
+                      onValueChange={(v) => setCopySettings({ ...copySettings, position_size_percentage: v[0] })}
+                      min={1}
+                      max={50}
+                      step={1}
+                      className="mt-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className={cn(isDark ? "text-gray-300" : "text-gray-700")}>
+                      Max Daily Trades: {copySettings.max_daily_trades}
+                    </Label>
+                    <Slider
+                      value={[copySettings.max_daily_trades]}
+                      onValueChange={(v) => setCopySettings({ ...copySettings, max_daily_trades: v[0] })}
+                      min={1}
+                      max={50}
+                      step={1}
+                      className="mt-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className={cn(isDark ? "text-gray-300" : "text-gray-700")}>
+                      Slippage Tolerance: {copySettings.slippage_tolerance}%
+                    </Label>
+                    <Slider
+                      value={[copySettings.slippage_tolerance]}
+                      onValueChange={(v) => setCopySettings({ ...copySettings, slippage_tolerance: v[0] })}
+                      min={0.1}
+                      max={5}
+                      step={0.1}
+                      className="mt-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className={cn(isDark ? "text-gray-300" : "text-gray-700")}>
+                      Max Price Impact: {copySettings.max_price_impact}%
+                    </Label>
+                    <Slider
+                      value={[copySettings.max_price_impact]}
+                      onValueChange={(v) => setCopySettings({ ...copySettings, max_price_impact: v[0] })}
+                      min={0.1}
+                      max={10}
+                      step={0.1}
+                      className="mt-2"
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="stop-loss"
+                      checked={copySettings.enable_stop_loss}
+                      onCheckedChange={(checked) => 
+                        setCopySettings({ ...copySettings, enable_stop_loss: checked as boolean })
+                      }
+                    />
+                    <Label htmlFor="stop-loss" className={cn(isDark ? "text-gray-300" : "text-gray-700")}>
+                      Enable Stop Loss
+                    </Label>
+                  </div>
+
+                  {copySettings.enable_stop_loss && (
+                    <div>
+                      <Label className={cn(isDark ? "text-gray-300" : "text-gray-700")}>
+                        Stop Loss Percentage: {copySettings.stop_loss_percentage}%
+                      </Label>
+                      <Slider
+                        value={[copySettings.stop_loss_percentage]}
+                        onValueChange={(v) => setCopySettings({ ...copySettings, stop_loss_percentage: v[0] })}
+                        min={1}
+                        max={50}
+                        step={0.5}
+                        className="mt-2"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="notifications"
+                      checked={copySettings.notifications_enabled}
+                      onCheckedChange={(checked) => 
+                        setCopySettings({ ...copySettings, notifications_enabled: checked as boolean })
+                      }
+                    />
+                    <Label htmlFor="notifications" className={cn(isDark ? "text-gray-300" : "text-gray-700")}>
+                      Enable Notifications
+                    </Label>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowCopySettings(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={saveCopySettings}>
+                      Save Settings
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+            <SelectTrigger className={cn(
+              "w-[160px]",
+              isDark ? "bg-[#0f1419] border-[#374151] text-[#9ca3af]" : "bg-white border-gray-300 text-gray-700"
+            )}>
+              <ArrowUpDown className="w-4 h-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className={cn(
+              isDark ? "bg-[#1a1f2e] border-[#374151]" : "bg-white border-gray-200"
+            )}>
+              <SelectItem value="roi">ROI</SelectItem>
+              <SelectItem value="total_pnl">Total P&L</SelectItem>
+              <SelectItem value="win_rate">Win Rate</SelectItem>
+              <SelectItem value="sharpe_ratio">Sharpe Ratio</SelectItem>
+              <SelectItem value="follower_count">Followers</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Advanced Filters */}
+        {showFilters && (
+          <div className={cn(
+            "rounded-xl border p-4",
+            isDark ? "bg-[#1a1f2e] border-[#374151]" : "bg-white border-gray-200"
+          )}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Risk Level Filter */}
+              <div>
+                <Label className={cn(isDark ? "text-gray-300" : "text-gray-700")}>Risk Level</Label>
+                <div className="space-y-2 mt-2">
+                  {['low', 'medium', 'high'].map(risk => (
+                    <div key={risk} className="flex items-center">
+                      <Checkbox
+                        id={`risk-${risk}`}
+                        checked={selectedRiskLevels.includes(risk)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedRiskLevels([...selectedRiskLevels, risk]);
+                          } else {
+                            setSelectedRiskLevels(selectedRiskLevels.filter(r => r !== risk));
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`risk-${risk}`} className={cn(
+                        "ml-2 text-sm capitalize",
+                        isDark ? "text-gray-300" : "text-gray-700"
+                      )}>
+                        {risk}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Win Rate Filter */}
+              <div>
+                <Label className={cn(isDark ? "text-gray-300" : "text-gray-700")}>
+                  Min Win Rate: {minWinRate}%
+                </Label>
+                <Slider
+                  value={[minWinRate]}
+                  onValueChange={(v) => setMinWinRate(v[0])}
+                  min={0}
+                  max={100}
+                  step={1}
+                  className="mt-2"
+                />
+              </div>
+
+              {/* Verified Only */}
+              <div className="flex items-center space-x-2 pt-6">
+                <Checkbox
+                  id="verified-only"
+                  checked={verifiedOnly}
+                  onCheckedChange={(checked) => setVerifiedOnly(checked as boolean)}
+                />
+                <Label htmlFor="verified-only" className={cn(isDark ? "text-gray-300" : "text-gray-700")}>
+                  Verified Only
+                </Label>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedRiskLevels([]);
+                setMinWinRate(0);
+                setVerifiedOnly(false);
+              }}
+              className="mt-4"
+            >
+              Clear Filters
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Leaderboard Table */}
+      <div className={cn(
+        "rounded-xl border overflow-hidden",
+        isDark ? "bg-[#1a1f2e] border-[#1f2937]" : "bg-white border-gray-200"
+      )}>
+        {/* Table Header */}
+        <div className={cn(
+          "hidden lg:grid lg:grid-cols-8 gap-4 px-6 py-3 border-b text-sm",
+          isDark ? "border-[#1f2937] text-[#6b7280]" : "border-gray-200 text-gray-600"
+        )}>
+          <span className="col-span-2">Trader</span>
+          <span className="text-right">ROI</span>
+          <span className="text-right">Win Rate</span>
+          <span className="text-right">P&L (30d)</span>
+          <span className="text-right">Sharpe</span>
+          <span className="text-right">Followers</span>
+          <span className="text-right">Action</span>
+        </div>
+
+        {/* Table Body */}
+        <div className={cn(
+          "divide-y",
+          isDark ? "divide-[#1f2937]" : "divide-gray-200"
+        )}>
+          {loading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 p-4">
+                <div className="w-10 h-10 rounded-full bg-[#374151] animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 bg-[#374151] rounded animate-pulse" />
+                  <div className="h-3 w-20 bg-[#374151] rounded animate-pulse" />
+                </div>
+              </div>
+            ))
+          ) : filteredTraders.length === 0 ? (
+            <div className={cn(
+              "flex flex-col items-center justify-center py-12",
+              isDark ? "text-[#6b7280]" : "text-gray-500"
+            )}>
+              <Users className="w-12 h-12 mb-4 opacity-50" />
+              <p className={cn(
+                "text-lg",
+                isDark ? "text-white" : "text-gray-900"
+              )}>No traders found</p>
+            </div>
+          ) : (
+            filteredTraders.map((trader, index) => {
+              const badge = getBlockchainBadge(trader.wallet_address);
+              const sparklineData = Array.from({ length: 20 }, () => Math.random() * 100);
+              
+              return (
+                <div
+                  key={trader.id}
+                  className={cn(
+                    "grid grid-cols-2 lg:grid-cols-8 gap-4 px-6 py-4 transition-colors items-center",
+                    isDark ? "hover:bg-[#252b3d]" : "hover:bg-gray-50"
+                  )}
+                >
+                  {/* Trader Info */}
+                  <div className="col-span-2 flex items-center gap-3">
+                    <div className="relative">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
+                        badge.label === 'SOL' ? 'bg-gradient-to-br from-purple-500 to-teal-400' :
+                        badge.label === 'BTC' ? 'bg-gradient-to-br from-orange-400 to-yellow-500' :
+                        'bg-gradient-to-br from-blue-400 to-purple-500'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      {trader.is_verified && (
+                        <CheckCircle className="absolute -bottom-1 -right-1 w-4 h-4 text-[#3b82f6] bg-[#1a1f2e] rounded-full" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "font-semibold",
+                          isDark ? "text-white" : "text-gray-900"
+                        )}>
+                          {shortenAddress(trader.wallet_address)}
+                        </span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${badge.color}`}>
+                          {badge.label}
+                        </span>
+                      </div>
+                        <div className={cn(
+                          "text-xs",
+                          isDark ? "text-[#6b7280]" : "text-gray-500"
+                        )}>
+                          {trader.total_trades} trades
+                        </div>
+                    </div>
+                  </div>
+
+                  {/* ROI */}
+                  <div className="hidden lg:block text-right">
+                    <span className={`font-semibold ${trader.roi >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
+                      {trader.roi >= 0 ? '+' : ''}{trader.roi?.toFixed(1)}%
+                    </span>
+                  </div>
+
+                  {/* Win Rate */}
+                  <div className="hidden lg:block text-right">
+                    <span className={isDark ? "text-white" : "text-gray-900"}>{trader.win_rate?.toFixed(1)}%</span>
+                  </div>
+
+                  {/* P&L 30d */}
+                  <div className="hidden lg:block text-right">
+                    <span className={`font-semibold ${trader.pnl_30d >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
+                      {formatCurrency(trader.pnl_30d || 0)}
+                    </span>
+                  </div>
+
+                  {/* Sharpe */}
+                  <div className="hidden lg:block text-right">
+                    <span className={isDark ? "text-white" : "text-gray-900"}>{trader.sharpe_ratio?.toFixed(2) || '-'}</span>
+                  </div>
+
+                  {/* Followers */}
+                  <div className="hidden lg:block text-right">
+                    <span className={isDark ? "text-white" : "text-gray-900"}>{trader.follower_count || 0}</span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(`https://solscan.io/account/${trader.wallet_address}`, '_blank');
+                      }}
+                      className={cn(
+                        "bg-transparent",
+                        isDark 
+                          ? "border-[#374151] text-[#9ca3af] hover:text-white"
+                          : "border-gray-300 text-gray-600 hover:text-gray-900"
+                      )}
+                      title="View on Solscan"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleCopyTrader(trader)}
+                      className="bg-[#3b82f6] hover:bg-[#2563eb] text-white"
+                    >
+                      <Copy className="w-4 h-4 mr-1" />
+                      Copy
+                    </Button>
+                  </div>
+
+                  {/* Mobile: Additional Info */}
+                  <div className="col-span-2 lg:hidden flex items-center justify-between text-sm">
+                    <div className="flex gap-4">
+                      <span className={`${trader.roi >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
+                        ROI: {trader.roi >= 0 ? '+' : ''}{trader.roi?.toFixed(1)}%
+                      </span>
+                      <span className={isDark ? "text-[#9ca3af]" : "text-gray-500"}>
+                        Win: {trader.win_rate?.toFixed(1)}%
+                      </span>
+                    </div>
+                    <MiniSparkline
+                      data={sparklineData}
+                      color={trader.roi >= 0 ? '#10b981' : '#ef4444'}
+                      width={60}
+                      height={24}
+                    />
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Copy Trader Setup Modal */}
+      <CopyTraderSetup
+        open={showCopySetup}
+        onOpenChange={(open) => {
+          setShowCopySetup(open);
+          if (!open) {
+            setSelectedTrader(null);
+          }
+        }}
+        trader={selectedTrader}
+      />
+    </div>
+  );
+}
+

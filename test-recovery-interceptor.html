@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Recovery Interceptor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .url-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .test-link {
+            display: inline-block;
+            background: rgba(46, 204, 113, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+        }
+        .test-link:hover {
+            background: rgba(46, 204, 113, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(46, 204, 113, 0.5);
+        }
+        .success {
+            background: rgba(46, 204, 113, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #2ecc71;
+        }
+        .warning {
+            background: rgba(231, 76, 60, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #e74c3c;
+        }
+        button {
+            background: rgba(52, 152, 219, 0.8);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        button:hover {
+            background: rgba(52, 152, 219, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Recovery Interceptor</h1>
+        
+        <div class="warning">
+            <h3>⚠️ Issue: Link Redirects to Old Production URL</h3>
+            <p>The Supabase link is redirecting to the old production URL instead of the new one. The RecoveryInterceptor should catch this.</p>
+        </div>
+
+        <h3>📋 Original Problematic URL:</h3>
+        <div class="url-display">
+            https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=6f1a8d957ab82a320598df24eb417a0448fbc5b3ac43a8ba4e35d1ee&type=recovery&redirect_to=https://wagyu-orcin.vercel.app
+        </div>
+
+        <h3>✅ Fixed URL (New Production):</h3>
+        <div class="url-display">
+            https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=6f1a8d957ab82a320598df24eb417a0448fbc5b3ac43a8ba4e35d1ee&type=recovery&redirect_to=https://wagyu-ncc44079l-raynayams-projects.vercel.app/auth/reset
+        </div>
+
+        <h3>🧪 Test the Fixed URL:</h3>
+        <a href="https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=6f1a8d957ab82a320598df24eb417a0448fbc5b3ac43a8ba4e35d1ee&type=recovery&redirect_to=https://wagyu-ncc44079l-raynayams-projects.vercel.app/auth/reset" class="test-link">
+            🔗 Test Fixed URL (Should Work!)
+        </a>
+
+        <h3>🔍 Alternative: Test Recovery Interceptor</h3>
+        <p>If the RecoveryInterceptor is working, even the old URL should redirect properly:</p>
+        <a href="https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=6f1a8d957ab82a320598df24eb417a0448fbc5b3ac43a8ba4e35d1ee&type=recovery&redirect_to=https://wagyu-orcin.vercel.app" class="test-link">
+            🔗 Test Old URL (Should Auto-Redirect)
+        </a>
+
+        <h3>🛠️ Debug Tools</h3>
+        <a href="https://wagyu-ncc44079l-raynayams-projects.vercel.app/debug/url" class="test-link">
+            🔍 URL Debugger
+        </a>
+
+        <a href="https://wagyu-ncc44079l-raynayams-projects.vercel.app/debug/password-reset-diagnostic" class="test-link">
+            🔍 Password Reset Diagnostic
+        </a>
+
+        <div class="success">
+            <h3>✅ Expected Results</h3>
+            <p>After clicking either link:</p>
+            <ul>
+                <li>✅ Supabase processes the token</li>
+                <li>✅ RecoveryInterceptor catches the recovery token</li>
+                <li>✅ Redirects to /auth/reset</li>
+                <li>✅ PasswordResetHandler processes it</li>
+                <li>✅ Redirects to /reset-password page</li>
+                <li>✅ You can set your new password</li>
+            </ul>
+        </div>
+
+        <button onclick="copyFixedUrl()">📋 Copy Fixed URL</button>
+        <button onclick="testBothUrls()">🧪 Test Both URLs</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        function copyFixedUrl() {
+            const fixedUrl = 'https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=6f1a8d957ab82a320598df24eb417a0448fbc5b3ac43a8ba4e35d1ee&type=recovery&redirect_to=https://wagyu-ncc44079l-raynayams-projects.vercel.app/auth/reset';
+            navigator.clipboard.writeText(fixedUrl).then(() => {
+                alert('Fixed URL copied to clipboard!');
+            }).catch(() => {
+                alert('Failed to copy URL. Please copy it manually from above.');
+            });
+        }
+
+        function testBothUrls() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<h3>Testing URLs...</h3>';
+            
+            // Test the fixed URL
+            window.open('https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=6f1a8d957ab82a320598df24eb417a0448fbc5b3ac43a8ba4e35d1ee&type=recovery&redirect_to=https://wagyu-ncc44079l-raynayams-projects.vercel.app/auth/reset', '_blank');
+            
+            setTimeout(() => {
+                // Test the old URL to see if RecoveryInterceptor works
+                window.open('https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=6f1a8d957ab82a320598df24eb417a0448fbc5b3ac43a8ba4e35d1ee&type=recovery&redirect_to=https://wagyu-orcin.vercel.app', '_blank');
+            }, 2000);
+        }
+
+        // Auto-copy fixed URL on page load
+        window.addEventListener('load', () => {
+            console.log('🔧 Test Recovery Interceptor Page Loaded');
+            console.log('Fixed URL ready for testing');
+        });
+    </script>
+</body>
+</html>

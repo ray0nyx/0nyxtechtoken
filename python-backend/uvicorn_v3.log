@@ -1,0 +1,1143 @@
+INFO:     Started server process [41004]
+INFO:     Waiting for application startup.
+Failed to connect to Redis: Error connecting to localhost:6379. Multiple exceptions: [Errno 61] Connect call failed ('::1', 6379, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 6379).. Switching to in-memory fallback.
+No Tatum API key configured. Skipping Tatum service.
+Failed to connect to Alchemy: server rejected WebSocket connection: HTTP 404
+Failed to fetch IPFS metadata for bafkreiduoddohifmwos from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     ('127.0.0.1', 52809) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52811) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52813) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52815) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52818) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52820) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52822) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52824) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52826) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52829) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52831) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52834) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52836) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52841) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52844) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52846) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52848) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52850) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52854) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52857) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52860) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52866) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52870) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52873) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52875) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52877) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52879) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52883) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52887) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52889) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52891) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52894) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52896) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52899) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52901) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52904) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52906) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52909) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52912) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52914) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52916) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52918) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52921) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52922) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52924) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52925) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52928) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52929) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52931) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52933) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52935) - "WebSocket /ws/trading" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52938) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52940) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52941) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52942) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52944) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52946) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52948) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52950) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52953) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52955) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52957) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52959) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52961) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52965) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52967) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52969) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52971) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52973) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52976) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52977) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52978) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52980) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52983) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52985) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52987) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52990) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52992) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52995) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52997) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 52999) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53002) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53004) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53006) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53009) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53011) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53013) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53015) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53018) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53020) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53022) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53025) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53027) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53029) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53031) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53034) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53036) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53038) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53040) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53042) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53044) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53047) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53049) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53051) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53053) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53055) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53057) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53059) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53062) - "WebSocket /ws/trading" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53064) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53066) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53068) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53071) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53073) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53075) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53077) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53080) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53082) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53085) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53088) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53090) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53093) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53095) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53098) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53100) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53102) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53104) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53106) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53108) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53109) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53111) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53114) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53116) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53118) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53121) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53124) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53126) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53129) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53131) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53133) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53134) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53136) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53138) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53140) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53142) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53144) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53147) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53149) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53151) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53153) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53154) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53155) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53157) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53158) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53160) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53163) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53164) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53166) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53168) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53169) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53170) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53171) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53173) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53175) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53177) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53179) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53180) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53181) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53183) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53185) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53186) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53189) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53191) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53192) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53194) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53195) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53196) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53198) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53199) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53200) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53202) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53203) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53205) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53208) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+Error in listener: unsupported operand type(s) for /: 'str' and 'float'
+INFO:     ('127.0.0.1', 53209) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53212) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53213) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53215) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53217) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53218) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53219) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53220) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53222) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53224) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53227) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53228) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53229) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53230) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53231) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53232) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53233) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53235) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53237) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53239) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53240) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53241) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53244) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53246) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53248) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53250) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53252) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53254) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53256) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53258) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53259) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53260) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53261) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53262) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53265) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53267) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53269) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53270) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53271) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53272) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53274) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53276) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53278) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53279) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53280) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53282) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53285) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53287) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53289) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53291) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53293) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53295) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53298) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53299) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53302) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53304) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53306) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53308) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53310) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53312) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53314) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53316) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53318) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53320) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53322) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53324) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53326) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53330) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53332) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 53335) - "WebSocket /ws/pump-tokens" [accepted]
+INFO:     connection open
+Error in listener: unsupported operand type(s) for /: 'str' and 'float'
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Warning: Empyrical not installed. Using fallback metrics calculation.
+Warning: Could not initialize additional services: No module named 'solana'
+🚀 Starting PumpPortal WebSocket stream...
+✅ PumpPortal stream task created
+✅ PumpPortal real-time stream started
+✅ Tatum real-time service initialized
+Alchemy real-time stream started
+Migration stream started
+Trading services initialized (Redis, WebSocket, SwapStream)
+📡 Attempting to connect to PumpPortal: wss://pumpportal.fun/api/data
+⚠️  Skipping binance: Service restricted in your region (Geo-blocked)
+✅ Connected to PumpPortal WebSocket!
+📤 Subscribed to new token events
+⚠️  Skipping coinbase: API key required
+✅ Initialized kraken
+✅ Initialized bitfinex
+❌ Failed to initialize huobi: huobi GET https://api.hbdm.com/linear-swap-api/v1/swap_contract_info?business_type=futures
+❌ Failed to initialize okx: unsupported operand type(s) for +: 'NoneType' and 'str'
+⚠️  Skipping bybit: Service restricted in your region (Geo-blocked)
+✅ Initialized kucoin
+INFO:     127.0.0.1:53450 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53450 - "GET /openapi.json HTTP/1.1" 200 OK
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Helius WebSocket connection closed
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+INFO:     127.0.0.1:53479 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53479 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53479 - "OPTIONS /api/pump-fun/coins?offset=0&limit=20&sort=usd_market_cap&order=DESC&include_nsfw=false&_t=1766437955877 HTTP/1.1" 200 OK
+Pump.fun API returned 530 (Cloudflare error) on attempt 1. Trying DexScreener fallback...
+INFO:     127.0.0.1:53479 - "GET /api/pump-fun/coins?offset=0&limit=20&sort=usd_market_cap&order=DESC&include_nsfw=false&_t=1766437955877 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53479 - "OPTIONS /api/pump-fun/coins?offset=0&limit=50&sort=created_timestamp&order=DESC&include_nsfw=false&_t=1766437956361 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53484 - "GET /api/pump-fun/coins?offset=0&limit=50&sort=created_timestamp&order=DESC&include_nsfw=false&_t=1766437956361 HTTP/1.1" 200 OK
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Helius WebSocket connection closed
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for bafkreieergp23urrq2j from all gateways
+Failed to fetch IPFS metadata for bafkreifte3ynjrkfkha from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Helius WebSocket connection closed
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Error in listener: unsupported operand type(s) for /: 'str' and 'float'
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch recent swaps: [Errno 32] Broken pipe
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for http://93.205.10.67: from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+Failed to fetch IPFS metadata for http://93.205.10.67: from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.j7t from all gateways
+Helius WebSocket connection closed
+Failed to fetch IPFS metadata for https://metadata.uxe from all gateways
+Failed to fetch IPFS metadata for https://metadata.rap from all gateways
+INFO:     Shutting down
+Failed to send message to <starlette.websockets.WebSocket object at 0x119981880>: sent 1012 (service restart); no close frame received
+Failed to send message to <starlette.websockets.WebSocket object at 0x11a808860>: sent 1012 (service restart); no close frame received
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     Waiting for background tasks to complete. (CTRL+C to force quit)
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+WebSocket error: Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41004]

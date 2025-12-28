@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Service Worker Cache</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        .success {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #4caf50;
+        }
+        .warning {
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+        .log {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Clear Service Worker Cache</h1>
+        
+        <div class="warning">
+            <h3>⚠️ Service Worker Issue</h3>
+            <p>The service worker is causing errors that interfere with password reset. This tool will clear the cache and unregister the service worker.</p>
+        </div>
+
+        <h2>Actions</h2>
+        <button onclick="clearServiceWorker()">Clear Service Worker</button>
+        <button onclick="clearAllCaches()">Clear All Caches</button>
+        <button onclick="reloadPage()">Reload Page</button>
+        <button onclick="testPasswordReset()">Test Password Reset</button>
+
+        <div id="log" class="log"></div>
+
+        <div class="success">
+            <h3>✅ After Clearing</h3>
+            <p>Once you've cleared the service worker:</p>
+            <ol>
+                <li>Go to <a href="http://localhost:8083/app/settings">Settings</a></li>
+                <li>Click "Reset Password"</li>
+                <li>Check your email for the reset link</li>
+                <li>Click the reset link - it should work now!</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message) {
+            log.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            log.scrollTop = log.scrollHeight;
+        }
+
+        async function clearServiceWorker() {
+            addLog('Clearing service worker...');
+            
+            try {
+                // Unregister all service workers
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                addLog(`Found ${registrations.length} service worker registrations`);
+                
+                for (let registration of registrations) {
+                    await registration.unregister();
+                    addLog('Unregistered service worker');
+                }
+                
+                addLog('✅ Service worker cleared successfully');
+            } catch (error) {
+                addLog('❌ Error clearing service worker: ' + error.message);
+            }
+        }
+
+        async function clearAllCaches() {
+            addLog('Clearing all caches...');
+            
+            try {
+                const cacheNames = await caches.keys();
+                addLog(`Found ${cacheNames.length} caches`);
+                
+                for (let cacheName of cacheNames) {
+                    await caches.delete(cacheName);
+                    addLog('Deleted cache: ' + cacheName);
+                }
+                
+                addLog('✅ All caches cleared successfully');
+            } catch (error) {
+                addLog('❌ Error clearing caches: ' + error.message);
+            }
+        }
+
+        function reloadPage() {
+            addLog('Reloading page...');
+            window.location.reload(true);
+        }
+
+        function testPasswordReset() {
+            addLog('Opening password reset test page...');
+            window.open('http://localhost:8083/debug/password-reset-diagnostic', '_blank');
+        }
+
+        // Auto-clear on page load
+        window.addEventListener('load', () => {
+            addLog('Page loaded - checking for service worker issues...');
+            
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    if (registrations.length > 0) {
+                        addLog('⚠️ Service workers detected - clearing them...');
+                        clearServiceWorker();
+                    } else {
+                        addLog('✅ No service workers found');
+                    }
+                });
+            } else {
+                addLog('✅ Service workers not supported');
+            }
+        });
+    </script>
+</body>
+</html>

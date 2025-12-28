@@ -1,0 +1,32 @@
+name: Subscription Notifications
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: supabase/functions/subscription-notifications/package.json
+      
+      - name: Install dependencies
+        working-directory: supabase/functions/subscription-notifications
+        run: npm install
+      
+      - name: Run notifications script
+        working-directory: supabase/functions/subscription-notifications
+        run: npm start
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }} 

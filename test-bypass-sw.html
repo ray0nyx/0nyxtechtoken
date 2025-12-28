@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Bypass Service Worker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-link {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #1976d2;
+        }
+        .test-link:hover {
+            background: #bbdefb;
+        }
+        .success {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #4caf50;
+        }
+        .warning {
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+        .url-display {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Test Bypass Service Worker</h1>
+        
+        <div class="warning">
+            <h3>⚠️ Service Worker Still Causing Errors</h3>
+            <p>If you're still seeing service worker errors, try the nuclear option:</p>
+            <a href="http://localhost:8080/force-remove-sw.html" class="test-link">
+                💥 Force Remove Service Worker
+            </a>
+        </div>
+
+        <h2>Test Password Reset (Bypass SW)</h2>
+        <p>This page tests the password reset without relying on the service worker:</p>
+
+        <div class="url-display">
+            <strong>Modified URL (should work):</strong><br>
+            https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=30876e93e1f264e590f614f304d8ce623d8849d9710b317f8f063&type=recovery&redirect_to=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Freset
+        </div>
+
+        <a href="https://nlctxawkutljeimvjacp.supabase.co/auth/v1/verify?token=30876e93e1f264e590f614f304d8ce623d8849d9710b317f8f063&type=recovery&redirect_to=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Freset" class="test-link">
+            ✅ Test Modified Link (bypass SW)
+        </a>
+
+        <h2>Direct Test Links</h2>
+        <a href="http://localhost:8080/auth/reset?token=30876e93e1f264e590f614f304d8ce623d8849d9710b317f8f063&type=recovery" class="test-link">
+            ✅ Direct Test with Real Token
+        </a>
+
+        <a href="http://localhost:8080/auth/reset?token=test123&type=recovery" class="test-link">
+            ✅ Test with Fake Token
+        </a>
+
+        <h2>Debug Tools</h2>
+        <a href="http://localhost:8080/debug/url" class="test-link">
+            🔍 URL Debugger
+        </a>
+
+        <a href="http://localhost:8080/debug/password-reset-diagnostic" class="test-link">
+            🔍 Password Reset Diagnostic
+        </a>
+
+        <h2>Manual Service Worker Removal</h2>
+        <p>If automatic removal doesn't work, try these manual steps:</p>
+        <ol>
+            <li>Open Chrome DevTools (F12)</li>
+            <li>Go to Application tab</li>
+            <li>Click "Service Workers" in the left sidebar</li>
+            <li>Click "Unregister" for any service workers</li>
+            <li>Click "Storage" in the left sidebar</li>
+            <li>Click "Clear storage"</li>
+            <li>Close DevTools and reload the page</li>
+        </ol>
+
+        <div class="success">
+            <h3>✅ Expected Results</h3>
+            <p>After removing the service worker:</p>
+            <ul>
+                <li><strong>No Service Worker Errors:</strong> Console should be clean</li>
+                <li><strong>Modified Link:</strong> Should redirect to password reset page</li>
+                <li><strong>Direct Test:</strong> Should work with real token</li>
+                <li><strong>Debug Tools:</strong> Should show "Reset Token Present: Yes"</li>
+            </ul>
+        </div>
+
+        <button onclick="checkServiceWorker()">Check Service Worker Status</button>
+        <button onclick="clearConsole()">Clear Console</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        function checkServiceWorker() {
+            const statusDiv = document.getElementById('status');
+            let status = '<h3>Service Worker Status:</h3>';
+            
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    if (registrations.length > 0) {
+                        status += `<p style="color: red;">❌ ${registrations.length} service workers still active</p>`;
+                        status += '<p>Please remove them manually or use the force remove tool</p>';
+                    } else {
+                        status += '<p style="color: green;">✅ No service workers active</p>';
+                    }
+                    statusDiv.innerHTML = status;
+                });
+            } else {
+                status += '<p style="color: green;">✅ Service workers not supported</p>';
+                statusDiv.innerHTML = status;
+            }
+        }
+
+        function clearConsole() {
+            console.clear();
+            console.log('Console cleared');
+        }
+
+        // Auto-check on page load
+        window.addEventListener('load', () => {
+            console.log('🚀 Test Bypass Service Worker');
+            checkServiceWorker();
+        });
+    </script>
+</body>
+</html>

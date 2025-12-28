@@ -1,0 +1,17 @@
+# Allow all web crawlers access to all files
+User-agent: *
+Allow: /
+
+# Allow Googlebot specifically
+User-agent: Googlebot
+Allow: /
+Allow: /images/
+Allow: /icons/
+
+# Explicitly allow Googlebot-Image
+User-agent: Googlebot-Image
+Allow: /images/
+Allow: /icons/
+
+# Sitemap location
+Sitemap: https://wagyu.trade/sitemap.xml 

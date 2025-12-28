@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Current URL</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .info {
+            background: #f3e5f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .warning {
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+        .success {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #4caf50;
+        }
+        .test-link {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #1976d2;
+        }
+        .test-link:hover {
+            background: #bbdefb;
+        }
+        .url-display {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Current URL</h1>
+        
+        <div class="info">
+            <h3>Current URL Analysis</h3>
+            <p>This page analyzes the current URL and shows what parameters are detected.</p>
+        </div>
+
+        <div id="url-analysis"></div>
+
+        <h2>Test Links</h2>
+        <p>Click these links to test different scenarios:</p>
+
+        <a href="http://localhost:8080/auth/reset?token=test123&type=recovery" class="test-link">
+            ✅ Test 1: Token + Type (should work)
+        </a>
+
+        <a href="http://localhost:8080/auth/reset?code=test123&type=recovery" class="test-link">
+            ✅ Test 2: Code + Type (should work)
+        </a>
+
+        <a href="http://localhost:8080/auth/reset?token=test123" class="test-link">
+            ✅ Test 3: Token only (should work)
+        </a>
+
+        <a href="http://localhost:8080/auth/reset" class="test-link">
+            ❌ Test 4: No parameters (should show error)
+        </a>
+
+        <h2>Debug Tools</h2>
+        <a href="http://localhost:8080/debug/url" class="test-link">
+            🔍 URL Debugger - Analyze current URL
+        </a>
+
+        <a href="http://localhost:8080/debug/password-reset-diagnostic" class="test-link">
+            🔍 Password Reset Diagnostic - Full diagnostic
+        </a>
+
+        <h2>Settings</h2>
+        <a href="http://localhost:8080/app/settings" class="test-link">
+            ⚙️ Settings - Request password reset
+        </a>
+
+        <div class="warning">
+            <h3>⚠️ Common Issues</h3>
+            <ul>
+                <li><strong>Wrong Port:</strong> Make sure you're using port 8080, not 8083</li>
+                <li><strong>Wrong Domain:</strong> Make sure you're using localhost, not wagyu-orcin.vercel.app</li>
+                <li><strong>Expired Token:</strong> Request a fresh password reset</li>
+                <li><strong>Service Worker:</strong> Clear browser cache if needed</li>
+            </ul>
+        </div>
+
+        <div class="success">
+            <h3>✅ Expected Results</h3>
+            <p>When you click the test links, you should see:</p>
+            <ul>
+                <li><strong>Tests 1-3:</strong> Should redirect to password reset page</li>
+                <li><strong>Test 4:</strong> Should show error (no parameters)</li>
+                <li><strong>Debug tools:</strong> Should show detected parameters</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Analyze current URL
+        function analyzeUrl() {
+            const url = window.location.href;
+            const urlParams = new URLSearchParams(window.location.search);
+            const hash = window.location.hash;
+            
+            const token = urlParams.get('token');
+            const code = urlParams.get('code');
+            const type = urlParams.get('type');
+            const error = urlParams.get('error');
+            const resetToken = token || code;
+            
+            // Check if this is a Supabase redirect
+            const isSupabaseRedirect = url.includes('supabase.co/auth/v1/verify');
+            const isDirectRedirect = url.includes('/auth/reset');
+            
+            const analysis = `
+                <h3>Current URL Analysis</h3>
+                <div class="url-display">
+                    <strong>Full URL:</strong><br>
+                    ${url}
+                </div>
+                
+                <p><strong>Search Params:</strong> ${window.location.search || 'None'}</p>
+                <p><strong>Hash:</strong> ${hash || 'None'}</p>
+                
+                <h4>Parameter Analysis:</h4>
+                <p><strong>Token:</strong> ${token || 'None'}</p>
+                <p><strong>Code:</strong> ${code || 'None'}</p>
+                <p><strong>Type:</strong> ${type || 'None'}</p>
+                <p><strong>Error:</strong> ${error || 'None'}</p>
+                <p><strong>Reset Token:</strong> ${resetToken || 'None'}</p>
+                
+                <h4>Status:</h4>
+                <p><strong>Has Reset Params:</strong> ${resetToken ? '✅ Yes' : '❌ No'}</p>
+                <p><strong>Is Password Reset:</strong> ${(type === 'recovery' || !type) ? '✅ Yes' : '❌ No'}</p>
+                <p><strong>Is Supabase Redirect:</strong> ${isSupabaseRedirect ? '✅ Yes' : '❌ No'}</p>
+                <p><strong>Is Direct Redirect:</strong> ${isDirectRedirect ? '✅ Yes' : '❌ No'}</p>
+                
+                <h4>All Parameters:</h4>
+                <div class="url-display">
+                    ${JSON.stringify(Object.fromEntries(urlParams.entries()), null, 2)}
+                </div>
+            `;
+            
+            document.getElementById('url-analysis').innerHTML = analysis;
+        }
+
+        // Run analysis on page load
+        analyzeUrl();
+        
+        // Log to console for debugging
+        console.log('🔍 Current URL Debug Info:');
+        console.log('URL:', window.location.href);
+        console.log('Search params:', window.location.search);
+        console.log('Hash:', window.location.hash);
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        console.log('All params:', Object.fromEntries(urlParams.entries()));
+        
+        const token = urlParams.get('token');
+        const code = urlParams.get('code');
+        const type = urlParams.get('type');
+        const resetToken = token || code;
+        
+        console.log('Token:', token);
+        console.log('Code:', code);
+        console.log('Type:', type);
+        console.log('Reset Token:', resetToken);
+        console.log('Has Reset Params:', !!resetToken);
+        console.log('Is Password Reset:', type === 'recovery' || !type);
+    </script>
+</body>
+</html>

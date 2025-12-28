@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Redirect Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-link {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #1976d2;
+        }
+        .test-link:hover {
+            background: #bbdefb;
+        }
+        .info {
+            background: #f3e5f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .warning {
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Supabase Redirect Test</h1>
+        
+        <div class="info">
+            <h3>What This Tests</h3>
+            <p>This page simulates different Supabase redirect scenarios to help debug the password reset flow.</p>
+        </div>
+
+        <h2>Test Links</h2>
+        <p>Click these links to test different redirect scenarios:</p>
+
+        <a href="http://localhost:8083/auth/reset?token=test123&type=recovery" class="test-link">
+            Test 1: Direct redirect with token
+        </a>
+
+        <a href="http://localhost:8083/auth/reset?code=test123&type=recovery" class="test-link">
+            Test 2: Direct redirect with code
+        </a>
+
+        <a href="http://localhost:8083/auth/reset?token=test123" class="test-link">
+            Test 3: Direct redirect with token (no type)
+        </a>
+
+        <a href="http://localhost:8083/auth/reset?code=test123" class="test-link">
+            Test 4: Direct redirect with code (no type)
+        </a>
+
+        <a href="http://localhost:8083/auth/reset" class="test-link">
+            Test 5: No parameters (should fail)
+        </a>
+
+        <h2>Debug Tools</h2>
+        <p>Use these tools to analyze the current URL:</p>
+
+        <a href="http://localhost:8083/debug/url" class="test-link">
+            URL Debugger - Analyze current URL parameters
+        </a>
+
+        <a href="http://localhost:8083/debug/password-reset-diagnostic" class="test-link">
+            Password Reset Diagnostic - Full diagnostic tool
+        </a>
+
+        <div class="warning">
+            <h3>⚠️ Important Notes</h3>
+            <ul>
+                <li>Make sure your dev server is running on port 8083</li>
+                <li>These are test links with fake tokens - they won't actually reset passwords</li>
+                <li>Check the browser console for debug logs</li>
+                <li>Use the debug tools to see what parameters are detected</li>
+            </ul>
+        </div>
+
+        <h2>Expected Results</h2>
+        <p>When you click the test links, you should see:</p>
+        <ul>
+            <li>✅ <strong>Test 1-4:</strong> Should redirect to password reset page</li>
+            <li>❌ <strong>Test 5:</strong> Should show error (no parameters)</li>
+            <li>🔍 <strong>Debug tools:</strong> Should show the detected parameters</li>
+        </ul>
+
+        <h2>Real Email Test</h2>
+        <p>To test with a real email:</p>
+        <ol>
+            <li>Go to <a href="http://localhost:8083/app/settings">Settings</a></li>
+            <li>Click "Reset Password"</li>
+            <li>Check your email for the reset link</li>
+            <li>Copy the link and modify the domain to localhost:8083 if needed</li>
+            <li>Click the modified link</li>
+            <li>Use the debug tools to see what parameters are present</li>
+        </ol>
+    </div>
+
+    <script>
+        // Log current URL info
+        console.log('🔍 Current URL Info:');
+        console.log('URL:', window.location.href);
+        console.log('Search params:', window.location.search);
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        console.log('All params:', Object.fromEntries(urlParams.entries()));
+        
+        // Check for reset parameters
+        const token = urlParams.get('token');
+        const code = urlParams.get('code');
+        const type = urlParams.get('type');
+        const resetToken = token || code;
+        
+        console.log('Token:', token);
+        console.log('Code:', code);
+        console.log('Type:', type);
+        console.log('Reset Token:', resetToken);
+        console.log('Has Reset Params:', !!resetToken);
+        console.log('Is Password Reset:', type === 'recovery' || !type);
+    </script>
+</body>
+</html>

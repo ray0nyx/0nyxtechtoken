@@ -1,0 +1,323 @@
+/* Institutional-Grade UI Theme */
+:root {
+  /* Institutional Dark Theme */
+  --institutional-bg-primary: #0a0a0a;
+  --institutional-bg-secondary: #1a1a1a;
+  --institutional-bg-tertiary: #2d2d2d;
+  --institutional-bg-card: #1e1e1e;
+  --institutional-bg-hover: #2a2a2a;
+  
+  /* Professional Color Palette */
+  --institutional-accent: #00d4aa;
+  --institutional-accent-hover: #00b894;
+  --institutional-success: #00ff88;
+  --institutional-warning: #ffb800;
+  --institutional-error: #ff4757;
+  --institutional-info: #3742fa;
+  
+  /* Text Colors */
+  --institutional-text-primary: #ffffff;
+  --institutional-text-secondary: #b0b0b0;
+  --institutional-text-muted: #808080;
+  --institutional-text-disabled: #555555;
+  
+  /* Border Colors */
+  --institutional-border: #333333;
+  --institutional-border-light: #404040;
+  --institutional-border-accent: #00d4aa;
+  
+  /* Chart Colors */
+  --institutional-chart-green: #00ff88;
+  --institutional-chart-red: #ff4757;
+  --institutional-chart-blue: #3742fa;
+  --institutional-chart-yellow: #ffb800;
+  --institutional-chart-purple: #a55eea;
+  
+  /* Risk Colors */
+  --risk-low: #00ff88;
+  --risk-medium: #ffb800;
+  --risk-high: #ff4757;
+  --risk-critical: #ff3838;
+  
+  /* Typography */
+  --font-institutional: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* Global Institutional Styles */
+.institutional-theme {
+  background-color: var(--institutional-bg-primary);
+  color: var(--institutional-text-primary);
+  font-family: var(--font-institutional);
+}
+
+/* Professional Data Tables */
+.institutional-table {
+  background: var(--institutional-bg-card);
+  border: 1px solid var(--institutional-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.institutional-table th {
+  background: var(--institutional-bg-secondary);
+  color: var(--institutional-text-primary);
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--institutional-border);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.institutional-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--institutional-border-light);
+  font-size: 0.875rem;
+  color: var(--institutional-text-secondary);
+}
+
+.institutional-table tr:hover {
+  background: var(--institutional-bg-hover);
+}
+
+/* Professional Cards */
+.institutional-card {
+  background: var(--institutional-bg-card);
+  border: 1px solid var(--institutional-border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.institutional-card-header {
+  border-bottom: 1px solid var(--institutional-border);
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.institutional-card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--institutional-text-primary);
+  margin: 0;
+}
+
+.institutional-card-subtitle {
+  font-size: 0.875rem;
+  color: var(--institutional-text-muted);
+  margin: 4px 0 0 0;
+}
+
+/* Risk Indicators */
+.risk-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.risk-indicator.low {
+  background: rgba(0, 255, 136, 0.1);
+  color: var(--risk-low);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.risk-indicator.medium {
+  background: rgba(255, 184, 0, 0.1);
+  color: var(--risk-medium);
+  border: 1px solid rgba(255, 184, 0, 0.3);
+}
+
+.risk-indicator.high {
+  background: rgba(255, 71, 87, 0.1);
+  color: var(--risk-high);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+.risk-indicator.critical {
+  background: rgba(255, 56, 56, 0.1);
+  color: var(--risk-critical);
+  border: 1px solid rgba(255, 56, 56, 0.3);
+}
+
+/* Professional Buttons */
+.institutional-btn {
+  background: var(--institutional-bg-secondary);
+  color: var(--institutional-text-primary);
+  border: 1px solid var(--institutional-border);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.institutional-btn:hover {
+  background: var(--institutional-bg-hover);
+  border-color: var(--institutional-border-light);
+}
+
+.institutional-btn.primary {
+  background: var(--institutional-accent);
+  color: var(--institutional-bg-primary);
+  border-color: var(--institutional-accent);
+}
+
+.institutional-btn.primary:hover {
+  background: var(--institutional-accent-hover);
+}
+
+/* Data Display */
+.metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--institutional-text-primary);
+  font-family: var(--font-mono);
+}
+
+.metric-label {
+  font-size: 0.875rem;
+  color: var(--institutional-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.metric-change {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.metric-change.positive {
+  color: var(--institutional-success);
+}
+
+.metric-change.negative {
+  color: var(--institutional-error);
+}
+
+/* Asset Class Indicators */
+.asset-class {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.asset-class.equities {
+  background: rgba(0, 212, 170, 0.1);
+  color: var(--institutional-accent);
+  border: 1px solid rgba(0, 212, 170, 0.3);
+}
+
+.asset-class.fx {
+  background: rgba(55, 66, 250, 0.1);
+  color: var(--institutional-info);
+  border: 1px solid rgba(55, 66, 250, 0.3);
+}
+
+.asset-class.commodities {
+  background: rgba(255, 184, 0, 0.1);
+  color: var(--institutional-warning);
+  border: 1px solid rgba(255, 184, 0, 0.3);
+}
+
+.asset-class.crypto {
+  background: rgba(165, 94, 234, 0.1);
+  color: var(--institutional-chart-purple);
+  border: 1px solid rgba(165, 94, 234, 0.3);
+}
+
+.asset-class.fixed-income {
+  background: rgba(0, 255, 136, 0.1);
+  color: var(--institutional-success);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+/* Professional Grid Layout */
+.institutional-grid {
+  display: grid;
+  gap: 24px;
+}
+
+.institutional-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.institutional-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.institutional-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .institutional-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .institutional-grid-2,
+  .institutional-grid-3,
+  .institutional-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Professional Scrollbars */
+.institutional-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.institutional-scrollbar::-webkit-scrollbar-track {
+  background: var(--institutional-bg-secondary);
+}
+
+.institutional-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--institutional-border);
+  border-radius: 4px;
+}
+
+.institutional-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--institutional-border-light);
+}
+
+/* Loading States */
+.institutional-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--institutional-text-muted);
+}
+
+.institutional-skeleton {
+  background: linear-gradient(90deg, var(--institutional-bg-secondary) 25%, var(--institutional-bg-tertiary) 50%, var(--institutional-bg-secondary) 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

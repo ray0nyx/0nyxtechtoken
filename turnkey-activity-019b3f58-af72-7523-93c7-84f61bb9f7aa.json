@@ -1,0 +1,103 @@
+{
+  "id": "019b3f58-af72-7523-93c7-84f61bb9f7aa",
+  "fingerprint": "sha256:5adc2c829bfccb6702823eeb0c51d78e8159df057fddf87e2a5f9e875a5f92be",
+  "appProofs": [],
+  "voteList": [
+    {
+      "id": "139bfa1c-91c6-40c9-8f06-91d23c1bd2ad",
+      "userId": "7b69c939-97f0-4906-b509-968d7fa86e78",
+      "user": {
+        "userId": "7b69c939-97f0-4906-b509-968d7fa86e78",
+        "userName": "Root user",
+        "userEmail": "ramirezrayba@gmail.com",
+        "authenticators": [
+          {
+            "transports": [
+              "AUTHENTICATOR_TRANSPORT_HYBRID",
+              "AUTHENTICATOR_TRANSPORT_INTERNAL"
+            ],
+            "attestationType": "none",
+            "aaguid": "-_wwBxVOTsyMC24CBVfXvQ",
+            "credentialId": "2LeDjkcly8ZovH7lU-v8dr5XroY",
+            "model": "Security key",
+            "credential": {
+              "publicKey": "pQECAyYgASFYIGywFdCL7-MZKLcHu-CUpAPhOvpyzUa_LA8uWn0dsRKGIlgg8GqMDFzEsPVpGMBvqokL_MytX35IQbfteUzEvc3Vv3g",
+              "type": "CREDENTIAL_TYPE_WEBAUTHN_AUTHENTICATOR"
+            },
+            "authenticatorId": "9aa14c0a-fb7b-459d-beab-23e68d2349b8",
+            "authenticatorName": "mac mini",
+            "createdAt": {
+              "seconds": "1766293983",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1766293983",
+              "nanos": "0"
+            }
+          }
+        ],
+        "apiKeys": [],
+        "userTags": [],
+        "oauthProviders": [],
+        "createdAt": {
+          "seconds": "1766293983",
+          "nanos": "0"
+        },
+        "updatedAt": {
+          "seconds": "1766293983",
+          "nanos": "0"
+        }
+      },
+      "activityId": "019b3f58-af72-7523-93c7-84f61bb9f7aa",
+      "selection": "VOTE_SELECTION_APPROVED",
+      "message": "authenticator_data=UaQZWk5Ei2x_le_x14Vpmw1G1lyl5F6SzJrtZ5b2ZS0dAAAAAA&client_data_json=eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTldGa1l6SmpPREk1WW1aalkySTJOekF5T0RJelpXVmlNR00xTVdRM09HVTRNVFU1WkdZd05UZG1aR1JtT0RkbE1tRTFaamxsT0RjMVlUVm1PVEppWlEiLCJvcmlnaW4iOiJodHRwczovL2FwcC50dXJua2V5LmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0&post_body=eyJ0eXBlIjoiQUNUSVZJVFlfVFlQRV9DUkVBVEVfUFJJVkFURV9LRVlTX1YyIiwidGltZXN0YW1wTXMiOiIxNzY2Mjk0MzI1NTM0Iiwib3JnYW5pemF0aW9uSWQiOiJjMDYxNzI5ZS1mNjEwLTRmYmYtYjBlZS0wOTc0YjFmZjMwMTMiLCJwYXJhbWV0ZXJzIjp7InByaXZhdGVLZXlzIjpbeyJwcml2YXRlS2V5TmFtZSI6ImZpcnN0a2V5IiwicHJpdmF0ZUtleVRhZ3MiOltdLCJjdXJ2ZSI6IkNVUlZFX0VEMjU1MTkiLCJhZGRyZXNzRm9ybWF0cyI6WyJBRERSRVNTX0ZPUk1BVF9TT0xBTkEiXX1dfX0",
+      "publicKey": "pQECAyYgASFYIGywFdCL7-MZKLcHu-CUpAPhOvpyzUa_LA8uWn0dsRKGIlgg8GqMDFzEsPVpGMBvqokL_MytX35IQbfteUzEvc3Vv3g",
+      "signature": "MEUCIQD-XMqOPNWJnMxr_N5zmmbYtGDDWLG-Y2HsHR1o_hN6yQIgR9yqL0E4W2X7EELSnmsro437RolNTyKoDfkcQ6fT8fk",
+      "scheme": "SIGNATURE_SCHEME_TK_WEBAUTHN",
+      "createdAt": {
+        "seconds": "1766294335",
+        "nanos": "0"
+      }
+    }
+  ],
+  "permission": {
+    "canApprove": false,
+    "canReject": true
+  },
+  "createdAt": {
+    "seconds": "1766294335",
+    "nanos": "0"
+  },
+  "updatedAt": {
+    "seconds": "1766294335",
+    "nanos": "0"
+  },
+  "status": "ACTIVITY_STATUS_COMPLETED",
+  "failure": null,
+  "type": "ACTIVITY_TYPE_CREATE_PRIVATE_KEYS_V2",
+  "intent": {
+    "privateKeys": [
+      {
+        "privateKeyName": "firstkey",
+        "curve": "CURVE_ED25519",
+        "privateKeyTags": [],
+        "addressFormats": [
+          "ADDRESS_FORMAT_SOLANA"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "privateKeys": [
+      {
+        "privateKeyId": "7e409334-f775-4f0b-b460-ced490de6366",
+        "addresses": [
+          {
+            "format": "ADDRESS_FORMAT_SOLANA",
+            "address": "NcotrJWsmz8N25r3SdrQ6wz4FYt6Ys9iqLDSoB756TH"
+          }
+        ]
+      }
+    ]
+  }
+}

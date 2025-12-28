@@ -1,0 +1,32 @@
+name: Daily Analytics Update
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run at midnight UTC
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  update-analytics:
+    runs-on: ubuntu-latest
+    
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        working-directory: ./supabase/functions/scheduled-analytics
+        run: npm install
+
+      - name: Run Analytics Update
+        working-directory: ./supabase/functions/scheduled-analytics
+        run: node run-analytics.mjs 

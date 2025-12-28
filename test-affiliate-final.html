@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Affiliate Form Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, textarea, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .error { color: red; margin-top: 10px; padding: 10px; background: #ffe6e6; border-radius: 4px; }
+        .success { color: green; margin-top: 10px; padding: 10px; background: #e6ffe6; border-radius: 4px; }
+        .debug { background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 10px; font-family: monospace; font-size: 12px; }
+        .config { background: #e3f2fd; padding: 10px; border-radius: 4px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Final Affiliate Form Test</h1>
+    
+    <div class="config">
+        <h3>Configuration Status</h3>
+        <p><strong>Supabase URL:</strong> <span id="url-status">Checking...</span></p>
+        <p><strong>API Key:</strong> <span id="key-status">Checking...</span></p>
+        <p><strong>Connection:</strong> <span id="connection-status">Testing...</span></p>
+    </div>
+    
+    <form id="testForm">
+        <div class="form-group">
+            <label>First Name *</label>
+            <input type="text" name="firstName" value="Test" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Last Name *</label>
+            <input type="text" name="lastName" value="User" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" value="test@example.com" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Password *</label>
+            <input type="password" name="password" value="testpass123" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Website *</label>
+            <input type="url" name="website" value="https://test.com" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Promotion Plan *</label>
+            <textarea name="promotionPlan" required>I will promote WagYu through social media and my blog</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Additional Info *</label>
+            <textarea name="additionalInfo" required>This is a test application for verification</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="emailNotifications" checked> Email Notifications *
+            </label>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="termsAndConditions" checked> Terms and Conditions *
+            </label>
+        </div>
+        
+        <button type="submit">Submit Test Application</button>
+    </form>
+    
+    <div id="result"></div>
+    <div id="debug"></div>
+
+    <script>
+        // Configuration - Replace with your actual Supabase credentials
+        const supabaseUrl = 'https://nlctxawkutljeimvjacp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sY3R4YXdra3V0bGplaW12amFjcCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzM0NzQ0NzQ3LCJleHAiOjIwNTAzMjA3NDd9.8QZQZQZQZQZQZQZQZQZQZQZQZQZQZQZQZQZQZQZQ';
+        
+        // Update status indicators
+        document.getElementById('url-status').textContent = supabaseUrl ? 'Configured' : 'Not configured';
+        document.getElementById('key-status').textContent = supabaseKey ? 'Configured' : 'Not configured';
+        
+        if (!supabaseUrl || !supabaseKey) {
+            document.getElementById('result').innerHTML = '<div class="error">Please configure your Supabase credentials</div>';
+            return;
+        }
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        // Test connection
+        async function testConnection() {
+            try {
+                const { data, error } = await supabase
+                    .from('affiliate_applications')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    document.getElementById('connection-status').textContent = 'Failed: ' + error.message;
+                    document.getElementById('connection-status').style.color = 'red';
+                } else {
+                    document.getElementById('connection-status').textContent = 'Connected';
+                    document.getElementById('connection-status').style.color = 'green';
+                }
+            } catch (err) {
+                document.getElementById('connection-status').textContent = 'Error: ' + err.message;
+                document.getElementById('connection-status').style.color = 'red';
+            }
+        }
+        
+        // Run connection test
+        testConnection();
+        
+        document.getElementById('testForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Convert checkboxes to boolean
+            data.emailNotifications = formData.has('emailNotifications');
+            data.termsAndConditions = formData.has('termsAndConditions');
+            data.status = 'pending';
+            
+            // Add empty fields for social media URLs
+            data.country = 'US';
+            data.companyName = '';
+            data.instagramUrl = '';
+            data.facebookUrl = '';
+            data.youtubeUrl = '';
+            data.twitterUrl = '';
+            data.linkedinUrl = '';
+            data.twitchUrl = '';
+            data.tiktokUrl = '';
+            
+            console.log('Submitting data:', data);
+            document.getElementById('debug').innerHTML = `<div class="debug">Submitting data: ${JSON.stringify(data, null, 2)}</div>`;
+            
+            try {
+                // First check for existing application
+                console.log('Checking for existing application...');
+                const { data: existingApplication, error: checkError } = await supabase
+                    .from('affiliate_applications')
+                    .select('id, status')
+                    .eq('email', data.email)
+                    .single();
+                
+                if (checkError && checkError.code !== 'PGRST116') {
+                    console.error('Error checking existing application:', checkError);
+                    throw new Error('Failed to check existing application: ' + checkError.message);
+                }
+                
+                if (existingApplication) {
+                    throw new Error('Application already exists with status: ' + existingApplication.status);
+                }
+                
+                console.log('No existing application found, proceeding with insert...');
+                
+                // Insert new application
+                const { data: result, error } = await supabase
+                    .from('affiliate_applications')
+                    .insert([data])
+                    .select();
+                
+                if (error) {
+                    console.error('Error:', error);
+                    document.getElementById('result').innerHTML = `
+                        <div class="error">
+                            <strong>Error:</strong> ${error.message}<br>
+                            <strong>Details:</strong> ${error.details || 'None'}<br>
+                            <strong>Hint:</strong> ${error.hint || 'None'}<br>
+                            <strong>Code:</strong> ${error.code || 'None'}
+                        </div>
+                    `;
+                } else {
+                    console.log('Success:', result);
+                    document.getElementById('result').innerHTML = `
+                        <div class="success">
+                            <strong>Success!</strong> Application submitted successfully.<br>
+                            <strong>Application ID:</strong> ${result[0].id}<br>
+                            <strong>Status:</strong> ${result[0].status}
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error('Unexpected error:', err);
+                document.getElementById('result').innerHTML = `
+                    <div class="error">
+                        <strong>Unexpected error:</strong> ${err.message}
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

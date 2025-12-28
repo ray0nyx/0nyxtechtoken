@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Without Service Worker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-link {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #1976d2;
+        }
+        .test-link:hover {
+            background: #bbdefb;
+        }
+        .success {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #4caf50;
+        }
+        .warning {
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+        .info {
+            background: #f3e5f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Without Service Worker</h1>
+        
+        <div class="info">
+            <h3>Service Worker Cleared</h3>
+            <p>This page tests the password reset functionality without service worker interference.</p>
+        </div>
+
+        <h2>Test Links</h2>
+        <p>Click these links to test the password reset handler:</p>
+
+        <a href="http://localhost:8080/auth/reset?token=test123&type=recovery" class="test-link">
+            ✅ Test 1: Token + Type (should work)
+        </a>
+
+        <a href="http://localhost:8080/auth/reset?code=test123&type=recovery" class="test-link">
+            ✅ Test 2: Code + Type (should work)
+        </a>
+
+        <a href="http://localhost:8080/auth/reset?token=test123" class="test-link">
+            ✅ Test 3: Token only (should work)
+        </a>
+
+        <a href="http://localhost:8080/auth/reset?code=test123" class="test-link">
+            ✅ Test 4: Code only (should work)
+        </a>
+
+        <a href="http://localhost:8080/auth/reset" class="test-link">
+            ❌ Test 5: No parameters (should show error)
+        </a>
+
+        <h2>Debug Tools</h2>
+        <a href="http://localhost:8080/debug/url" class="test-link">
+            🔍 URL Debugger - Analyze current URL
+        </a>
+
+        <a href="http://localhost:8080/debug/password-reset-diagnostic" class="test-link">
+            🔍 Password Reset Diagnostic - Full diagnostic
+        </a>
+
+        <h2>Settings</h2>
+        <a href="http://localhost:8080/app/settings" class="test-link">
+            ⚙️ Settings - Request password reset
+        </a>
+
+        <div class="success">
+            <h3>✅ Expected Results</h3>
+            <p>When you click the test links, you should see:</p>
+            <ul>
+                <li><strong>Tests 1-4:</strong> Should redirect to password reset page</li>
+                <li><strong>Test 5:</strong> Should show error (no parameters)</li>
+                <li><strong>Debug tools:</strong> Should show detected parameters</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h3>⚠️ If Still Getting Errors</h3>
+            <p>If you still see service worker errors:</p>
+            <ol>
+                <li>Open <a href="http://localhost:8080/clear-service-worker.html">Clear Service Worker</a></li>
+                <li>Click "Clear Service Worker"</li>
+                <li>Click "Clear All Caches"</li>
+                <li>Click "Reload Page"</li>
+                <li>Try the test links again</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Log current URL info
+        console.log('🔍 Test Without Service Worker');
+        console.log('URL:', window.location.href);
+        console.log('Search params:', window.location.search);
+        console.log('Hash:', window.location.hash);
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        console.log('All params:', Object.fromEntries(urlParams.entries()));
+        
+        const token = urlParams.get('token');
+        const code = urlParams.get('code');
+        const type = urlParams.get('type');
+        const resetToken = token || code;
+        
+        console.log('Token:', token);
+        console.log('Code:', code);
+        console.log('Type:', type);
+        console.log('Reset Token:', resetToken);
+        console.log('Has Reset Params:', !!resetToken);
+        console.log('Is Password Reset:', type === 'recovery' || !type);
+        
+        // Check for service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                if (registrations.length > 0) {
+                    console.log('⚠️ Service workers still active:', registrations.length);
+                } else {
+                    console.log('✅ No service workers active');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

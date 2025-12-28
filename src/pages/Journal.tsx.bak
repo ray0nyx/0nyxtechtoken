@@ -1,0 +1,492 @@
+import { useState, useEffect, Suspense } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+  Filter,
+  CalendarDays,
+  PencilLine,
+  Rocket,
+  Trash2,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabase";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { format } from "date-fns";
+import { DatePickerWithRange } from "@/components/DatePickerWithRange";
+import { PnLChart } from "@/components/PnLChart";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorBoundary } from "react-error-boundary";
+import { TradingCalendar } from "@/components/TradingCalendar";
+import { useCalendarStore } from "@/stores/useCalendarStore";
+
+interface DayStats {
+  totalTrades: number;
+  winners: number;
+  losers: number;
+  grossPnL: number;
+  commissions: number;
+  winrate: number;
+  volume: number;
+  profitFactor: string;
+  netPnL: number;
+}
+
+interface JournalNote {
+  id: string;
+  user_id: string;
+  date: string;
+  note: string;
+  note_content?: string;
+  pnl?: number;
+  emotion?: string;
+  tags?: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-red-50 text-red-900">
+      <h2 className="text-lg font-semibold mb-2">Something went wrong</h2>
+      <pre className="text-sm mb-4">{error.message}</pre>
+      <Button onClick={resetErrorBoundary}>Try again</Button>
+        </div>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <Skeleton className="h-8 w-32" />
+        <div className="flex gap-4">
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-24" />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-full" />
+          </div>
+        ))}
+      </div>
+      <Skeleton className="h-[200px] w-full" />
+    </div>
+  );
+}
+
+export default function Journal() {
+  const { selectedDate, setSelectedDate } = useCalendarStore();
+  const [isSubscriptionActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [note, setNote] = useState("");
+  const [journalNote, setJournalNote] = useState<JournalNote | null>(null);
+  const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [dayStats, setDayStats] = useState<DayStats | null>(null);
+  const [chartData, setChartData] = useState<{ timestamp: string; pnl: number; }[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadDayData();
+  }, [selectedDate]);
+
+  const loadDayData = async () => {
+    setIsLoading(true);
+    try {
+      // Load journal note
+      const { data: noteData, error: noteError } = await supabase
+        .from('journal_notes')
+        .select('*')
+        .eq('date', format(selectedDate, 'yyyy-MM-dd'))
+        .single();
+
+      if (noteError && noteError.code !== 'PGRST116') {
+        throw noteError;
+      }
+
+      if (noteData) {
+        setJournalNote(noteData as JournalNote);
+        setNote(noteData.note_content || noteData.note || "");
+      } else {
+        setJournalNote(null);
+        setNote("");
+      }
+
+      // Load trades for the chart
+      const { data: trades, error: tradesError } = await supabase
+        .from('trades')
+        .select('*')
+        .gte('date', format(selectedDate, 'yyyy-MM-dd'))
+        .lt('date', format(new Date(selectedDate.getTime() + 86400000), 'yyyy-MM-dd'))
+        .order('date', { ascending: true });
+
+      if (tradesError) {
+        throw tradesError;
+      }
+
+      // Transform trades data for the chart
+      const chartData = trades?.map(trade => ({
+        timestamp: trade.date,
+        pnl: trade.pnl - (trade.commission || 0),
+      })) || [];
+
+      setChartData(chartData);
+
+      // Calculate day statistics
+      const stats = calculateDayStats(trades || []);
+      setDayStats(stats);
+    } catch (error) {
+      console.error('Error loading day data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load journal data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const calculateDayStats = (trades: any[]): DayStats => {
+    const winners = trades.filter(t => t.pnl > 0);
+    const losers = trades.filter(t => t.pnl < 0);
+    const grossPnL = trades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+    const commissions = trades.reduce((sum, t) => sum + (t.commission || 0), 0);
+    
+    return {
+      totalTrades: trades.length,
+      winners: winners.length,
+      losers: losers.length,
+      grossPnL,
+      commissions,
+      winrate: trades.length ? (winners.length / trades.length) * 100 : 0,
+      volume: trades.reduce((sum, t) => sum + (t.volume || 0), 0),
+      profitFactor: losers.length ? 
+        (Math.abs(winners.reduce((sum, t) => sum + t.pnl, 0)) / 
+         Math.abs(losers.reduce((sum, t) => sum + t.pnl, 0))).toFixed(2) : 
+        "--",
+      netPnL: grossPnL - commissions,
+    };
+  };
+
+  const saveNote = async () => {
+    try {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) throw new Error('Not authenticated');
+
+      const noteData = {
+        user_id: user.id,
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        note_content: note,
+      };
+
+      if (journalNote) {
+        // Update existing note
+        const { error } = await supabase
+          .from('journal_notes')
+          .update(noteData)
+          .eq('id', journalNote.id);
+        
+        if (error) throw error;
+      } else {
+        // Insert new note
+        const { error } = await supabase
+          .from('journal_notes')
+          .insert([noteData]);
+        
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Journal note saved successfully",
+      });
+      setIsNoteDialogOpen(false);
+      loadDayData();
+    } catch (error) {
+      console.error('Error saving note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save journal note",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteNote = async () => {
+    try {
+      if (!journalNote) return;
+      
+      const { error } = await supabase
+        .from('journal_notes')
+        .delete()
+        .eq('id', journalNote.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Journal note deleted successfully",
+      });
+      setIsDeleteDialogOpen(false);
+      setJournalNote(null);
+      setNote("");
+      loadDayData();
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete journal note",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  };
+
+  return (
+    <div className="min-h-screen bg-background p-6">
+      <ErrorBoundary
+        FallbackComponent={ErrorFallback}
+        onReset={() => {
+          loadDayData();
+        }}
+      >
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-semibold">Daily Journal</h1>
+          <div className="flex gap-4">
+            <Select defaultValue="USD">
+              <SelectTrigger className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="USD">USD</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline">
+              <Filter className="h-4 w-4 mr-2" />
+              Filters
+            </Button>
+            <Button variant="outline">
+              All Accounts
+            </Button>
+          </div>
+        </div>
+
+        {/* Subscription Notice */}
+        {!isSubscriptionActive && (
+          <div className="bg-red-100 text-red-900 p-4 rounded-lg mb-6">
+            Your subscription is inactive. To continue journaling, activate your subscription now.
+          </div>
+        )}
+
+        <div className="flex gap-6">
+          {/* Calendar */}
+          <div className="w-[300px] rounded-lg overflow-hidden border border-gray-800 shrink-0">
+            <TradingCalendar />
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1 space-y-6">
+            {/* Controls */}
+            <div className="flex gap-4">
+              <Button variant="secondary" size="sm">
+                <ChevronLeft className="h-4 w-4 mr-1" /> Collapse All
+              </Button>
+              <Button variant="secondary" size="sm">
+                <ChevronRight className="h-4 w-4 mr-1" /> Expand All
+              </Button>
+              <div className="flex-grow"></div>
+              <Button variant="default" className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg shadow-purple-500/20">
+                <Rocket className="h-4 w-4 mr-2" />
+                Start my day
+              </Button>
+              <Button variant="ghost" size="icon">
+                <Settings className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Date Section */}
+            <div className="bg-[#121212] rounded-lg p-6">
+              <Suspense fallback={<LoadingSkeleton />}>
+                {isLoading ? (
+                  <LoadingSkeleton />
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center mb-4">
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm">
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <h2 className="text-xl font-semibold">
+                          {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                        </h2>
+                        {dayStats && (
+                          <span className={`ml-2 ${dayStats.netPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            Net P&L {formatCurrency(dayStats.netPnL)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <PencilLine className="h-4 w-4 mr-2" />
+                              {journalNote ? "Edit Note" : "Add Note"}
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Journal Note for {format(selectedDate, 'MMM d, yyyy')}</DialogTitle>
+                            </DialogHeader>
+                            <Textarea
+                              value={note}
+                              onChange={(e) => setNote(e.target.value)}
+                              placeholder="Write your journal note here..."
+                              className="min-h-[200px]"
+                            />
+                            <DialogFooter className="flex justify-between items-center mt-4">
+                              {journalNote && (
+                                <Button 
+                                  variant="destructive" 
+                                  type="button"
+                                  onClick={() => {
+                                    setIsNoteDialogOpen(false);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                  className="mr-auto"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </Button>
+                              )}
+                              <Button onClick={saveNote}>Save Note</Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+
+                        {/* Delete Confirmation Dialog */}
+                        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Delete Journal Entry</DialogTitle>
+                              <DialogDescription>
+                                Are you sure you want to delete this journal entry? This action cannot be undone.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter className="flex justify-end gap-2 mt-4">
+                              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                                Cancel
+                              </Button>
+                              <Button variant="destructive" onClick={deleteNote}>
+                                Delete
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+
+                        <img
+                          src="/avatar.png"
+                          alt="User"
+                          className="h-8 w-8 rounded-full"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Stats Grid */}
+                    {dayStats && (
+                      <div className="grid grid-cols-4 gap-6">
+                        <div>
+                          <div className="flex justify-between text-gray-400 mb-2">
+                            <span>Total Trades</span>
+                            <span>{dayStats.totalTrades}</span>
+                          </div>
+                          <div className="flex justify-between text-gray-400 mb-2">
+                            <span>Winners</span>
+                            <span>{dayStats.winners}</span>
+                          </div>
+                          <div className="flex justify-between text-gray-400">
+                            <span>Winrate</span>
+                            <span>{dayStats.winrate.toFixed(1)}%</span>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-gray-400 mb-2">
+                            <span>Losers</span>
+                            <span>{dayStats.losers}</span>
+                          </div>
+                          <div className="flex justify-between text-gray-400">
+                            <span>Volume</span>
+                            <span>{dayStats.volume}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-gray-400 mb-2">
+                            <span>Gross P&L</span>
+                            <span>{formatCurrency(dayStats.grossPnL)}</span>
+                          </div>
+                          <div className="flex justify-between text-gray-400">
+                            <span>Profit Factor</span>
+                            <span>{dayStats.profitFactor}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-gray-400 mb-2">
+                            <span>Commissions</span>
+                            <span>{formatCurrency(dayStats.commissions)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* P&L Chart */}
+                    <div className="h-[200px] mt-6">
+                      <div className="w-full h-full bg-[#1c1c1c] rounded-lg">
+                        {chartData.length > 0 ? (
+                          <PnLChart data={chartData} />
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-gray-400">
+                            No trades for this day
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </Suspense>
+            </div>
+          </div>
+        </div>
+      </ErrorBoundary>
+    </div>
+  );
+} 

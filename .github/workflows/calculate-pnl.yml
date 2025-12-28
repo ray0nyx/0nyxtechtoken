@@ -1,0 +1,29 @@
+name: Calculate PnL
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Run hourly
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  calculate-pnl:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: '1.40.2'  # Specify a recent version that supports lockfile v4
+      
+      - name: Run PnL calculation
+        working-directory: supabase/functions/calculate-pnl
+        run: |
+          # Remove the existing lockfile and let Deno recreate it
+          rm -f deno.lock
+          deno run --allow-net --allow-env index.ts
+        env:
+          # Make sure these secrets are properly set in your GitHub repository settings
+          SUPABASE_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} 
