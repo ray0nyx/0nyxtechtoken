@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { fetchSolanaWalletBalance } from '@/lib/wallet-balance-service';
+import { getCurrentUser } from '@/lib/auth-utils';
 
 interface DepositModalProps {
     isOpen: boolean;
@@ -33,54 +34,90 @@ export function DepositModal({ isOpen, onOpenChange, trigger }: DepositModalProp
     const fetchOrCreateWallet = async () => {
         setLoading(true);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            // Support both Supabase and SIWS wallet auth
+            const authUser = await getCurrentUser();
 
-            if (!user) {
+            if (!authUser) {
+                console.log('DepositModal: No authenticated user');
                 setLoading(false);
                 return;
             }
 
-            // 1. Check if ANY wallet exists in DB (pick random/first one)
-            const { data: existingWallets, error: dbError } = await supabase
-                .from('user_wallets')
-                .select('wallet_address')
-                .eq('user_id', user.id)
-                .eq('wallet_type', 'turnkey')
-                .limit(1);
+            const userId = authUser.id;
+            const isWalletUser = authUser.isWalletUser;
+            console.log('DepositModal: Fetching wallet for user:', userId, 'isWalletUser:', isWalletUser);
 
-            if (existingWallets && existingWallets.length > 0) {
-                setWalletAddress(existingWallets[0].wallet_address);
+            // Check for existing Turnkey wallet
+            let existingWalletAddress: string | null = null;
+
+            if (isWalletUser) {
+                // Use wallet API for SIWS users
+                const { getTurnkeyWalletViaAPI } = await import('@/lib/wallet-api');
+                const result = await getTurnkeyWalletViaAPI(userId);
+                if (result.wallet) {
+                    existingWalletAddress = result.wallet.wallet_address;
+                }
+            } else {
+                // Use direct Supabase for regular users
+                const { data: existingWallets } = await supabase
+                    .from('user_wallets')
+                    .select('wallet_address')
+                    .eq('user_id', userId)
+                    .eq('wallet_type', 'turnkey')
+                    .limit(1);
+
+                if (existingWallets && existingWallets.length > 0) {
+                    existingWalletAddress = existingWallets[0].wallet_address;
+                }
+            }
+
+            if (existingWalletAddress) {
+                console.log('DepositModal: Found existing Turnkey wallet:', existingWalletAddress);
+                setWalletAddress(existingWalletAddress);
                 setLoading(false);
                 return;
             }
 
-            // 2. If not, create one
-            //console.log("Creating new Turnkey wallet for user...");
+            // Create new wallet if none exists
+            console.log('DepositModal: Creating new Turnkey wallet...');
             const turnkeyService = getTurnkeyService();
+            const userEmail = authUser.email || (authUser.walletAddress
+                ? `${authUser.walletAddress.substring(0, 8)}@wallet.0nyxtech.xyz`
+                : `user-${userId.substring(0, 8)}@onyx.internal`);
 
-            // We need a unique ID, usually user.id is fine.
-            // Assuming createSubOrganization handles idempotency or we accept it might fail if already exists on Turnkey side but not in DB
-            const subOrg = await turnkeyService.createSubOrganization(user.id, user.email || '');
-
+            const subOrg = await turnkeyService.createSubOrganization(userId, userEmail);
             const newWalletAddress = subOrg.walletAddress;
             setWalletAddress(newWalletAddress);
 
-            // 3. Save to DB
-            const { error: saveError } = await supabase
-                .from('user_wallets')
-                .upsert({
-                    user_id: user.id,
-                    wallet_address: newWalletAddress,
-                    wallet_type: 'turnkey',
-                    turnkey_wallet_id: subOrg.walletId,
-                    turnkey_organization_id: subOrg.subOrganizationId,
-                    created_at: new Date().toISOString(),
-                    is_active: true,
-                });
+            // Save to DB
+            if (isWalletUser) {
+                const { saveTurnkeyWalletViaAPI } = await import('@/lib/wallet-api');
+                const result = await saveTurnkeyWalletViaAPI(
+                    userId,
+                    newWalletAddress,
+                    subOrg.walletId,
+                    subOrg.subOrganizationId,
+                    'Main Wallet'
+                );
+                if (result.error) {
+                    console.error("Failed to save wallet to DB:", result.error);
+                }
+            } else {
+                const { error: saveError } = await supabase
+                    .from('user_wallets')
+                    .upsert({
+                        user_id: userId,
+                        wallet_address: newWalletAddress,
+                        wallet_type: 'turnkey',
+                        turnkey_wallet_id: subOrg.walletId,
+                        turnkey_organization_id: subOrg.subOrganizationId,
+                        created_at: new Date().toISOString(),
+                        is_active: true,
+                    });
 
-            if (saveError) {
-                console.error("Failed to save wallet to DB:", saveError);
-                // We still show the wallet address even if DB save fails, but it won't be persisted for next time
+                if (saveError) {
+                    console.error("Failed to save wallet to DB:", saveError);
+                }
             }
 
         } catch (error) {

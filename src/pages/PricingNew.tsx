@@ -59,18 +59,18 @@ export default function Pricing() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState<string | null>(null);
-  
+
   // Get subscription status
-  const { 
-    status, 
-    updateSubscriptionStatus, 
+  const {
+    status,
+    updateSubscriptionStatus,
     isLoading: subscriptionLoading,
     isAuthenticated
   } = useSubscriptionStatus();
-  
+
   // Check if user is coming from forced redirect
   const [isForced, setIsForced] = useState(false);
-  
+
   useEffect(() => {
     // Check if the user was redirected from the dashboard
     if (location.state && location.state.fromDashboard) {
@@ -111,7 +111,7 @@ export default function Pricing() {
         // Update subscription status to 'active' after successful checkout
         // (this will be properly updated by webhook later, but gives immediate UI feedback)
         await updateSubscriptionStatus('active', 'basic');
-        
+
         // Redirect to Stripe checkout
         window.location.href = data.url;
       } else {
@@ -131,7 +131,7 @@ export default function Pricing() {
 
   // Get user info to personalize the page
   const [userName, setUserName] = useState<string | null>(null);
-  
+
   useEffect(() => {
     const getUserInfo = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -141,7 +141,7 @@ export default function Pricing() {
         setUserName(name);
       }
     };
-    
+
     getUserInfo();
   }, []);
 
@@ -160,13 +160,13 @@ export default function Pricing() {
           {isAuthenticated ? (
             <div className="flex items-center gap-2">
               {userName && <span className="text-gray-600">Welcome, {userName}</span>}
-              <button 
+              <button
                 onClick={() => navigate('/app/analytics')}
                 className="px-4 py-2 rounded text-gray-800 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-300 hover:scale-105 bg-transparent"
               >
                 Analytics
               </button>
-              <button 
+              <button
                 onClick={async () => {
                   try {
                     await supabase.auth.signOut();
@@ -187,13 +187,13 @@ export default function Pricing() {
             </div>
           ) : (
             <>
-              <button 
+              <button
                 onClick={() => navigate('/signin')}
                 className="px-4 py-2 rounded text-gray-800 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-300 hover:scale-105 bg-transparent"
               >
                 Sign In
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/signup')}
                 className="px-4 py-2 rounded bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/20"
               >
@@ -214,13 +214,13 @@ export default function Pricing() {
                     <p>Please select a subscription plan to continue using 0nyx.</p>
                   </div>
                 )}
-                
+
                 {status === 'pending' && (
                   <div className="bg-blue-100 text-blue-800 p-4 rounded-lg mb-6">
                     <p>Your account is ready! Choose a subscription plan to start journaling your trades.</p>
                   </div>
                 )}
-                
+
                 {status === 'unauthenticated' && (
                   <div className="bg-blue-100 text-blue-800 p-4 rounded-lg mb-6">
                     <p>Create an account to get started with 0nyx Trading. Select a plan below.</p>
@@ -234,7 +234,7 @@ export default function Pricing() {
                     </div>
                   </div>
                 )}
-                
+
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
                   Simple, transparent pricing
                 </h1>
@@ -245,13 +245,11 @@ export default function Pricing() {
             </div>
             <div className="mx-auto grid max-w-5xl gap-6 py-12 lg:grid-cols-3">
               {plans.map((plan) => (
-                <div 
-                  key={plan.name} 
-                  className={`bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden ${
-                    plan.name === 'Yearly' ? 'relative' : ''
-                  } ${
-                    plan.name === 'Pro' ? 'relative' : ''
-                  }`}
+                <div
+                  key={plan.name}
+                  className={`bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden ${plan.name === 'Yearly' ? 'relative' : ''
+                    } ${plan.name === 'Pro' ? 'relative' : ''
+                    }`}
                 >
                   <div className="p-6">
                     {plan.comingSoon && (
@@ -262,10 +260,9 @@ export default function Pricing() {
                     <h2 className="text-xl font-bold text-gray-900">{plan.name}</h2>
                     <p className="text-gray-600 mt-1">{plan.description}</p>
                     <div className="flex items-baseline gap-1 mt-4">
-                      <span className={`text-3xl font-bold ${
-                        plan.name === 'Yearly' ? 'text-purple-500' : 
-                        plan.name === 'Pro' ? 'text-blue-500' : 'text-purple-500'
-                      }`}>
+                      <span className={`text-3xl font-bold ${plan.name === 'Yearly' ? 'text-purple-500' :
+                          plan.name === 'Pro' ? 'text-blue-500' : 'text-purple-500'
+                        }`}>
                         {plan.price}
                       </span>
                       <span className="text-gray-600">/{plan.interval}</span>
@@ -274,23 +271,21 @@ export default function Pricing() {
                     <ul className="grid gap-4 mt-6">
                       {plan.features.map((feature) => (
                         <li key={feature} className="flex items-center gap-2">
-                          <Check className={`h-4 w-4 ${
-                            plan.name === 'Yearly' ? 'text-purple-500' : 
-                            plan.name === 'Pro' ? 'text-blue-500' : 'text-purple-500'
-                          }`} />
+                          <Check className={`h-4 w-4 ${plan.name === 'Yearly' ? 'text-purple-500' :
+                              plan.name === 'Pro' ? 'text-blue-500' : 'text-purple-500'
+                            }`} />
                           <span className="text-gray-700">{feature}</span>
                         </li>
                       ))}
                     </ul>
 
                     <button
-                      className={`w-full mt-6 px-4 py-2 rounded ${
-                        plan.name === 'Yearly' 
-                          ? 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg shadow-purple-500/20' : 
-                        plan.name === 'Pro'
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-lg shadow-blue-500/20'
-                          : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg shadow-purple-500/20'
-                      } ${(!!isLoading || subscriptionLoading || plan.comingSoon) ? 'opacity-70 cursor-not-allowed' : ''}`}
+                      className={`w-full mt-6 px-4 py-2 rounded ${plan.name === 'Yearly'
+                          ? 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg shadow-purple-500/20' :
+                          plan.name === 'Pro'
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-lg shadow-blue-500/20'
+                            : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg shadow-purple-500/20'
+                        } ${(!!isLoading || subscriptionLoading || plan.comingSoon) ? 'opacity-70 cursor-not-allowed' : ''}`}
                       onClick={() => {
                         if (plan.comingSoon) {
                           toast({
@@ -299,7 +294,7 @@ export default function Pricing() {
                           });
                           return;
                         }
-                        
+
                         if (!isAuthenticated) {
                           navigate('/signup', { state: { returnToPricing: true } });
                         } else {
@@ -308,12 +303,12 @@ export default function Pricing() {
                       }}
                       disabled={!!isLoading || subscriptionLoading || plan.comingSoon}
                     >
-                      {plan.comingSoon 
-                        ? "Coming Soon" 
-                        : isLoading === plan.priceId 
-                          ? "Loading..." 
-                          : !isAuthenticated 
-                            ? "Sign Up & Subscribe" 
+                      {plan.comingSoon
+                        ? "Coming Soon"
+                        : isLoading === plan.priceId
+                          ? "Loading..."
+                          : !isAuthenticated
+                            ? "Sign Up & Subscribe"
                             : "Get Started"}
                     </button>
                   </div>
@@ -329,29 +324,29 @@ export default function Pricing() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="flex items-center gap-6">
-              <a 
-                href="https://x.com/WagyuTech" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href="https://x.com/WagyuTech"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-600 hover:text-purple-500 transition-colors duration-300"
                 aria-label="X (Twitter)"
               >
-                <img 
-                  src="images/x-logo.png" 
-                  alt="X (Twitter)" 
+                <img
+                  src="images/x-logo.png"
+                  alt="X (Twitter)"
                   className="h-5 w-5 opacity-80 hover:opacity-100 transition-opacity"
                 />
               </a>
-              <a 
-                href="https://www.instagram.com/wagyutech.app/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href="https://www.instagram.com/wagyutech.app/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-600 hover:text-purple-500 transition-colors duration-300"
                 aria-label="Instagram"
               >
-                <img 
-                  src="images/instagram-logo.png" 
-                  alt="Instagram" 
+                <img
+                  src="images/instagram-logo.png"
+                  alt="Instagram"
                   className="h-5 w-5 opacity-80 hover:opacity-100 transition-opacity"
                 />
               </a>
@@ -360,7 +355,7 @@ export default function Pricing() {
               <a href="/privacy" className="text-gray-600 hover:text-purple-500 transition-colors duration-300">Privacy</a>
               <a href="#" className="text-gray-600 hover:text-purple-500 transition-colors duration-300">Contact</a>
             </div>
-            <p className="text-gray-600 text-sm">© {new Date().getFullYear()} 0nyx. All rights reserved.</p>
+            <p className="text-gray-600 text-sm">© 2026 0nyxTech. All rights reserved.</p>
           </div>
         </div>
       </footer>

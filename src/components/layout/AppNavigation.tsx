@@ -95,25 +95,161 @@ export function AppNavigation() {
         fetchUserProfile();
     }, [supabase]);
 
-    // Fetch Turnkey wallet and balance
+    // Fetch Turnkey wallet and balance - supports both Supabase and SIWS auth
     useEffect(() => {
         let intervalId: NodeJS.Timeout;
 
         const initWalletTracking = async () => {
             try {
+                // Import SIWS utilities
+                const { getSIWSToken, getSIWSPublicKey } = await import('@/lib/solana/siws');
+
+                // Check for Supabase user first
                 const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
 
-                // Get Turnkey wallet
-                const { data: wallets } = await supabase
-                    .from('user_wallets')
-                    .select('wallet_address')
-                    .eq('user_id', user.id)
-                    .eq('wallet_type', 'turnkey')
-                    .limit(1);
+                // Get SIWS wallet info
+                const siwsToken = getSIWSToken();
+                const siwsPublicKey = getSIWSPublicKey();
 
-                if (wallets && wallets.length > 0) {
-                    const address = wallets[0].wallet_address;
+                // Determine user ID and type
+                let userId: string | null = null;
+                let userEmail: string | null = null;
+                let isWalletUser = false;
+
+                if (user) {
+                    userId = user.id;
+                    userEmail = user.email || null;
+                } else if (siwsToken && siwsPublicKey) {
+                    // For SIWS users, parse the user ID from the token
+                    try {
+                        // Check if token is a JWT (has 3 parts separated by dots)
+                        if (siwsToken.includes('.') && siwsToken.split('.').length === 3) {
+                            const payload = JSON.parse(atob(siwsToken.split('.')[1]));
+                            userId = payload.sub;
+                        } else if (siwsToken.startsWith('wallet_')) {
+                            // Handle placeholder token format: wallet_<userId>
+                            userId = siwsToken.replace('wallet_', '');
+                        }
+
+                        if (userId) {
+                            isWalletUser = true;
+                            console.log('SIWS user detected:', { userId, publicKey: siwsPublicKey });
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse SIWS token:', e);
+                    }
+                }
+
+                if (!userId) {
+                    console.log('No authenticated user found for wallet tracking');
+                    return;
+                }
+
+                // For SIWS users: Track their Phantom wallet via Edge Function (bypasses RLS)
+                if (isWalletUser && siwsPublicKey) {
+                    try {
+                        console.log('Adding Phantom wallet to tracking via API:', siwsPublicKey);
+                        const { trackWalletViaAPI } = await import('@/lib/wallet-api');
+                        const result = await trackWalletViaAPI(userId, siwsPublicKey, 'solana', 'Phantom Wallet');
+                        if (result.error) {
+                            console.error('Error tracking Phantom wallet:', result.error);
+                        } else {
+                            console.log('Successfully tracked Phantom wallet:', result);
+                        }
+                    } catch (trackError) {
+                        console.error('Error tracking Phantom wallet:', trackError);
+                    }
+                }
+
+                // 1. Get existing Turnkey wallet via Edge Function for SIWS users
+                let existingTurnkeyWallet = null;
+                if (isWalletUser) {
+                    const { getTurnkeyWalletViaAPI } = await import('@/lib/wallet-api');
+                    const result = await getTurnkeyWalletViaAPI(userId);
+                    existingTurnkeyWallet = result.wallet;
+                } else {
+                    const { data: wallets } = await supabase
+                        .from('user_wallets')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .eq('wallet_type', 'turnkey')
+                        .limit(1);
+                    existingTurnkeyWallet = wallets?.[0];
+                }
+
+                let address = '';
+
+                if (existingTurnkeyWallet) {
+                    address = existingTurnkeyWallet.wallet_address;
+                    console.log('Found existing Turnkey wallet:', address);
+                } else {
+                    // 2. Create Turnkey wallet if not found
+                    console.log('No Turnkey wallet found, creating one...');
+                    try {
+                        const { getTurnkeyService } = await import('@/lib/wallet-abstraction/turnkey-service');
+                        const turnkeyService = getTurnkeyService();
+
+                        // Use wallet address as identifier for wallet users, email for regular users
+                        const displayEmail = userEmail ||
+                            (siwsPublicKey ? `${siwsPublicKey.substring(0, 8)}@wallet.0nyxtech.xyz` :
+                                `user-${userId.substring(0, 8)}@onyx.internal`);
+
+                        const subOrg = await turnkeyService.createSubOrganization(userId, displayEmail);
+
+                        address = subOrg.walletAddress;
+
+                        // Save to DB via Edge Function for SIWS users (bypasses RLS)
+                        if (isWalletUser) {
+                            const { saveTurnkeyWalletViaAPI } = await import('@/lib/wallet-api');
+                            const result = await saveTurnkeyWalletViaAPI(
+                                userId,
+                                address,
+                                subOrg.walletId,
+                                subOrg.subOrganizationId,
+                                'Main Wallet'
+                            );
+                            if (result.error) {
+                                console.error("Failed to save auto-created wallet to DB:", result.error);
+                            } else {
+                                console.log('Successfully auto-created and saved Turnkey wallet:', address);
+                            }
+                        } else {
+                            // Use direct Supabase for regular users
+                            const { error: saveError } = await supabase
+                                .from('user_wallets')
+                                .upsert({
+                                    user_id: userId,
+                                    wallet_address: address,
+                                    wallet_type: 'turnkey',
+                                    turnkey_wallet_id: subOrg.walletId,
+                                    turnkey_organization_id: subOrg.subOrganizationId,
+                                    created_at: new Date().toISOString(),
+                                    is_active: true,
+                                });
+
+                            if (saveError) {
+                                console.error("Failed to save auto-created wallet to DB:", saveError);
+                            } else {
+                                console.log('Successfully auto-created and saved Turnkey wallet:', address);
+
+                                // Also add Turnkey wallet to wallet_tracking
+                                await supabase
+                                    .from('wallet_tracking')
+                                    .upsert({
+                                        user_id: userId,
+                                        wallet_address: address,
+                                        blockchain: 'solana',
+                                        label: 'Main Wallet',
+                                        is_active: true,
+                                    });
+                            }
+                        }
+                    } catch (createError) {
+                        console.error("Error auto-creating Turnkey wallet:", createError);
+                    }
+                }
+
+                if (address) {
                     setTurnkeyAddress(address);
 
                     // Fetch initial balance
@@ -160,7 +296,7 @@ export function AppNavigation() {
     const secondaryNavigation = [
         ...(isAffiliate ? [{ name: "Affiliates", href: "/app/affiliate", icon: Share2 }] : []),
         ...(isAdmin ? [{ name: "Admin", href: "/admin", icon: Shield }] : []),
-        { name: "Taxes", href: "/app/pl-statements", icon: FileText },
+        ...(isAdmin ? [{ name: "Taxes", href: "/app/pl-statements", icon: FileText }] : []),
     ];
 
     const cryptoNavigation = [
@@ -176,13 +312,13 @@ export function AppNavigation() {
                 {/* Left Section: Logo + Navigation */}
                 <div className="flex items-center gap-8">
                     {/* Logo */}
-                    <Link to="/app/analytics" className="flex items-center gap-2">
-                        <div className="h-8 w-8 bg-white text-black flex items-center justify-center rounded-sm font-bold text-lg">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 2L2 22H22L12 2Z" fill="currentColor" />
-                            </svg>
-                        </div>
-                        <span className="text-xl font-bold tracking-tight">0nyx</span>
+                    <Link to="/app/analytics" className="flex items-center gap-2 relative">
+                        <img
+                            src="/images/ot white.svg"
+                            alt="0nyxTech Logo"
+                            className="h-[750px] w-auto absolute left-0 top-1/2 -translate-y-1/2"
+                        />
+                        <div className="w-[250px]"></div>
                     </Link>
 
                     {/* Desktop Navigation */}
@@ -192,7 +328,7 @@ export function AppNavigation() {
                                 key={item.name}
                                 to={item.href}
                                 className={cn(
-                                    "px-3 py-2 text-sm font-medium rounded-md transition-colors hover:text-white",
+                                    "px-2 py-2 text-xs font-medium rounded-md transition-colors hover:text-white",
                                     location.pathname === item.href || location.pathname.startsWith(item.href)
                                         ? "text-white"
                                         : "text-gray-400"
@@ -205,7 +341,7 @@ export function AppNavigation() {
                         {/* More / Validation Dropdown for remaining items to save space */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-400 hover:text-white rounded-md transition-colors">
+                                <button className="flex items-center gap-1 px-2 py-2 text-xs font-medium text-gray-400 hover:text-white rounded-md transition-colors">
                                     More <ChevronDown className="h-4 w-4" />
                                 </button>
                             </DropdownMenuTrigger>
@@ -368,7 +504,7 @@ export function AppNavigation() {
                                 <DropdownMenuSeparator className="bg-white/10" />
                                 <DropdownMenuItem onClick={() => navigate('/app/settings')} className="hover:bg-white/5 hover:text-white cursor-pointer focus:bg-white/5 focus:text-white">
                                     <Settings className="mr-2 h-4 w-4" />
-                                    <span>Settings</span>
+                                    <span>Account Settings & Security</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => navigate('/app/billing')} className="hover:bg-white/5 hover:text-white cursor-pointer focus:bg-white/5 focus:text-white">
                                     <SubscriptionStatus />
@@ -409,7 +545,7 @@ export function AppNavigation() {
             />
 
             <SearchPopup>
-                {/* No trigger needed here, controlled by SearchPopup internal logic or other triggers */}
+                <div />
             </SearchPopup>
         </nav>
     );

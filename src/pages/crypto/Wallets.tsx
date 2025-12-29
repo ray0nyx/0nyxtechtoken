@@ -26,6 +26,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Copy } from 'lucide-react';
+import { getCurrentUser } from '@/lib/auth-utils';
 
 interface WalletItem {
   id: string;
@@ -199,64 +200,86 @@ function WalletsContent() {
   const loadWalletData = async () => {
     setIsLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Support both Supabase and SIWS wallet auth
+      const authUser = await getCurrentUser();
+      if (!authUser) {
+        console.log('Wallets: No authenticated user found');
         setIsLoading(false);
         return;
       }
 
-      // Sync Turnkey wallets from user_wallets to wallet_tracking
-      // This ensures all created wallets show up in the list
-      try {
-        const { data: turnkeyWallets } = await supabase
-          .from('user_wallets')
-          .select('wallet_address')
-          .eq('user_id', user.id)
-          .eq('wallet_type', 'turnkey')
-          .eq('is_active', true);
+      const userId = authUser.id;
+      const isWalletUser = authUser.isWalletUser;
+      console.log('Wallets: Loading data for user:', userId, 'isWalletUser:', isWalletUser);
 
-        if (turnkeyWallets && turnkeyWallets.length > 0) {
-          for (const tw of turnkeyWallets) {
-            // Check if already in wallet_tracking
-            const { data: existing } = await supabase
-              .from('wallet_tracking')
-              .select('id')
-              .eq('user_id', user.id)
-              .eq('wallet_address', tw.wallet_address)
-              .maybeSingle();
+      // Fetch tracked wallets - use API for SIWS users (bypasses RLS)
+      let walletBalances: WalletBalance[] = [];
 
-            if (!existing) {
-              // Add to tracking
-              console.log('📝 Syncing Turnkey wallet to tracking:', tw.wallet_address);
-              await supabase
-                .from('wallet_tracking')
-                .insert({
-                  user_id: user.id,
-                  wallet_address: tw.wallet_address,
-                  blockchain: 'solana',
-                  label: 'Main Wallet',
-                  is_active: true,
-                });
-            }
-          }
+      if (isWalletUser) {
+        // Use Edge Function API for SIWS users
+        const { getWalletsViaAPI } = await import('@/lib/wallet-api');
+        const result = await getWalletsViaAPI(userId);
+
+        if (result.error) {
+          console.error('Error fetching wallets via API:', result.error);
+        } else if (result.wallets && result.wallets.length > 0) {
+          console.log('Wallets fetched via API:', result.wallets);
+
+          // Fetch balances for each wallet
+          const { fetchSolanaWalletBalance, fetchBitcoinWalletBalance } = await import('@/lib/wallet-balance-service');
+
+          walletBalances = await Promise.all(
+            result.wallets.map(async (wallet: any) => {
+              try {
+                let balance: WalletBalance | null = null;
+                if (wallet.blockchain === 'solana') {
+                  balance = await fetchSolanaWalletBalance(wallet.wallet_address);
+                } else if (wallet.blockchain === 'bitcoin') {
+                  balance = await fetchBitcoinWalletBalance(wallet.wallet_address);
+                }
+
+                if (balance) {
+                  return { ...balance, label: wallet.label };
+                }
+
+                return {
+                  address: wallet.wallet_address,
+                  blockchain: wallet.blockchain as 'solana' | 'bitcoin',
+                  balances: {},
+                  totalUsdValue: 0,
+                  label: wallet.label,
+                };
+              } catch (error) {
+                console.error(`Error fetching balance for ${wallet.wallet_address}:`, error);
+                return {
+                  address: wallet.wallet_address,
+                  blockchain: wallet.blockchain as 'solana' | 'bitcoin',
+                  balances: {},
+                  totalUsdValue: 0,
+                  label: wallet.label,
+                };
+              }
+            })
+          );
         }
-      } catch (syncError) {
-        console.error('Error syncing Turnkey wallets:', syncError);
+      } else {
+        // Use direct Supabase for regular users
+        walletBalances = await Promise.race([
+          fetchUserTrackedWallets(userId),
+          new Promise<Array<WalletBalance>>((resolve) => setTimeout(() => resolve([]), 10000))
+        ]);
       }
 
-      // Fetch tracked wallets with real balances (with timeout)
-      const walletBalances = await Promise.race([
-        fetchUserTrackedWallets(user.id),
-        new Promise<Array<WalletBalance>>((resolve) => setTimeout(() => resolve([]), 10000)) // 10s timeout
-      ]);
-
       if (walletBalances.length === 0) {
+        console.log('Wallets: No wallets found');
         setWallets([]);
         setTotalBalance(0);
         setTotalChange(0);
         setIsLoading(false);
         return;
       }
+
+      console.log('Wallets: Found', walletBalances.length, 'wallets');
 
       // Calculate total for all wallets
       let totalUsdValue = 0;

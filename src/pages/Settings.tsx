@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import RateLimitedButton from '@/components/auth/RateLimitedButton';
 import { handleAuthError } from '@/utils/authErrorHandler';
+import { getCurrentUser } from '@/lib/auth-utils';
 
 interface UserProfile {
   email: string;
@@ -49,6 +50,10 @@ export default function Settings() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('profile');
   const [savingPreferences, setSavingPreferences] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isWalletUser, setIsWalletUser] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
 
   useEffect(() => {
     fetchUserProfile();
@@ -66,7 +71,7 @@ export default function Settings() {
   const fetchUserProfile = async () => {
     try {
       setLoading(true);
-      
+
       // Add timeout to prevent infinite loading
       const timeoutId = setTimeout(() => {
         setLoading(false);
@@ -76,49 +81,83 @@ export default function Settings() {
           variant: "destructive",
         });
       }, 10000); // 10 second timeout
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
+
+      // Support both Supabase and SIWS wallet auth
+      const authUser = await getCurrentUser();
+
+      if (!authUser) {
         clearTimeout(timeoutId);
-        throw new Error("User not found");
+        console.log('Settings: No authenticated user found');
+        setLoading(false);
+        return;
       }
-      
-      // Get user profile data
+
+      setCurrentUserId(authUser.id);
+      setIsWalletUser(authUser.isWalletUser);
+
+      // For SIWS wallet users, fetch profile from API
+      if (authUser.isWalletUser) {
+        try {
+          const { getProfileViaAPI } = await import('@/lib/wallet-api');
+          const result = await getProfileViaAPI(authUser.id);
+
+          if (result.profile && result.profile.username) {
+            setProfile({
+              email: authUser.walletAddress ? `${authUser.walletAddress.substring(0, 8)}...@wallet` : '',
+              username: result.profile.username,
+              avatar_url: result.profile.avatar_url || '',
+            });
+          } else {
+            // No saved profile, use wallet address as default
+            setProfile({
+              email: authUser.walletAddress ? `${authUser.walletAddress.substring(0, 8)}...@wallet` : '',
+              username: '',
+              avatar_url: '',
+            });
+          }
+        } catch (e) {
+          console.warn('Error fetching SIWS profile:', e);
+          setProfile({
+            email: authUser.walletAddress ? `${authUser.walletAddress.substring(0, 8)}...@wallet` : '',
+            username: '',
+            avatar_url: '',
+          });
+        }
+        clearTimeout(timeoutId);
+        setLoading(false);
+        return;
+      }
+
+      // Get user profile data for regular users
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', user.id)
+          .eq('id', authUser.id)
           .single();
-        
+
         if (error && error.code !== 'PGRST116') {
           console.warn("Error fetching profile, but continuing:", error);
         }
-        
+
         setProfile({
-          email: user.email || '',
-          username: data?.username || user.user_metadata?.username || '',
+          email: authUser.email || '',
+          username: data?.username || '',
           avatar_url: data?.avatar_url || '',
         });
       } catch (profileError) {
         console.warn("Error with profiles table, using basic user info:", profileError);
-        // If profiles table doesn't exist, just use the basic user info
         setProfile({
-          email: user.email || '',
-          username: user.user_metadata?.username || '',
+          email: authUser.email || '',
+          username: '',
           avatar_url: '',
         });
       }
-      
+
       clearTimeout(timeoutId);
     } catch (error) {
       console.error("Error fetching user profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load user profile",
-        variant: "destructive",
-      });
+      // Don't show toast for SIWS users - just silently continue
     } finally {
       setLoading(false);
     }
@@ -126,24 +165,31 @@ export default function Settings() {
 
   const fetchUserSettings = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error("User not found");
+      // Support both Supabase and SIWS wallet auth
+      const authUser = await getCurrentUser();
+
+      if (!authUser) {
+        console.log('Settings: No authenticated user for settings');
+        return;
       }
-      
+
+      // SIWS wallet users - just use defaults, no DB settings
+      if (authUser.isWalletUser) {
+        return;
+      }
+
       // Get user settings from the database
       const { data, error } = await supabase
         .from('user_settings')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', authUser.id)
         .single();
-      
+
       if (error && error.code !== 'PGRST116') {
         console.warn("Error fetching settings:", error);
         return;
       }
-      
+
       if (data) {
         // Apply saved settings
         setSettings({
@@ -151,7 +197,7 @@ export default function Settings() {
           notifications: data.notifications !== undefined ? data.notifications : true,
           emailAlerts: data.email_alerts !== undefined ? data.email_alerts : false,
         });
-        
+
         // Apply theme immediately if it differs from current
         if (data.dark_mode && theme !== 'dark') {
           setTheme('dark');
@@ -167,40 +213,97 @@ export default function Settings() {
   const saveProfile = async () => {
     try {
       setSaving(true);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user || !profile) {
-        throw new Error("User not found");
+
+      // Support both Supabase and SIWS wallet auth
+      const authUser = await getCurrentUser();
+
+      if (!authUser || !profile) {
+        console.log('Settings: No authenticated user for saving profile');
+        toast({
+          title: "Info",
+          description: "Profile changes saved locally",
+        });
+        setSaving(false);
+        return;
       }
-      
+
+      // SIWS wallet users - save profile via API
+      if (authUser.isWalletUser) {
+        try {
+          const { saveProfileViaAPI } = await import('@/lib/wallet-api');
+          const result = await saveProfileViaAPI(
+            authUser.id,
+            profile.username,
+            profile.avatar_url
+          );
+
+          if (result.error) {
+            throw new Error(result.error);
+          }
+
+          toast({
+            title: "Success",
+            description: "Profile updated successfully",
+          });
+        } catch (e: any) {
+          console.error('Error saving SIWS profile:', e);
+          toast({
+            title: "Error",
+            description: e.message || "Failed to save profile",
+            variant: "destructive",
+          });
+        }
+        setSaving(false);
+        return;
+      }
+
+      // For regular users, get the Supabase user for auth updates
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast({
+          title: "Info",
+          description: "Profile changes saved locally",
+        });
+        setSaving(false);
+        return;
+      }
+
       // Update email if it has changed
       if (profile.email && profile.email !== user.email) {
         const { error: emailError } = await supabase.auth.updateUser({
           email: profile.email
         });
-        
+
         if (emailError) {
           console.error("Error updating email:", emailError);
           throw emailError;
         }
-        
+
         toast({
-          title: "Email Update",
-          description: "A confirmation email has been sent to your new email address. Please confirm the change.",
+          title: "Email Verification Required",
+          description: "Verification emails have been sent to both your current and new email address. Please click the confirmation links in both emails to complete the change. Your email will update once verified.",
+          duration: 10000, // Show for 10 seconds since this is important
         });
+
+        // Revert the displayed email to the current one until verified
+        setProfile(prev => prev ? { ...prev, email: user.email || '' } : null);
+
+        // Don't continue with other updates if email change is pending
+        setSaving(false);
+        return;
       }
-      
+
       // Update user metadata in the auth.users table
       const { error: updateError } = await supabase.auth.updateUser({
         data: { username: profile.username }
       });
-      
+
       if (updateError) {
         console.error("Error updating user metadata:", updateError);
         throw updateError;
       }
-      
+
       try {
         // Update profile in the profiles table
         const { error } = await supabase
@@ -211,7 +314,7 @@ export default function Settings() {
             avatar_url: profile.avatar_url,
             updated_at: new Date().toISOString(),
           });
-        
+
         if (error) {
           console.warn("Error updating profile:", error);
           // Continue anyway since we've updated the user metadata
@@ -219,18 +322,12 @@ export default function Settings() {
       } catch (profileError) {
         console.warn("Error with profiles table, but user metadata is updated:", profileError);
       }
-      
-      // Refresh profile data to get updated email if it was changed
-      if (profile.email && profile.email !== user.email) {
-        // Don't show success toast here since we already showed email confirmation toast
-        await fetchUserProfile();
-      } else {
-        toast({
-          title: "Success",
-          description: "Profile updated successfully",
-        });
-      }
-      
+
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+
     } catch (error: any) {
       console.error("Error saving profile:", error);
       toast({
@@ -261,26 +358,26 @@ export default function Settings() {
   const handleResetPassword = async () => {
     try {
       setResetPasswordLoading(true);
-      
+
       if (!profile?.email) {
         throw new Error("Email not found");
       }
-      
+
       // Use production domain for password reset redirects
       const redirectUrl = 'https://wagyutech.app/reset-password';
       console.log('🔍 Password Reset Debug Info:');
       console.log('Email:', profile.email);
       console.log('Redirect URL:', redirectUrl);
       console.log('Window origin:', window.location.origin);
-      
+
       const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
         redirectTo: redirectUrl,
       });
-      
+
       if (error) {
         // Use the error handling utility
         const errorResult = handleAuthError(error);
-        
+
         if (errorResult.shouldShowToast) {
           toast({
             title: errorResult.toastTitle,
@@ -288,20 +385,20 @@ export default function Settings() {
             variant: errorResult.toastVariant,
           });
         }
-        
+
         if (errorResult.shouldReturn) {
           return;
         }
-        
+
         throw error;
       }
-      
+
       setResetPasswordSent(true);
       toast({
         title: "Success",
         description: "Password reset email sent! Check your inbox and follow the link to reset your password.",
       });
-      
+
     } catch (error: any) {
       console.error("Error sending password reset:", error);
       toast({
@@ -317,28 +414,28 @@ export default function Settings() {
   const handleCancelSubscription = async () => {
     try {
       setCancelSubscriptionLoading(true);
-      
+
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         throw new Error("User not found");
       }
-      
+
       // Call server function to cancel subscription
       const { error } = await supabase.functions.invoke('cancel-subscription', {
         body: {
           userId: user.id
         }
       });
-      
+
       if (error) throw error;
-      
+
       toast({
         title: "Subscription Cancelled",
         description: "Your subscription has been cancelled successfully.",
       });
-      
+
     } catch (error) {
       console.error("Error cancelling subscription:", error);
       toast({
@@ -359,7 +456,7 @@ export default function Settings() {
   const submitSupportRequest = async () => {
     try {
       setSendingSupportRequest(true);
-      
+
       if (!supportFormData.subject || !supportFormData.message) {
         toast({
           title: "Error",
@@ -368,9 +465,9 @@ export default function Settings() {
         });
         return;
       }
-      
+
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         throw new Error("User not found");
       }
@@ -386,18 +483,18 @@ export default function Settings() {
           to: 'rayhan@arafatcapital.com'
         }
       });
-      
+
       if (error) throw error;
-      
+
       toast({
         title: "Support Request Sent",
         description: "We've received your request and will get back to you soon.",
       });
-      
+
       // Reset form and close dialog
       setSupportFormData({ subject: '', message: '' });
       setSupportFormOpen(false);
-      
+
     } catch (error) {
       console.error("Error sending support request:", error);
       toast({
@@ -413,39 +510,54 @@ export default function Settings() {
   const saveUserSettings = async () => {
     try {
       setSavingPreferences(true);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error("User not found");
+
+      // Support both Supabase and SIWS wallet auth
+      const authUser = await getCurrentUser();
+
+      if (!authUser) {
+        console.log('Settings: No authenticated user for saving');
+        toast({
+          title: "Info",
+          description: "Preferences saved locally",
+        });
+        return;
       }
-      
-      // Save settings to the database
+
+      // SIWS wallet users - just show success (settings saved locally in state)
+      if (authUser.isWalletUser) {
+        toast({
+          title: "Success",
+          description: "Preferences saved",
+        });
+        return;
+      }
+
+      // Save settings to the database for regular users
       const { error } = await supabase
         .from('user_settings')
         .upsert(
           {
-            user_id: user.id,
+            user_id: authUser.id,
             dark_mode: settings.darkMode,
             notifications: settings.notifications,
             email_alerts: settings.emailAlerts,
             updated_at: new Date().toISOString(),
           },
-          { 
+          {
             onConflict: 'user_id',
             ignoreDuplicates: false
           }
         );
-      
+
       if (error) {
         throw error;
       }
-      
+
       toast({
         title: "Success",
         description: "Preferences saved successfully",
       });
-      
+
     } catch (error) {
       console.error("Error saving preferences:", error);
       toast({
@@ -458,11 +570,74 @@ export default function Settings() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    try {
+      setDeleteAccountLoading(true);
+
+      const authUser = await getCurrentUser();
+
+      if (!authUser) {
+        toast({
+          title: "Error",
+          description: "No authenticated user found",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Delete all user data from database via API
+      const { deleteAccountViaAPI } = await import('@/lib/wallet-api');
+      const result = await deleteAccountViaAPI(authUser.id);
+
+      if (result.error) {
+        console.error('Failed to delete account data:', result.error);
+        // Continue with logout anyway
+      }
+
+      // For SIWS wallet users - clear local storage and redirect
+      if (authUser.isWalletUser) {
+        localStorage.removeItem('siws_token');
+        localStorage.removeItem('siws_public_key');
+        toast({
+          title: "Account Deleted",
+          description: "Your account and all associated data have been deleted.",
+        });
+        window.location.href = '/';
+        return;
+      }
+
+      // For regular users - sign out
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Account Deleted",
+        description: "Your account and all associated data have been deleted.",
+      });
+
+      window.location.href = '/';
+
+    } catch (error: any) {
+      console.error("Error deleting account:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete account",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteAccountLoading(false);
+      setDeleteAccountOpen(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="w-full max-w-none py-6 md:py-8 px-2">
-        <LoadingSpinner 
-          message="Loading your settings..." 
+        <LoadingSpinner
+          message="Loading your settings..."
           subMessage="Please wait while we fetch your account information"
         />
       </div>
@@ -471,74 +646,49 @@ export default function Settings() {
 
   return (
     <div className="w-full max-w-none py-6 md:py-8 px-2">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-500/20">
-          <svg className="h-8 w-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </div>
-        <div>
-          <h1 
-            className="text-3xl md:text-4xl font-bold text-purple-500"
-          >
-            Settings
-          </h1>
-          <p 
-            className="mt-1"
-            style={{ color: theme === 'dark' ? 'rgb(148 163 184)' : 'rgb(107 114 128)' }}
-          >
-            Manage your account and preferences
-          </p>
-        </div>
-      </div>
-      
       <div className="w-full">
         <div className="border-b border-slate-700/50 mb-6">
           <div className="grid w-full grid-cols-3 mb-8">
-            <button 
-              className={`py-3 px-4 font-medium transition-all duration-300 ${
-                activeTab === 'profile' 
-                  ? 'border-b-2 border-blue-500 text-blue-400' 
-                  : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-              }`}
+            <button
+              className={`py-3 px-4 font-medium transition-all duration-300 ${activeTab === 'profile'
+                ? 'border-b-2 border-blue-500 text-blue-400'
+                : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                }`}
               onClick={() => setActiveTab('profile')}
             >
               Profile
             </button>
-            <button 
-              className={`py-3 px-4 font-medium transition-all duration-300 ${
-                activeTab === 'account' 
-                  ? 'border-b-2 border-purple-500 text-purple-400' 
-                  : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-              }`}
+            <button
+              className={`py-3 px-4 font-medium transition-all duration-300 ${activeTab === 'account'
+                ? 'border-b-2 border-purple-500 text-purple-400'
+                : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                }`}
               onClick={() => setActiveTab('account')}
             >
               Account
             </button>
-            <button 
-              className={`py-3 px-4 font-medium transition-all duration-300 ${
-                activeTab === 'preferences' 
-                  ? 'border-b-2 border-emerald-500 text-emerald-400' 
-                  : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-              }`}
+            <button
+              className={`py-3 px-4 font-medium transition-all duration-300 ${activeTab === 'preferences'
+                ? 'border-b-2 border-gray-400 text-gray-300'
+                : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                }`}
               onClick={() => setActiveTab('preferences')}
             >
               Preferences
             </button>
           </div>
         </div>
-        
+
         {activeTab === 'profile' && (
-          <Card 
+          <Card
             className="border-slate-700/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-blue-500/10 overflow-hidden"
-            style={{ 
+            style={{
               backgroundColor: theme === 'dark' ? 'rgb(15 23 42 / 0.5)' : 'rgb(243 244 246)', // dark: slate-900/50, light: gray-100
               backgroundImage: theme === 'dark' ? 'linear-gradient(to bottom right, rgb(15 23 42 / 0.5), rgb(30 41 59 / 0.3))' : 'none'
             }}
           >
             <CardHeader className="bg-blue-500/10">
-              <CardTitle 
+              <CardTitle
                 className="flex items-center gap-2"
                 style={{ color: theme === 'dark' ? 'rgb(255 255 255)' : 'rgb(17 24 39)' }}
               >
@@ -549,24 +699,24 @@ export default function Settings() {
                 </div>
                 Profile Information
               </CardTitle>
-              <CardDescription 
+              <CardDescription
                 style={{ color: theme === 'dark' ? 'rgb(148 163 184)' : 'rgb(107 114 128)' }}
               >
                 Update your profile information here. This information may be visible to other users.
               </CardDescription>
             </CardHeader>
             <CardContent className="px-2 sm:px-4 py-4 space-y-4">
-               <div className="space-y-2">
-                <Label 
+              <div className="space-y-2">
+                <Label
                   htmlFor="username"
                   style={{ color: theme === 'dark' ? 'rgb(255 255 255)' : 'rgb(17 24 39)' }}
                 >
                   Username
                 </Label>
-                <Input 
-                  id="username" 
-                  name="username" 
-                  value={profile?.username || ''} 
+                <Input
+                  id="username"
+                  name="username"
+                  value={profile?.username || ''}
                   onChange={handleProfileChange}
                   placeholder="Choose your username"
                   className="border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20"
@@ -575,26 +725,26 @@ export default function Settings() {
                     color: theme === 'dark' ? 'rgb(255 255 255)' : 'rgb(17 24 39)',
                   }}
                 />
-                <p 
+                <p
                   className="text-sm"
                   style={{ color: theme === 'dark' ? 'rgb(148 163 184)' : 'rgb(107 114 128)' }}
                 >
                   This username will be displayed on the leaderboard and in your public profile.
                 </p>
               </div>
-              
+
               <div className="space-y-2">
-                <Label 
+                <Label
                   htmlFor="email"
                   style={{ color: theme === 'dark' ? 'rgb(255 255 255)' : 'rgb(17 24 39)' }}
                 >
                   Email
                 </Label>
-                <Input 
-                  id="email" 
+                <Input
+                  id="email"
                   name="email"
                   type="email"
-                  value={profile?.email || ''} 
+                  value={profile?.email || ''}
                   onChange={handleProfileChange}
                   placeholder="your.email@example.com"
                   className="border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20"
@@ -603,14 +753,14 @@ export default function Settings() {
                     color: theme === 'dark' ? 'rgb(255 255 255)' : 'rgb(17 24 39)',
                   }}
                 />
-                <p 
+                <p
                   className="text-sm"
                   style={{ color: theme === 'dark' ? 'rgb(148 163 184)' : 'rgb(107 114 128)' }}
                 >
-                  You'll receive a confirmation email to verify your new email address.
+                  Changing your email requires verification from both your current and new email addresses.
                 </p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Support</Label>
                 <div>
@@ -624,7 +774,11 @@ export default function Settings() {
               </div>
             </CardContent>
             <CardFooter className="px-2 sm:px-4 py-4">
-              <Button onClick={saveProfile} disabled={saving} className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg shadow-purple-500/20">
+              <Button
+                onClick={saveProfile}
+                disabled={saving}
+                className="bg-gradient-to-r from-slate-300 via-slate-100 to-slate-300 hover:from-slate-200 hover:via-white hover:to-slate-200 text-slate-900 font-bold shadow-lg shadow-slate-400/20 border-t border-white/50 transition-all duration-500"
+              >
                 {saving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -637,21 +791,21 @@ export default function Settings() {
             </CardFooter>
           </Card>
         )}
-        
+
         {activeTab === 'account' && (
-          <Card 
-            style={{ 
+          <Card
+            style={{
               backgroundColor: theme === 'dark' ? 'rgb(15 23 42 / 0.5)' : 'rgb(243 244 246)', // dark: slate-900/50, light: gray-100
               backgroundImage: theme === 'dark' ? 'linear-gradient(to bottom right, rgb(15 23 42 / 0.5), rgb(30 41 59 / 0.3))' : 'none'
             }}
           >
             <CardHeader>
-              <CardTitle 
+              <CardTitle
                 style={{ color: theme === 'dark' ? 'rgb(255 255 255)' : 'rgb(17 24 39)' }}
               >
                 Account Settings
               </CardTitle>
-              <CardDescription 
+              <CardDescription
                 style={{ color: theme === 'dark' ? 'rgb(148 163 184)' : 'rgb(107 114 128)' }}
               >
                 Manage your account settings and preferences.
@@ -659,49 +813,66 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="px-2 sm:px-4 py-4 space-y-4">
               <div className="space-y-2">
-                <Label 
+                <Label
                   htmlFor="password"
                   style={{ color: theme === 'dark' ? 'rgb(255 255 255)' : 'rgb(17 24 39)' }}
                 >
                   Password
                 </Label>
                 <div className="flex items-center gap-2">
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    value="••••••••" 
-                    disabled 
+                  <Input
+                    id="password"
+                    type="password"
+                    value="••••••••"
+                    disabled
                     className="bg-muted"
                   />
                   <Button variant="outline" onClick={() => setResetPasswordOpen(true)}>Change Password</Button>
                 </div>
               </div>
-              
+
               <div className="pt-4 border-t">
                 <h3 className="text-lg font-medium mb-2">Danger Zone</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   Once you delete your account, there is no going back. Please be certain.
                 </p>
-                <Button variant="destructive">Delete Account</Button>
+                <Button
+                  variant="destructive"
+                  disabled={deleteAccountLoading}
+                  onClick={() => {
+                    if (window.confirm("Are you absolutely sure you want to delete your account? This action cannot be undone.")) {
+                      handleDeleteAccount();
+                    }
+                  }}
+                >
+                  {deleteAccountLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Account'
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
         )}
-        
+
         {activeTab === 'preferences' && (
-          <Card 
-            style={{ 
+          <Card
+            style={{
               backgroundColor: theme === 'dark' ? 'rgb(15 23 42 / 0.5)' : 'rgb(243 244 246)', // dark: slate-900/50, light: gray-100
               backgroundImage: theme === 'dark' ? 'linear-gradient(to bottom right, rgb(15 23 42 / 0.5), rgb(30 41 59 / 0.3))' : 'none'
             }}
           >
             <CardHeader>
-              <CardTitle 
+              <CardTitle
                 style={{ color: theme === 'dark' ? 'rgb(255 255 255)' : 'rgb(17 24 39)' }}
               >
                 Preferences
               </CardTitle>
-              <CardDescription 
+              <CardDescription
                 style={{ color: theme === 'dark' ? 'rgb(148 163 184)' : 'rgb(107 114 128)' }}
               >
                 Customize your application experience.
@@ -710,107 +881,43 @@ export default function Settings() {
             <CardContent className="px-2 sm:px-4 py-4 space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 
-                    className="font-medium"
-                    style={{ color: theme === 'dark' ? 'rgb(255 255 255)' : 'rgb(17 24 39)' }}
-                  >
-                    Theme Mode
-                  </h3>
-                  <p 
-                    className="text-sm"
-                    style={{ color: theme === 'dark' ? 'rgb(148 163 184)' : 'rgb(107 114 128)' }}
-                  >
-                    Toggle between Dark and Light mode for the application.
-                  </p>
-                </div>
-                <Switch 
-                  checked={settings.darkMode} 
-                  onCheckedChange={() => handleSettingChange('darkMode')} 
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
                   <h3 className="font-medium">Push Notifications</h3>
                   <p className="text-sm text-muted-foreground">
                     Receive push notifications for important updates.
                   </p>
                 </div>
-                <Switch 
-                  checked={settings.notifications} 
-                  onCheckedChange={() => handleSettingChange('notifications')} 
+                <Switch
+                  checked={settings.notifications}
+                  onCheckedChange={() => handleSettingChange('notifications')}
                 />
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 
+                  <h3
                     className="font-medium"
                     style={{ color: theme === 'dark' ? 'rgb(255 255 255)' : 'rgb(17 24 39)' }}
                   >
                     Email Alerts
                   </h3>
-                  <p 
+                  <p
                     className="text-sm"
                     style={{ color: theme === 'dark' ? 'rgb(148 163 184)' : 'rgb(107 114 128)' }}
                   >
                     Receive email alerts for important updates.
                   </p>
                 </div>
-                <Switch 
-                  checked={settings.emailAlerts} 
-                  onCheckedChange={() => handleSettingChange('emailAlerts')} 
+                <Switch
+                  checked={settings.emailAlerts}
+                  onCheckedChange={() => handleSettingChange('emailAlerts')}
                 />
-              </div>
-              
-              <div className="pt-4 border-t">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">Subscription Plan</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Manage your subscription plan and billing.
-                    </p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="outline"
-                      className="bg-blue-500 hover:bg-blue-600"
-                      style={{ color: 'white' }}
-                      onClick={() => window.location.href = '/pricing'}
-                    >
-                      View Plans
-                    </Button>
-                    <div>
-                      <Button 
-                        variant="outline"
-                        className="bg-red-500 hover:bg-red-600"
-                        style={{ color: 'white' }}
-                        disabled={cancelSubscriptionLoading}
-                        onClick={() => {
-                          if (window.confirm("Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your current billing period.")) {
-                            handleCancelSubscription();
-                          }
-                        }}
-                      >
-                        {cancelSubscriptionLoading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Cancelling...
-                          </>
-                        ) : (
-                          'Cancel Subscription'
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
               </div>
             </CardContent>
             <CardFooter className="px-2 sm:px-4 py-4">
-              <Button 
-                onClick={saveUserSettings} 
+              <Button
+                onClick={saveUserSettings}
                 disabled={savingPreferences}
-                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg shadow-purple-500/20"
+                className="bg-gradient-to-r from-slate-300 via-slate-100 to-slate-300 hover:from-slate-200 hover:via-white hover:to-slate-200 text-slate-900 font-bold shadow-lg shadow-slate-400/20 border-t border-white/50 transition-all duration-500"
               >
                 {savingPreferences ? (
                   <>
@@ -833,12 +940,12 @@ export default function Settings() {
             <div className="mb-4">
               <h2 className="text-xl font-semibold">Reset Password</h2>
               <p className="text-muted-foreground">
-                {resetPasswordSent 
+                {resetPasswordSent
                   ? "Password reset email sent. Check your inbox for instructions to reset your password."
                   : "We'll send a password reset link to your email address."}
               </p>
             </div>
-            
+
             {!resetPasswordSent && (
               <div className="py-4">
                 <p className="text-sm mb-4">
@@ -849,7 +956,7 @@ export default function Settings() {
                 </p>
               </div>
             )}
-            
+
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setResetPasswordOpen(false)}>
                 {resetPasswordSent ? 'Close' : 'Cancel'}
@@ -859,6 +966,7 @@ export default function Settings() {
                   onClick={handleResetPassword}
                   loading={resetPasswordLoading}
                   cooldownSeconds={30}
+                  className="bg-gradient-to-r from-slate-300 via-slate-100 to-slate-300 hover:from-slate-200 hover:via-white hover:to-slate-200 text-slate-900 font-bold shadow-lg shadow-slate-400/20 border-t border-white/50 transition-all duration-500"
                 >
                   Send Reset Link
                 </RateLimitedButton>
@@ -878,20 +986,20 @@ export default function Settings() {
                 Please fill out the form below and we'll get back to you as soon as possible.
               </p>
             </div>
-            
+
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label 
+                <Label
                   htmlFor="subject"
                   style={{ color: theme === 'dark' ? 'rgb(255 255 255)' : 'rgb(17 24 39)' }}
                 >
                   Subject
                 </Label>
-                <Input 
-                  id="subject" 
-                  name="subject" 
-                  value={supportFormData.subject} 
-                  onChange={handleSupportFormChange} 
+                <Input
+                  id="subject"
+                  name="subject"
+                  value={supportFormData.subject}
+                  onChange={handleSupportFormChange}
                   placeholder="Brief description of your issue"
                   className="border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20"
                   style={{
@@ -900,19 +1008,19 @@ export default function Settings() {
                   }}
                 />
               </div>
-              
+
               <div className="space-y-2">
-                <Label 
+                <Label
                   htmlFor="message"
                   style={{ color: theme === 'dark' ? 'rgb(255 255 255)' : 'rgb(17 24 39)' }}
                 >
                   Message
                 </Label>
-                <textarea 
-                  id="message" 
-                  name="message" 
-                  value={supportFormData.message} 
-                  onChange={handleSupportFormChange} 
+                <textarea
+                  id="message"
+                  name="message"
+                  value={supportFormData.message}
+                  onChange={handleSupportFormChange}
                   placeholder="Please describe your issue in detail..."
                   className="flex min-h-[120px] w-full rounded-md border border-slate-700/50 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   style={{
@@ -922,15 +1030,15 @@ export default function Settings() {
                 />
               </div>
             </div>
-            
+
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setSupportFormOpen(false)}>
                 Cancel
               </Button>
-              <Button 
-                onClick={submitSupportRequest} 
+              <Button
+                onClick={submitSupportRequest}
                 disabled={sendingSupportRequest}
-                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg shadow-purple-500/20"
+                className="bg-gradient-to-r from-slate-300 via-slate-100 to-slate-300 hover:from-slate-200 hover:via-white hover:to-slate-200 text-slate-900 font-bold shadow-lg shadow-slate-400/20 border-t border-white/50 transition-all duration-500"
               >
                 {sendingSupportRequest ? (
                   <>

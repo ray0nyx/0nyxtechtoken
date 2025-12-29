@@ -22,7 +22,7 @@ export function constructSIWSMessage(
   const now = new Date();
   const domainName = domain || window.location.hostname;
   const uri = window.location.origin;
-  
+
   const message = `${domainName} wants you to sign in with your Solana account:
 ${publicKey}
 
@@ -42,21 +42,28 @@ export async function requestNonce(publicKey?: string): Promise<{ nonce: string;
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/siws-nonce`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${supabaseAnonKey}`,
-    },
-    body: JSON.stringify({ publicKey }),
-  });
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/siws-nonce`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({ publicKey }),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to generate nonce');
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || `Failed to generate nonce (${response.status} ${response.statusText})`);
+    }
+
+    return await response.json();
+  } catch (err: any) {
+    if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+      throw new Error(`Failed to connect to authentication service at ${supabaseUrl}. Please ensure the Edge Functions are deployed.`);
+    }
+    throw err;
   }
-
-  return await response.json();
 }
 
 /**

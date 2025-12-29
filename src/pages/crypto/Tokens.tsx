@@ -660,20 +660,44 @@ export default function CoinsPage() {
   useEffect(() => {
     const checkRiskAcknowledgment = async () => {
       try {
-        const acknowledged = localStorage.getItem('meme_coin_risk_acknowledged');
-        if (acknowledged === 'true') {
+        // 1. Fast path: Check localStorage
+        const localAcknowledged = localStorage.getItem('meme_coin_risk_acknowledged');
+        if (localAcknowledged === 'true') {
           setHasAcknowledgedRisk(true);
-        } else {
-          setShowRiskWarning(true);
+          setCheckingRiskAcknowledgment(false);
+          return;
         }
+
+        // 2. Auth path: Check database if logged in
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data, error } = await supabase
+            .from('user_risk_acknowledgments')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('acknowledgment_type', 'meme_coin_risk')
+            .limit(1);
+
+          if (data && data.length > 0) {
+            setHasAcknowledgedRisk(true);
+            localStorage.setItem('meme_coin_risk_acknowledged', 'true');
+            setCheckingRiskAcknowledgment(false);
+            return;
+          }
+        }
+
+        // 3. Fallback: Show warning
+        setShowRiskWarning(true);
       } catch (error) {
         console.error('Error checking risk acknowledgment:', error);
+        // Fallback to showing warning if check fails
+        setShowRiskWarning(true);
       } finally {
         setCheckingRiskAcknowledgment(false);
       }
     };
     checkRiskAcknowledgment();
-  }, []);
+  }, [supabase]);
 
   // Handle risk acknowledgment
   const handleRiskAcknowledged = () => {

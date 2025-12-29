@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +34,7 @@ export function UserDropdown({ className }: UserDropdownProps) {
       try {
         // Get user data
         const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
+
         if (authError || !user) {
           setIsLoaded(true);
           return;
@@ -45,7 +46,7 @@ export function UserDropdown({ className }: UserDropdownProps) {
         const isDevUser = devUserIds.includes(user.id);
         const isAdminUser = adminUserIds.includes(user.id);
         setIsAdmin(isAdminUser);
-        
+
         // Check subscription status
         const { data: subscription } = await supabase
           .from('user_subscriptions')
@@ -59,7 +60,7 @@ export function UserDropdown({ className }: UserDropdownProps) {
 
         // Default to first letter of email
         setUserInitials(user.email?.charAt(0).toUpperCase() || 'U');
-        
+
         // Note: The auth.users table doesn't have full_name or avatar_url columns
         // We'll use the email-based initials we already set above
       } catch (error) {
@@ -69,7 +70,7 @@ export function UserDropdown({ className }: UserDropdownProps) {
         setIsLoaded(true);
       }
     };
-    
+
     fetchUserProfile();
   }, [supabase]);
 
@@ -80,7 +81,7 @@ export function UserDropdown({ className }: UserDropdownProps) {
     }
   };
 
-  const handleWagyuTechClick = () => {
+  const handleOnyxTechClick = () => {
     if (hasAccess) {
       navigate('/app/analytics');
     }
@@ -97,42 +98,46 @@ export function UserDropdown({ className }: UserDropdownProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`rounded-full ${className}`}
+        <button
+          className={cn(
+            "rounded-full p-1 hover:bg-white/10 transition-colors focus:outline-none",
+            className
+          )}
         >
-          <Avatar className="h-8 w-8">
+          <Avatar className="h-! w-8">
             <AvatarImage src={avatarUrl} alt="User" />
-            <AvatarFallback>{userInitials}</AvatarFallback>
+            <AvatarFallback className="bg-[#6366f1] text-white">{userInitials}</AvatarFallback>
           </Avatar>
-        </Button>
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent
+        align="end"
+        className="w-56 bg-[#030303] border-white/10 text-white shadow-2xl"
+      >
         {hasAccess && (
-          <DropdownMenuItem 
-            onClick={handleWagyuTechClick}
-            className="cursor-pointer"
+          <DropdownMenuItem
+            onClick={handleOnyxTechClick}
+            className="cursor-pointer hover:bg-white/5 focus:bg-white/5 flex items-center gap-3 p-3 transition-colors"
           >
-            <BarChart3 className="mr-2 h-4 w-4" />
-            <span className="text-purple-500 font-medium">WagyuTech</span>
+            <BarChart3 className="h-4 w-4" />
+            <span className="text-purple-400 font-bold">0nyxTech</span>
           </DropdownMenuItem>
         )}
         {isAdmin && (
-          <DropdownMenuItem 
+          <DropdownMenuItem
             onClick={() => navigate('/admin')}
-            className="cursor-pointer"
+            className="cursor-pointer hover:bg-white/5 focus:bg-white/5 flex items-center gap-3 p-3 transition-colors text-red-400"
           >
-            <Shield className="mr-2 h-4 w-4" />
-            <span className="text-red-500 font-medium">Admin Panel</span>
+            <Shield className="h-4 w-4" />
+            <span className="font-bold">Admin Panel</span>
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem 
+        <DropdownMenuItem
           onClick={handleSignOut}
-          className="cursor-pointer"
+          className="cursor-pointer hover:bg-white/5 focus:bg-white/5 flex items-center gap-3 p-3 transition-colors text-gray-300"
         >
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Logout</span>
+          <LogOut className="h-4 w-4" />
+          <span className="font-bold">Logout</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

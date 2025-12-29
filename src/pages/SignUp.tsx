@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import { SolanaSignInButton } from '@/components/auth/SolanaSignInButton';
 import { getTurnkeyService } from '@/lib/wallet-abstraction/turnkey-service';
+import { Web3Background } from '@/components/ui/Web3Background';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -27,20 +28,16 @@ export default function SignUp() {
     }
   }, [location]);
 
-  // Function to safely navigate to pricing page
-  const navigateToPricing = () => {
+  // Function to navigate after successful signup
+  const navigateToApp = () => {
     try {
-      // Show success message
       toast({
         title: "Success",
-        description: "Account created! Please select a subscription to continue.",
+        description: "Account created! Welcome to 0nyx.",
       });
-
-      // Navigate to analytics page
       navigate('/app/analytics');
     } catch (navError) {
       console.error('Navigation error:', navError);
-      // Fallback to window.location if react-router fails
       window.location.href = '/app/analytics';
     }
   };
@@ -55,46 +52,27 @@ export default function SignUp() {
     const password = formData.get('password') as string;
 
     try {
-      // First try to sign up with a more direct approach
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          // Don't rely on redirect, we'll handle navigation in the component
-          data: {
-            email_confirmed: false
-          }
+          data: { email_confirmed: false }
         }
       });
 
       if (error) {
-        console.error('Signup error:', error);
-
-        // Expanded handling for database error saving new user
         if (error.message.includes('database error saving new user')) {
-          console.log('Attempting alternative sign-up flow for:', email);
-
-          // Check if it's a ProtonMail address
           const isProtonMail = email.toLowerCase().includes('@proton.') ||
             email.toLowerCase().includes('@pm.') ||
             email.toLowerCase().includes('@protonmail.') ||
             email.toLowerCase().includes('@proton.me');
 
-          if (isProtonMail) {
-            toast({
-              title: "ProtonMail Detected",
-              description: "We're using an alternative signup method for ProtonMail users. Please wait...",
-            });
-          }
-
           try {
-            // Show loading toast for alternative flow
             toast({
               title: "Using Alternative Registration",
               description: "Please wait while we complete your registration...",
             });
 
-            // Call our edge function to handle registration
             const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-user`, {
               method: 'POST',
               headers: {
@@ -111,158 +89,26 @@ export default function SignUp() {
 
             if (!response.ok) {
               const errorData = await response.json();
-              console.error('Alternative registration error:', errorData);
               throw new Error(errorData.error || 'Failed to register user');
             }
 
-            const registrationData = await response.json();
-            console.log('Alternative registration successful:', registrationData);
-
-            // If successful, try to sign in
-            const { data: signinData, error: signinError } = await supabase.auth.signInWithPassword({
-              email,
-              password
-            });
-
-            if (signinError) {
-              console.error('Sign-in after alternative registration failed:', signinError);
-              throw signinError;
-            }
-
-            // Redirect to Stripe checkout with 14-day free trial
-            try {
-              const defaultPriceId = import.meta.env.VITE_STRIPE_PRICE_STARTER || 'price_1QzZqQK9cein1vEZExkBcl89';
-
-              const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
-                  'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-                },
-                body: JSON.stringify({
-                  priceId: defaultPriceId,
-                  returnUrl: `${window.location.origin}/app/analytics?session_id={CHECKOUT_SESSION_ID}`
-                })
-              });
-
-              if (response.ok) {
-                const { url } = await response.json();
-                if (url) {
-                  window.location.href = url;
-                  return;
-                }
-              }
-            } catch (checkoutError) {
-              console.error('Checkout error:', checkoutError);
-            }
-
-            // Fallback navigation
-            if (returnToPricing) {
-              navigateToPricing();
-            } else {
-              navigate('/pricing');
-            }
+            await supabase.auth.signInWithPassword({ email, password });
+            navigateToApp();
             return;
           } catch (altError) {
-            console.error('Alternative flow error:', altError);
             throw new Error(altError instanceof Error ? altError.message : 'Signup failed. Please try again.');
           }
         } else {
-          // Handle other auth errors
           throw error;
         }
       }
 
-      // If we get here, signUp was successful
       if (data.user) {
-        // Create Turnkey wallet for new user
-        try {
-          const user = data.user;
-          const turnkeyService = getTurnkeyService();
-
-          // Check if wallet already exists (unlikely for new sign up but good practice)
-          const { data: existingWallet } = await supabase
-            .from('user_wallets')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('wallet_type', 'turnkey')
-            .maybeSingle();
-
-          if (!existingWallet) {
-            // Create sub-organization and wallet
-            const subOrg = await turnkeyService.createSubOrganization(user.id, user.email || '');
-
-            // Save to DB
-            await supabase
-              .from('user_wallets')
-              .upsert({
-                user_id: user.id,
-                wallet_address: subOrg.walletAddress,
-                wallet_type: 'turnkey',
-                turnkey_wallet_id: subOrg.walletId,
-                turnkey_organization_id: subOrg.subOrganizationId,
-                created_at: new Date().toISOString(),
-                is_active: true,
-              });
-          }
-        } catch (walletError) {
-          console.error('Failed to create Turnkey wallet on signup:', walletError);
-          // Don't block signup, user can create wallet later via Deposit modal
-        }
-
-        // Redirect to Stripe checkout with 14-day free trial
-        try {
-          // Use the starter plan priceId as default for new signups
-          const defaultPriceId = import.meta.env.VITE_STRIPE_PRICE_STARTER || 'price_1QzZqQK9cein1vEZExkBcl89';
-
-          // Create checkout session via edge function
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
-              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-            },
-            body: JSON.stringify({
-              priceId: defaultPriceId,
-              returnUrl: `${window.location.origin}/app/analytics?session_id={CHECKOUT_SESSION_ID}`
-            })
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to create checkout session');
-          }
-
-          const { url } = await response.json();
-
-          if (url) {
-            // Redirect to Stripe checkout
-            window.location.href = url;
-            return;
-          } else {
-            throw new Error('No checkout URL returned');
-          }
-        } catch (checkoutError) {
-          console.error('Checkout error:', checkoutError);
-          // Fallback: show error but don't block signup
-          toast({
-            title: "Account created",
-            description: "Please visit the pricing page to start your subscription",
-            variant: "default",
-          });
-
-          if (returnToPricing) {
-            navigateToPricing();
-          } else {
-            navigate('/pricing');
-          }
-        }
+        navigateToApp();
+        return;
       }
     } catch (error: any) {
       setError(error.message || 'An unknown error occurred');
-      console.error('Final signup error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to create account",
@@ -278,7 +124,7 @@ export default function SignUp() {
       setIsLoading(true);
       setError(null);
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/app/analytics`
@@ -286,14 +132,11 @@ export default function SignUp() {
       });
 
       if (error) throw error;
-
-      // Google OAuth will redirect the user, so no need to manually redirect here
-    } catch (error) {
-      console.error('Google signup error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to sign up with Google');
+    } catch (error: any) {
+      setError(error.message || 'Failed to sign up with Google');
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to sign up with Google",
+        description: error.message || "Failed to sign up with Google",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -301,41 +144,32 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-purple-600 to-purple-900 flex flex-col light">
-      <div className="flex-grow flex flex-col items-center justify-center p-4">
-        <Card className="w-full max-w-sm bg-white shadow-2xl border-0 rounded-2xl">
-          <CardHeader className="text-center pb-6">
+    <div className="min-h-screen bg-[#0a0a0f] flex flex-col relative">
+      <Web3Background />
+      <div className="flex-grow flex flex-col items-center justify-center p-4 relative z-10">
+        <Card className="w-full max-w-sm bg-[#121218]/90 backdrop-blur-xl shadow-2xl border border-white/10 rounded-2xl">
+          <CardHeader className="text-center pt-2 pb-2">
             <div
-              className="font-extrabold text-2xl mb-4 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+              className="mb-0 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center -mt-8"
               onClick={() => navigate('/')}
             >
-              <span className="text-purple-500 font-extrabold text-2xl">0nyx</span>
-              <span className="text-gray-600 font-extrabold text-2xl">Tech</span>
+              <img
+                src="/images/ot white.svg"
+                alt="0nyxTech Logo"
+                className="h-40 w-auto"
+              />
             </div>
-            <CardTitle className="text-gray-900 text-xl font-bold">Create an Account</CardTitle>
-            <CardDescription className="text-gray-600 text-sm">
-              {returnToPricing
-                ? "Sign up to continue with your subscription"
-                : "Get started with 0nyx today."}
+            <CardTitle className="text-white text-xl font-bold">Create an Account</CardTitle>
+            <CardDescription className="text-gray-400 text-sm">
+              Get started with 0nyx today.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+              <div className="bg-red-900/30 border border-red-500/50 text-red-400 px-4 py-3 rounded mb-4">
                 {error}
               </div>
             )}
-
-            {returnToPricing && (
-              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4">
-                After signing up, you'll be redirected back to choose your subscription plan.
-              </div>
-            )}
-
-            <div className="bg-purple-50 border border-purple-200 text-purple-700 px-4 py-3 rounded mb-4">
-              <p className="font-semibold">🎉 Start Your 14-Day Free Trial</p>
-              <p className="text-sm mt-1">No credit card required until your trial ends. Cancel anytime.</p>
-            </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
@@ -353,7 +187,7 @@ export default function SignUp() {
                     placeholder="Enter your email"
                     autoComplete="email"
                     disabled={isLoading}
-                    className="pl-10 h-12 rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-black placeholder:text-gray-500"
+                    className="pl-10 h-12 rounded-lg border-white/10 focus:border-slate-400 focus:ring-slate-400 bg-white/5 text-white placeholder:text-gray-500"
                   />
                 </div>
               </div>
@@ -373,7 +207,7 @@ export default function SignUp() {
                     autoComplete="new-password"
                     minLength={6}
                     disabled={isLoading}
-                    className="pl-10 pr-10 h-12 rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-black placeholder:text-gray-500"
+                    className="pl-10 pr-10 h-12 rounded-lg border-white/10 focus:border-slate-400 focus:ring-slate-400 bg-white/5 text-white placeholder:text-gray-500"
                   />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -386,7 +220,7 @@ export default function SignUp() {
               </div>
               <Button
                 type="submit"
-                className="w-full h-12 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-medium rounded-lg"
+                className="w-full h-12 bg-slate-200 hover:bg-slate-300 text-slate-900 font-bold rounded-lg transition-all duration-200 shadow-[0_0_15px_rgba(255,255,255,0.1)]"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -403,18 +237,18 @@ export default function SignUp() {
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
+                  <div className="w-full border-t border-white/10"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                  <span className="px-2 bg-[#121218] text-gray-400">Or continue with</span>
                 </div>
               </div>
 
-              <div className="mt-6 space-y-3">
+              <div className="mt-6 space-y-4">
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full h-12 bg-white text-gray-700 border-gray-300 hover:bg-gray-50 rounded-lg"
+                  className="w-full h-12 bg-white/5 text-white border-white/10 hover:bg-white/10 rounded-lg"
                   onClick={handleGoogleSignUp}
                   disabled={isLoading}
                 >
@@ -443,25 +277,25 @@ export default function SignUp() {
                   Google
                 </Button>
                 <SolanaSignInButton
-                  variant="outline"
-                  className="w-full h-12 bg-white text-gray-700 border-gray-300 hover:bg-gray-50 rounded-lg"
-                  label="Sign up with Solana"
+                  isPhantom={true}
+                  className="w-full"
+                  label="Sign up with Phantom"
                 />
               </div>
             </div>
 
             <div className="mt-6 text-center text-xs text-gray-500">
               By signing up, you agree to our{' '}
-              <a href="/terms" className="text-purple-500 hover:text-purple-600 underline">Terms</a>
+              <a href="/terms" className="text-slate-400 hover:text-slate-300 underline">Terms</a>
               {' '}&{' '}
-              <a href="/privacy" className="text-purple-500 hover:text-purple-600 underline">Privacy Policy</a>
+              <a href="/privacy" className="text-slate-400 hover:text-slate-300 underline">Privacy Policy</a>
             </div>
 
-            <div className="mt-4 text-center text-sm">
-              <span className="text-muted-foreground">Already have an account?</span>{' '}
+            <div className="mt-4 text-center text-sm text-gray-400">
+              Already have an account?{' '}
               <a
                 href="/signin"
-                className="font-semibold text-purple-500 hover:text-purple-600 transition-colors"
+                className="font-semibold text-slate-400 hover:text-slate-300 transition-colors"
               >
                 Sign in
               </a>
@@ -470,43 +304,17 @@ export default function SignUp() {
         </Card>
       </div>
 
-      {/* Footer from Index page */}
-      <footer className="w-full py-8 bg-white border-t border-gray-200">
+      {/* Footer */}
+      <footer className="w-full py-8 bg-[#0a0a0f] border-t border-white/10 relative z-10">
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="flex items-center gap-6">
-              <a
-                href="https://x.com/WagyuTech"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-600 hover:text-purple-500 transition-colors duration-300"
-                aria-label="X (Twitter)"
-              >
-                <img
-                  src="images/x-logo.png"
-                  alt="X (Twitter)"
-                  className="h-5 w-5 opacity-80 hover:opacity-100 transition-opacity"
-                />
-              </a>
-              <a
-                href="https://www.instagram.com/wagyutech.app/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-600 hover:text-purple-500 transition-colors duration-300"
-                aria-label="Instagram"
-              >
-                <img
-                  src="images/instagram-logo.png"
-                  alt="Instagram"
-                  className="h-5 w-5 opacity-80 hover:opacity-100 transition-opacity"
-                />
-              </a>
-              <a href="/affiliates" className="text-purple-500 hover:text-purple-600 transition-colors duration-300">Become An Affiliate</a>
-              <a href="/terms" className="text-gray-600 hover:text-purple-500 transition-colors duration-300">Terms</a>
-              <a href="/privacy" className="text-gray-600 hover:text-purple-500 transition-colors duration-300">Privacy</a>
-              <a href="#" className="text-gray-600 hover:text-purple-500 transition-colors duration-300">Contact</a>
+              <a href="/affiliates" className="text-slate-400 hover:text-slate-300 transition-colors duration-300">Become An Affiliate</a>
+              <a href="/terms" className="text-gray-400 hover:text-slate-300 transition-colors duration-300">Terms</a>
+              <a href="/privacy" className="text-gray-400 hover:text-slate-300 transition-colors duration-300">Privacy</a>
+              <a href="#" className="text-gray-400 hover:text-slate-300 transition-colors duration-300">Contact</a>
             </div>
-            <p className="text-gray-600 text-sm">© {new Date().getFullYear()} All rights reserved.</p>
+            <p className="text-gray-500 text-sm">© 2026 0nyxTech. All rights reserved.</p>
           </div>
         </div>
       </footer>

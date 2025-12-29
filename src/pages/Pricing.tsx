@@ -87,16 +87,16 @@ export default function Pricing() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState<string | null>(null);
-  
-  const { 
-    status, 
-    updateSubscriptionStatus, 
+
+  const {
+    status,
+    updateSubscriptionStatus,
     isLoading: subscriptionLoading,
     isAuthenticated
   } = useSubscriptionStatus();
-  
+
   const [isForced, setIsForced] = useState(false);
-  
+
   useEffect(() => {
     if (location.state && location.state.fromDashboard) {
       setIsForced(true);
@@ -150,7 +150,7 @@ export default function Pricing() {
   };
 
   const [userName, setUserName] = useState<string | null>(null);
-  
+
   useEffect(() => {
     const getUserInfo = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -159,7 +159,7 @@ export default function Pricing() {
         setUserName(name);
       }
     };
-    
+
     getUserInfo();
   }, []);
 
@@ -175,7 +175,7 @@ export default function Pricing() {
 
       <header className="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-sm flex items-center justify-between h-16 px-4 sm:px-6">
         <div className="font-extrabold text-xl relative flex items-center">
-          <a 
+          <a
             onClick={() => navigate('/')}
             className="cursor-pointer flex items-center"
           >
@@ -186,14 +186,14 @@ export default function Pricing() {
 
         <div className="hidden md:flex items-center justify-center flex-1">
           <nav className="flex items-center space-x-8">
-            <button 
-              onClick={() => navigate('/pricing')} 
+            <button
+              onClick={() => navigate('/pricing')}
               className="text-purple-500 font-medium"
             >
               Pricing
             </button>
-            <button 
-              onClick={() => navigate('/affiliates')} 
+            <button
+              onClick={() => navigate('/affiliates')}
               className="text-gray-600 hover:text-purple-500 transition-colors duration-300 font-medium"
             >
               Become An Affiliate
@@ -206,13 +206,13 @@ export default function Pricing() {
             <UserDropdown />
           ) : (
             <>
-              <button 
+              <button
                 onClick={() => navigate('/signin')}
                 className="text-gray-600 hover:text-purple-500 transition-colors px-4 py-2 font-medium"
               >
                 Sign In
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/signup')}
                 className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-2 rounded-lg transition-all duration-300 font-medium"
               >
@@ -233,19 +233,19 @@ export default function Pricing() {
                     <p>Please select a subscription plan to continue using 0nyx.</p>
                   </div>
                 )}
-                
+
                 {status === 'pending' && (
                   <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded-lg mb-6">
                     <p>Your account is ready! Choose a subscription plan to start tracking your crypto trades.</p>
                   </div>
                 )}
-                
+
                 {!isAuthenticated && (
                   <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6">
                     <p><strong>Access Denied:</strong> You need an active subscription to access the dashboard. Please subscribe below to continue.</p>
                   </div>
                 )}
-                
+
                 {status === 'unauthenticated' && (
                   <div className="bg-purple-50 border border-purple-200 text-purple-700 p-4 rounded-lg mb-6">
                     <p>Create an account to get started with 0nyx Crypto Analytics. Select a plan below.</p>
@@ -259,7 +259,7 @@ export default function Pricing() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Badge */}
                 <div className="inline-flex items-center gap-2 bg-purple-100 border border-purple-200 rounded-full px-4 py-2 text-purple-600 text-sm font-medium mx-auto">
                   <Sparkles className="w-4 h-4" />
@@ -273,7 +273,7 @@ export default function Pricing() {
                 <p className="mx-auto max-w-[800px] text-gray-600 text-lg md:text-xl">
                   Quantify the emotional cost of every SOL liquidation. The only professional journal that correlates your discipline to finality speed and congestion costs.
                 </p>
-                
+
                 {/* Free Trial Banner */}
                 <div className="mt-6 bg-gradient-to-r from-purple-500 to-blue-500 shadow-lg shadow-purple-500/20 rounded-xl px-6 py-4 text-white font-bold text-lg mx-auto max-w-2xl">
                   🎉 Start Your <span className="underline">14-Day Free Trial</span> - No Credit Card Required Until Trial Ends!
@@ -289,21 +289,20 @@ export default function Pricing() {
               {plans.map((plan) => {
                 const IconComponent = plan.icon;
                 return (
-                  <Card 
-                    key={plan.name} 
-                    className={`relative bg-white border border-gray-200 overflow-hidden transition-all duration-500 hover:scale-105 hover:shadow-xl ${
-                      plan.popular ? 'ring-2 ring-purple-500 shadow-lg shadow-purple-500/20' : 'hover:border-purple-300'
-                    }`}
+                  <Card
+                    key={plan.name}
+                    className={`relative bg-white border border-gray-200 overflow-hidden transition-all duration-500 hover:scale-105 hover:shadow-xl ${plan.popular ? 'ring-2 ring-purple-500 shadow-lg shadow-purple-500/20' : 'hover:border-purple-300'
+                      }`}
                   >
                     {plan.popular && (
                       <div className="absolute top-0 right-0 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs font-bold px-4 py-1 rounded-bl-lg">
                         MOST POPULAR
                       </div>
                     )}
-                    
+
                     {/* Gradient overlay */}
                     <div className={`absolute inset-0 bg-gradient-to-br ${plan.gradient} opacity-5`}></div>
-                    
+
                     <div className="relative p-8">
                       {/* Icon */}
                       <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-6`}>
@@ -312,7 +311,7 @@ export default function Pricing() {
 
                       <h2 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h2>
                       <p className="text-gray-500 mb-6">{plan.description}</p>
-                      
+
                       <div className="flex items-baseline gap-1 mb-8">
                         <span className={`text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r ${plan.gradient}`}>
                           {plan.price}
@@ -331,7 +330,7 @@ export default function Pricing() {
                         ))}
                       </ul>
 
-                      <Button 
+                      <Button
                         onClick={() => handleSubscribe(plan.priceId!)}
                         disabled={isLoading === plan.priceId || subscriptionLoading || status === 'active'}
                         className={`w-full py-6 text-lg font-bold bg-gradient-to-r ${plan.gradient} hover:opacity-90 text-white transition-all duration-300`}
@@ -390,7 +389,7 @@ export default function Pricing() {
             </div>
           </div>
         </section>
-        
+
         {/* FAQ Section */}
         <section className="py-12 md:py-24 border-t border-gray-200">
           <div className="container px-4 md:px-6 mx-auto">
@@ -425,7 +424,7 @@ export default function Pricing() {
               <a href="/privacy" className="text-gray-500 hover:text-purple-500 transition-colors">Privacy</a>
               <a href="#" className="text-gray-500 hover:text-purple-500 transition-colors">Contact</a>
             </div>
-            <p className="text-gray-400">© 2024 0nyx. All rights reserved.</p>
+            <p className="text-gray-400">© 2026 0nyxTech. All rights reserved.</p>
           </div>
         </div>
       </footer>

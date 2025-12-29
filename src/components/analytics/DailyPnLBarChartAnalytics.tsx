@@ -8,6 +8,7 @@ import { BarChart2, RefreshCw, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useTheme } from '@/components/ThemeProvider';
 import { formatCurrency } from '@/lib/formatters';
+import { getCurrentUser } from '@/lib/auth-utils';
 
 interface TradeData {
   entry_date?: string;
@@ -59,14 +60,13 @@ export function DailyPnLBarChartAnalytics({ limitMonths }: DailyPnLBarChartAnaly
   const fetchTrades = useCallback(async () => {
     console.log('DailyPnLBarChartAnalytics: Starting to fetch trades...');
     setIsLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
+
+    // Support both Supabase and SIWS wallet auth
+    const user = await getCurrentUser();
 
     if (!user) {
-      toast({
-        title: 'Error',
-        description: 'User not authenticated.',
-        variant: 'destructive',
-      });
+      // Silently fail for unauthenticated users - they'll see empty chart
+      console.log('DailyPnLBarChartAnalytics: No authenticated user');
       setIsLoading(false);
       return;
     }

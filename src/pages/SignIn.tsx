@@ -9,6 +9,7 @@ import { DEVELOPER_IDS } from '@/hooks/useSubscription';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 import { SolanaSignInButton } from '@/components/auth/SolanaSignInButton';
+import { Web3Background } from '@/components/ui/Web3Background';
 
 // Password validation regex
 const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
@@ -23,10 +24,10 @@ export default function SignIn() {
   const [resetEmail, setResetEmail] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Check if we should return to pricing after signin
   const [returnToPricing, setReturnToPricing] = useState(false);
-  
+
   useEffect(() => {
     // Check if we came from pricing page
     if (location.state && location.state.returnToPricing) {
@@ -52,14 +53,14 @@ export default function SignIn() {
           // Store tokens explicitly
           localStorage.setItem('sb-access-token', session.access_token);
           localStorage.setItem('sb-refresh-token', session.refresh_token);
-          
+
           // Check if user is a developer
           const developerIds = DEVELOPER_IDS;
-          
+
           if (developerIds.includes(session.user.id)) {
             console.log('Developer user detected, navigating to analytics');
           }
-          
+
           // Always navigate to analytics for logged in users
           navigate('/app/analytics');
         }
@@ -76,7 +77,7 @@ export default function SignIn() {
     setError(null);
     // Explicitly ensure reset dialog is closed on sign in attempt
     setShowResetDialog(false);
-    
+
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -91,7 +92,7 @@ export default function SignIn() {
 
       if (data.user && data.session) {
         console.log('SignIn: User signed in successfully');
-        
+
         // Store tokens explicitly to ensure they're available
         if (data.session.access_token) {
           localStorage.setItem('sb-access-token', data.session.access_token);
@@ -99,12 +100,12 @@ export default function SignIn() {
         if (data.session.refresh_token) {
           localStorage.setItem('sb-refresh-token', data.session.refresh_token);
         }
-        
+
         toast({
           title: "Success",
           description: "Successfully signed in",
         });
-        
+
         // Small delay to ensure auth state is propagated
         setTimeout(() => {
           console.log('SignIn: Navigating to /app/analytics');
@@ -159,18 +160,18 @@ export default function SignIn() {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: returnToPricing 
-            ? `${window.location.origin}/app/pricing` 
+          redirectTo: returnToPricing
+            ? `${window.location.origin}/app/pricing`
             : `${window.location.origin}/app/analytics`
         }
       });
 
       if (error) throw error;
-      
+
       // Google OAuth will redirect the user, so no need to manually redirect here
     } catch (error) {
       console.error('Google signin error:', error);
@@ -196,37 +197,37 @@ export default function SignIn() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-purple-600 to-purple-900 flex flex-col light">
-      <div className="flex-grow flex flex-col items-center justify-center p-4">
-        <Card className="w-full max-w-sm bg-white shadow-2xl border-0 rounded-2xl">
-          <CardHeader className="text-center pb-6">
-            <div 
-              className="font-extrabold text-2xl mb-4 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+    <div className="min-h-screen bg-[#0a0a0f] flex flex-col relative">
+      <Web3Background />
+      <div className="flex-grow flex flex-col items-center justify-center p-4 relative z-10">
+        <Card className="w-full max-w-sm bg-[#121218]/90 backdrop-blur-xl shadow-2xl border border-white/10 rounded-2xl">
+          <CardHeader className="text-center pt-2 pb-2">
+            <div
+              className="mb-0 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center -mt-8"
               onClick={() => navigate('/')}
             >
-              <span className="text-purple-500 font-extrabold text-2xl">0nyx</span>
-              <span className="text-gray-600 font-extrabold text-2xl">Tech</span>
+              <img
+                src="/images/ot white.svg"
+                alt="0nyxTech Logo"
+                className="h-40 w-auto"
+              />
             </div>
-            <CardTitle className="text-gray-900 text-xl font-bold">Sign In</CardTitle>
-            <CardDescription className="text-gray-600 text-sm">
-              {returnToPricing 
-                ? "Sign in to continue with your subscription" 
+            <CardTitle className="text-white text-xl font-bold">Sign In</CardTitle>
+            <CardDescription className="text-gray-400 text-sm">
+              {returnToPricing
+                ? "Sign in to continue"
                 : "Welcome back to 0nyx!"}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+              <div className="bg-red-900/30 border border-red-500/50 text-red-400 px-4 py-3 rounded mb-4">
                 {error}
               </div>
             )}
-            
-            {returnToPricing && (
-              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4">
-                After signing in, you'll be redirected back to choose your subscription plan.
-              </div>
-            )}
-          
+
+
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <div className="relative">
@@ -235,15 +236,15 @@ export default function SignIn() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                     </svg>
                   </div>
-                  <Input 
-                    id="email" 
-                    name="email" 
-                    type="email" 
-                    required 
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
                     placeholder="Enter your email"
                     autoComplete="email"
                     disabled={isLoading}
-                    className="pl-10 h-12 rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-black placeholder:text-gray-500"
+                    className="pl-10 h-12 rounded-lg border-white/10 focus:border-slate-400 focus:ring-slate-400 bg-white/5 text-white placeholder:text-gray-500"
                   />
                 </div>
               </div>
@@ -254,23 +255,23 @@ export default function SignIn() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
-                  <Input 
-                    id="password" 
-                    name="password" 
-                    type="password" 
-                    required 
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
                     placeholder="Enter your password"
                     autoComplete="current-password"
                     disabled={isLoading}
-                    className="pl-10 h-12 rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-black placeholder:text-gray-500"
+                    className="pl-10 h-12 rounded-lg border-white/10 focus:border-slate-400 focus:ring-slate-400 bg-white/5 text-white placeholder:text-gray-500"
                   />
                 </div>
               </div>
               <div className="flex justify-end">
-                <Button 
+                <Button
                   type="button"
-                  variant="link" 
-                  className="px-0 h-auto text-sm" 
+                  variant="link"
+                  className="px-0 h-auto text-sm text-slate-400 hover:text-slate-300 transition-colors"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -281,7 +282,7 @@ export default function SignIn() {
                   Forgot password?
                 </Button>
               </div>
-              <Button type="submit" className="w-full h-12 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg shadow-purple-500/20 text-white font-medium rounded-lg" disabled={isLoading}>
+              <Button type="submit" className="w-full h-12 bg-slate-200 hover:bg-slate-300 text-slate-900 font-bold rounded-lg transition-all duration-200 shadow-[0_0_15px_rgba(255,255,255,0.1)] border-none" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -295,17 +296,17 @@ export default function SignIn() {
 
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t"></div>
+                <div className="w-full border-t border-white/10"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                <span className="bg-[#121218] px-2 text-gray-400">Or continue with</span>
               </div>
             </div>
 
-            <Button 
-              variant="outline" 
-              type="button" 
-              className="w-full bg-white text-black border-gray-300 hover:bg-gray-50"
+            <Button
+              variant="outline"
+              type="button"
+              className="w-full h-12 bg-white/5 text-white border-white/10 hover:bg-white/10 rounded-lg"
               onClick={handleGoogleSignIn}
               disabled={isLoading}
             >
@@ -316,7 +317,7 @@ export default function SignIn() {
                 </>
               ) : (
                 <>
-                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                  <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                     <path
                       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                       fill="#4285F4"
@@ -339,17 +340,18 @@ export default function SignIn() {
               )}
             </Button>
 
-            <SolanaSignInButton 
-              variant="outline"
-              className="w-full bg-white text-black border-gray-300 hover:bg-gray-50"
-              label="Sign in with Solana"
-            />
+            <div className="mt-3">
+              <SolanaSignInButton
+                isPhantom={true}
+                className="w-full"
+              />
+            </div>
 
-            <div className="mt-4 text-center text-sm">
+            <div className="mt-4 text-center text-sm text-gray-400">
               Don't have an account?{' '}
               <button
-                onClick={() => navigate('/signup', returnToPricing ? { state: { returnToPricing: true } } : {})}
-                className="text-purple-500 hover:text-purple-600 hover:underline font-medium transition-colors"
+                onClick={() => navigate('/signup')}
+                className="text-slate-400 hover:text-slate-300 hover:underline font-medium transition-colors"
                 disabled={isLoading}
               >
                 Sign Up
@@ -359,58 +361,58 @@ export default function SignIn() {
         </Card>
       </div>
 
-      {/* Footer from Index page */}
-      <footer className="w-full py-8 bg-white border-t border-gray-200">
+      {/* Footer */}
+      <footer className="w-full py-8 bg-[#0a0a0f] border-t border-white/10 relative z-10">
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="flex items-center gap-6">
-              <a 
-                href="https://x.com/WagyuTech" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-gray-600 hover:text-purple-500 transition-colors duration-300"
+              <a
+                href="https://x.com/0nyxTech"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-slate-300 transition-colors duration-300"
                 aria-label="X (Twitter)"
               >
-                <img 
-                  src="images/x-logo.png" 
-                  alt="X (Twitter)" 
-                  className="h-5 w-5 opacity-80 hover:opacity-100 transition-opacity"
+                <img
+                  src="/images/x-logo.png"
+                  alt="X (Twitter)"
+                  className="h-5 w-5 opacity-60 hover:opacity-100 transition-opacity invert"
                 />
               </a>
-              <a 
-                href="https://www.instagram.com/wagyutech.app/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-gray-600 hover:text-purple-500 transition-colors duration-300"
+              <a
+                href="https://www.instagram.com/0nyxtech/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-slate-300 transition-colors duration-300"
                 aria-label="Instagram"
               >
-                <img 
-                  src="images/instagram-logo.png" 
-                  alt="Instagram" 
-                  className="h-5 w-5 opacity-80 hover:opacity-100 transition-opacity"
+                <img
+                  src="/images/instagram-logo.png"
+                  alt="Instagram"
+                  className="h-5 w-5 opacity-60 hover:opacity-100 transition-opacity invert"
                 />
               </a>
-              <a href="/affiliates" className="text-purple-500 hover:text-purple-600 transition-colors duration-300">Become An Affiliate</a>
-              <a href="/terms" className="text-gray-600 hover:text-purple-500 transition-colors duration-300">Terms</a>
-              <a href="/privacy" className="text-gray-600 hover:text-purple-500 transition-colors duration-300">Privacy</a>
-              <a href="#" className="text-gray-600 hover:text-purple-500 transition-colors duration-300">Contact</a>
+              <a href="/affiliates" className="text-slate-400 hover:text-slate-300 transition-colors duration-300">Become An Affiliate</a>
+              <a href="/terms" className="text-gray-400 hover:text-slate-300 transition-colors duration-300">Terms</a>
+              <a href="/privacy" className="text-gray-400 hover:text-slate-300 transition-colors duration-300">Privacy</a>
+              <a href="#" className="text-gray-400 hover:text-slate-300 transition-colors duration-300">Contact</a>
             </div>
-            <p className="text-gray-600 text-sm">© {new Date().getFullYear()} 0nyx. All rights reserved.</p>
+            <p className="text-gray-500 text-sm">© 2026 0nyxTech. All rights reserved.</p>
           </div>
         </div>
       </footer>
 
       <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-        <DialogContent className="bg-white border-0 shadow-2xl rounded-2xl">
+        <DialogContent className="bg-[#121218] border border-white/10 shadow-2xl rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-gray-900 text-xl font-bold">Reset Password</DialogTitle>
-            <DialogDescription className="text-gray-600 text-sm">
+            <DialogTitle className="text-white text-xl font-bold">Reset Password</DialogTitle>
+            <DialogDescription className="text-gray-400 text-sm">
               Enter your email address and we'll send you instructions to reset your password.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleResetPassword} className="space-y-6">
             <div className="space-y-2">
-              <label htmlFor="reset-email" className="text-gray-900 font-medium">Email</label>
+              <label htmlFor="reset-email" className="text-white font-medium">Email</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -425,7 +427,7 @@ export default function SignIn() {
                   placeholder="Enter your email"
                   disabled={isResetting}
                   required
-                  className="pl-10 h-12 rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-black placeholder:text-gray-500"
+                  className="pl-10 h-12 rounded-lg border-white/10 focus:border-slate-400 focus:ring-slate-400 bg-white/5 text-white placeholder:text-gray-500"
                 />
               </div>
             </div>
@@ -435,14 +437,14 @@ export default function SignIn() {
                 variant="outline"
                 onClick={() => setShowResetDialog(false)}
                 disabled={isResetting}
-                className="h-12 px-6 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg"
+                className="h-12 px-6 border-white/10 text-gray-300 hover:bg-white/10 rounded-lg"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isResetting}
-                className="h-12 px-6 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-medium rounded-lg"
+                className="w-full h-12 bg-slate-300 hover:bg-slate-400 text-slate-900 font-bold rounded-lg transition-all duration-200 shadow-[0_0_15px_rgba(255,255,255,0.1)]"
               >
                 {isResetting ? "Sending..." : "Send Instructions"}
               </Button>
