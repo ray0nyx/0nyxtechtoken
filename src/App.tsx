@@ -40,7 +40,7 @@ import Backtesting from '@/pages/Backtesting';
 // Lazy load heavy/less-used pages
 const TestApp = lazy(() => import('@/pages/TestApp'));
 const DeveloperDashboard = lazy(() => import('@/pages/admin/DeveloperDashboard'));
-const QuantTesting = lazy(() => import('@/pages/QuantTesting'));
+const Algo = lazy(() => import('@/pages/Algo'));
 const CopyTrader = lazy(() => import('@/pages/CopyTrader'));
 const QuantDashboard = lazy(() => import('@/pages/quant/Dashboard'));
 const QuantAlgorithms = lazy(() => import('@/pages/quant/Algorithms'));
@@ -168,6 +168,7 @@ function App() {
                   <Route path="leaderboard" element={<Leaderboard />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="backtesting" element={<Backtesting />} />
+                  <Route path="algo" element={<Suspense fallback={<PageLoader />}><Algo /></Suspense>} />
                   <Route path="api-keys" element={<Suspense fallback={<PageLoader />}><APIKeys /></Suspense>} />
                   {/* Quant Backtester Routes */}
                   <Route path="quant" element={

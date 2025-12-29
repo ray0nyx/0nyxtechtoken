@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -36,22 +36,80 @@ export default function CryptoHeader({ title }: CryptoHeaderProps) {
         "text-xl font-semibold",
         isDark ? "text-white" : "text-gray-900"
       )}>{title}</h1>
-      
+
       <div className="flex items-center gap-3">
-        {/* Notifications */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "relative",
-            isDark 
-              ? "text-[#9ca3af] hover:text-white hover:bg-[#1a1f2e]"
-              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-          )}
-        >
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-[#ef4444] rounded-full" />
-        </Button>
+        {/* Notifications Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "relative",
+                isDark
+                  ? "text-[#9ca3af] hover:text-white hover:bg-[#1a1f2e]"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              )}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <span className="absolute top-1 right-1 w-2 h-2 bg-[#ef4444] rounded-full" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className={cn(
+            "w-80",
+            isDark ? "bg-[#1a1f2e] border-[#374151]" : "bg-white border-gray-200"
+          )}>
+            <div className={cn(
+              "px-4 py-3 border-b font-semibold",
+              isDark ? "border-[#374151] text-white" : "border-gray-200 text-gray-900"
+            )}>
+              Notifications
+            </div>
+            <div className="max-h-[400px] overflow-y-auto">
+              {/* Sample notifications - replace with real data */}
+              <DropdownMenuItem className={cn(
+                "flex flex-col items-start gap-1 p-4 cursor-pointer",
+                isDark
+                  ? "text-[#9ca3af] hover:text-white focus:text-white focus:bg-[#252b3d]"
+                  : "text-gray-700 hover:text-gray-900 focus:text-gray-900 focus:bg-gray-100"
+              )}>
+                <div className="font-medium">New wallet connected</div>
+                <div className="text-xs opacity-70">Phantom wallet successfully connected</div>
+                <div className="text-xs opacity-50 mt-1">2 minutes ago</div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem className={cn(
+                "flex flex-col items-start gap-1 p-4 cursor-pointer",
+                isDark
+                  ? "text-[#9ca3af] hover:text-white focus:text-white focus:bg-[#252b3d]"
+                  : "text-gray-700 hover:text-gray-900 focus:text-gray-900 focus:bg-gray-100"
+              )}>
+                <div className="font-medium">Price Alert</div>
+                <div className="text-xs opacity-70">SOL reached $100 target</div>
+                <div className="text-xs opacity-50 mt-1">1 hour ago</div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem className={cn(
+                "flex flex-col items-start gap-1 p-4 cursor-pointer",
+                isDark
+                  ? "text-[#9ca3af] hover:text-white focus:text-white focus:bg-[#252b3d]"
+                  : "text-gray-700 hover:text-gray-900 focus:text-gray-900 focus:bg-gray-100"
+              )}>
+                <div className="font-medium">Wallet Activity</div>
+                <div className="text-xs opacity-70">Received 0.5 SOL</div>
+                <div className="text-xs opacity-50 mt-1">3 hours ago</div>
+              </DropdownMenuItem>
+            </div>
+            <div className={cn(
+              "px-4 py-3 border-t text-center text-sm cursor-pointer hover:underline",
+              isDark ? "border-[#374151] text-blue-400" : "border-gray-200 text-blue-600"
+            )}>
+              View all notifications
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* User menu */}
         <DropdownMenu>
@@ -74,7 +132,7 @@ export default function CryptoHeader({ title }: CryptoHeaderProps) {
             "w-48",
             isDark ? "bg-[#1a1f2e] border-[#374151]" : "bg-white border-gray-200"
           )}>
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={() => navigate('/crypto/settings')}
               className={cn(
                 isDark
@@ -84,7 +142,7 @@ export default function CryptoHeader({ title }: CryptoHeaderProps) {
             >
               Settings
             </DropdownMenuItem>
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={handleSignOut}
               className={cn(
                 "text-[#ef4444] hover:text-[#ef4444]",

@@ -6,7 +6,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Search, Clock, TrendingUp, BarChart2, Zap, ArrowUpRight, DollarSign } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
-import { fetchNewPumpFunCoins, type PumpFunCoin } from '@/lib/pump-fun-service';
+import { fetchNewPumpFunCoins, fetchPumpFunCoinDetails, type PumpFunCoin } from '@/lib/pump-fun-service';
+import { fetchTokenPrice } from '@/lib/wallet-balance-service';
+import { Connection } from '@solana/web3.js';
 
 // Mock Data for Market Overview Chart
 const MARKET_DATA = [
@@ -38,24 +40,51 @@ const RECENT_ACTIVITY = [
 export function SearchPopup({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [allTokens, setAllTokens] = useState<any[]>([]); // Store all fetched tokens for local filtering
     const [loading, setLoading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [marketStats, setMarketStats] = useState({ price: 0, change: 0, tps: 0 });
 
     useEffect(() => {
         if (isOpen) {
             const loadData = async () => {
                 setLoading(true);
                 try {
+                    // Fetch real market data
+                    const priceData = await fetchTokenPrice('solana');
+
+                    // Fetch TPS
+                    let tps = 0;
+                    try {
+                        const connection = new Connection(import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
+                        const samples = await connection.getRecentPerformanceSamples(1);
+                        if (samples.length > 0) {
+                            tps = Math.round(samples[0].numTransactions / samples[0].samplePeriodSecs);
+                        }
+                    } catch (e) {
+                        console.error("Failed to fetch TPS", e);
+                        tps = 2500; // Fallback
+                    }
+
+                    setMarketStats({
+                        price: priceData.price,
+                        change: priceData.change24h,
+                        tps
+                    });
+
+                    // Fetch Tokens
                     const coins = await fetchNewPumpFunCoins(20);
                     const formatted = coins.map(coin => ({
                         id: coin.mint,
                         name: coin.name,
                         symbol: coin.symbol,
-                        age: '1m', // Placeholder
+                        age: '1m',
                         mc: coin.usd_market_cap ? `$${(coin.usd_market_cap / 1000).toFixed(1)}K` : 'N/A',
-                        vol: '$12K', // Placeholder
-                        liq: '$500', // Placeholder
+                        vol: '$12K',
+                        liq: '$500',
                         image: coin.image_uri
                     }));
+                    setAllTokens(formatted);
                     setSearchResults(formatted);
                 } catch (e) {
                     console.error("Failed to fetch tokens", e);
@@ -67,15 +96,63 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
         }
     }, [isOpen]);
 
+    // Handle Search
+    useEffect(() => {
+        const handleSearch = async () => {
+            if (!searchQuery.trim()) {
+                setSearchResults(allTokens);
+                return;
+            }
+
+            setLoading(true);
+            const query = searchQuery.toLowerCase();
+
+            // Check if it's an address (simple length check for now)
+            if (query.length > 30) {
+                try {
+                    const details = await fetchPumpFunCoinDetails(searchQuery);
+                    if (details) {
+                        const formatted = [{
+                            id: details.mint,
+                            name: details.name,
+                            symbol: details.symbol,
+                            age: '1m',
+                            mc: details.usd_market_cap ? `$${(details.usd_market_cap / 1000).toFixed(1)}K` : 'N/A',
+                            vol: 'N/A',
+                            liq: 'N/A',
+                            image: details.image_uri
+                        }];
+                        setSearchResults(formatted);
+                    } else {
+                        setSearchResults([]);
+                    }
+                } catch (e) {
+                    setSearchResults([]);
+                }
+            } else {
+                // Filter by name or symbol
+                const filtered = allTokens.filter(token =>
+                    token.name.toLowerCase().includes(query) ||
+                    token.symbol.toLowerCase().includes(query)
+                );
+                setSearchResults(filtered);
+            }
+            setLoading(false);
+        };
+
+        const timeoutId = setTimeout(handleSearch, 300);
+        return () => clearTimeout(timeoutId);
+    }, [searchQuery, allTokens]);
+
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 {children}
             </DialogTrigger>
-            <DialogContent className="max-w-[1000px] w-[95vw] bg-[#1a1b1e] border-none text-gray-200 p-0 overflow-hidden rounded-2xl shadow-2xl">
+            <DialogContent className="max-w-[1000px] w-[95vw] bg-[#050505] border-none text-gray-200 p-0 overflow-hidden rounded-2xl shadow-2xl">
 
                 {/* Header Section */}
-                <div className="p-6 border-b border-white/5 space-y-4 bg-[#141517]">
+                <div className="p-6 border-b border-white/5 space-y-4 bg-[#050505]">
                     <div className="flex items-center justify-end gap-2 text-gray-400">
                         <span className="text-xs mr-2">Sort by</span>
                         <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-white hover:bg-white/10"><Clock className="h-4 w-4" /></Button>
@@ -88,7 +165,9 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
                             <Input
-                                placeholder="Search Solana tokens..."
+                                placeholder="Search Solana tokens (name or address)..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-10 h-10 bg-[#25262b] border-none text-white placeholder:text-gray-500 rounded-lg focus-visible:ring-1 focus-visible:ring-gray-700"
                             />
                         </div>
@@ -120,7 +199,7 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
                 {/* Body Section */}
                 <div className="flex h-[600px]">
                     {/* Left: Search Results */}
-                    <div className="flex-[2] border-r border-white/5 p-4 bg-[#1a1b1e]">
+                    <div className="flex-[2] border-r border-white/5 p-4 bg-[#050505]">
                         <h3 className="text-lg font-medium text-gray-200 mb-4 px-2">Top Search Results</h3>
                         <ScrollArea className="h-[540px]">
                             <div className="space-y-1">
@@ -129,7 +208,15 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
                                 {searchResults.map((token) => (
                                     <div key={token.id} className="group flex items-center justify-between p-3 rounded-xl hover:bg-[#25262b] transition-colors cursor-pointer">
                                         <div className="flex items-center gap-3">
-                                            <img src={token.image} alt={token.name} className="w-10 h-10 rounded-lg bg-gray-800 object-cover" />
+                                            <img
+                                                src={token.image}
+                                                alt={token.name}
+                                                className="w-10 h-10 rounded-lg bg-gray-800 object-cover"
+                                                onError={(e) => {
+                                                    e.currentTarget.src = 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'; // Fallback to SOL logo or generic
+                                                    e.currentTarget.onerror = null; // Prevent infinite loop
+                                                }}
+                                            />
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-medium text-gray-200">{token.name}</span>
@@ -166,7 +253,7 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
                     </div>
 
                     {/* Right: Market Overview */}
-                    <div className="flex-1 p-4 bg-[#1a1b1e] flex flex-col gap-6">
+                    <div className="flex-1 p-4 bg-[#050505] flex flex-col gap-6">
                         {/* Area Chart Section */}
                         <div>
                             <div className="flex items-center justify-between mb-2">
@@ -181,16 +268,19 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
                                                 <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
-                                        <Tooltip cursor={false} content={<></>} />
+                                        <Tooltip content={<></>} />
                                         <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
                                     </AreaChart>
                                 </ResponsiveContainer>
                                 <div className="absolute top-2 right-0 text-right">
-                                    <div className="text-xs text-gray-500">SO. SOL</div>
-                                    <div className="text-xs text-emerald-400 font-bold">40L 30%</div>
-                                    <div className="text-xs text-emerald-400">25%</div>
+                                    <div className="text-xs text-gray-500">SOL Price</div>
+                                    <div className="text-xs text-emerald-400 font-bold">${marketStats.price.toFixed(2)}</div>
+                                    <div className={marketStats.change >= 0 ? "text-xs text-emerald-400" : "text-xs text-red-400"}>
+                                        {marketStats.change >= 0 ? '+' : ''}{marketStats.change.toFixed(2)}%
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1">TPS: {marketStats.tps}</div>
                                 </div>
-                                <div className="mt-2 text-sm font-medium text-gray-200">SOL Price: $125.76</div>
+                                <div className="mt-2 text-sm font-medium text-gray-200">SOL Price: ${marketStats.price.toFixed(2)}</div>
                             </div>
                         </div>
 
@@ -205,7 +295,6 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
                                             outerRadius={38}
                                             paddingAngle={0}
                                             dataKey="value"
-                                            stroke="none"
                                         >
                                             {DOMINANCE_DATA.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.color} />

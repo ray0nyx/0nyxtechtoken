@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import { SolanaSignInButton } from '@/components/auth/SolanaSignInButton';
+import { getTurnkeyService } from '@/lib/wallet-abstraction/turnkey-service';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -15,10 +16,10 @@ export default function SignUp() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Check if we should return to pricing after signup
   const [returnToPricing, setReturnToPricing] = useState(false);
-  
+
   useEffect(() => {
     // Check if we came from pricing page
     if (location.state && location.state.returnToPricing) {
@@ -34,7 +35,7 @@ export default function SignUp() {
         title: "Success",
         description: "Account created! Please select a subscription to continue.",
       });
-      
+
       // Navigate to analytics page
       navigate('/app/analytics');
     } catch (navError) {
@@ -48,7 +49,7 @@ export default function SignUp() {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-    
+
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -68,31 +69,31 @@ export default function SignUp() {
 
       if (error) {
         console.error('Signup error:', error);
-        
+
         // Expanded handling for database error saving new user
         if (error.message.includes('database error saving new user')) {
           console.log('Attempting alternative sign-up flow for:', email);
-          
+
           // Check if it's a ProtonMail address
-          const isProtonMail = email.toLowerCase().includes('@proton.') || 
-                               email.toLowerCase().includes('@pm.') || 
-                               email.toLowerCase().includes('@protonmail.') ||
-                               email.toLowerCase().includes('@proton.me');
-          
+          const isProtonMail = email.toLowerCase().includes('@proton.') ||
+            email.toLowerCase().includes('@pm.') ||
+            email.toLowerCase().includes('@protonmail.') ||
+            email.toLowerCase().includes('@proton.me');
+
           if (isProtonMail) {
             toast({
               title: "ProtonMail Detected",
               description: "We're using an alternative signup method for ProtonMail users. Please wait...",
             });
           }
-          
+
           try {
             // Show loading toast for alternative flow
             toast({
               title: "Using Alternative Registration",
               description: "Please wait while we complete your registration...",
             });
-            
+
             // Call our edge function to handle registration
             const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-user`, {
               method: 'POST',
@@ -100,38 +101,38 @@ export default function SignUp() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
               },
-              body: JSON.stringify({ 
-                email, 
+              body: JSON.stringify({
+                email,
                 password,
                 useAlternativeMethod: true,
                 emailProvider: isProtonMail ? 'protonmail' : 'other'
               })
             });
-            
+
             if (!response.ok) {
               const errorData = await response.json();
               console.error('Alternative registration error:', errorData);
               throw new Error(errorData.error || 'Failed to register user');
             }
-            
+
             const registrationData = await response.json();
             console.log('Alternative registration successful:', registrationData);
-            
+
             // If successful, try to sign in
             const { data: signinData, error: signinError } = await supabase.auth.signInWithPassword({
               email,
               password
             });
-            
+
             if (signinError) {
               console.error('Sign-in after alternative registration failed:', signinError);
               throw signinError;
             }
-            
+
             // Redirect to Stripe checkout with 14-day free trial
             try {
               const defaultPriceId = import.meta.env.VITE_STRIPE_PRICE_STARTER || 'price_1QzZqQK9cein1vEZExkBcl89';
-              
+
               const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`, {
                 method: 'POST',
                 headers: {
@@ -155,7 +156,7 @@ export default function SignUp() {
             } catch (checkoutError) {
               console.error('Checkout error:', checkoutError);
             }
-            
+
             // Fallback navigation
             if (returnToPricing) {
               navigateToPricing();
@@ -175,11 +176,46 @@ export default function SignUp() {
 
       // If we get here, signUp was successful
       if (data.user) {
+        // Create Turnkey wallet for new user
+        try {
+          const user = data.user;
+          const turnkeyService = getTurnkeyService();
+
+          // Check if wallet already exists (unlikely for new sign up but good practice)
+          const { data: existingWallet } = await supabase
+            .from('user_wallets')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('wallet_type', 'turnkey')
+            .maybeSingle();
+
+          if (!existingWallet) {
+            // Create sub-organization and wallet
+            const subOrg = await turnkeyService.createSubOrganization(user.id, user.email || '');
+
+            // Save to DB
+            await supabase
+              .from('user_wallets')
+              .upsert({
+                user_id: user.id,
+                wallet_address: subOrg.walletAddress,
+                wallet_type: 'turnkey',
+                turnkey_wallet_id: subOrg.walletId,
+                turnkey_organization_id: subOrg.subOrganizationId,
+                created_at: new Date().toISOString(),
+                is_active: true,
+              });
+          }
+        } catch (walletError) {
+          console.error('Failed to create Turnkey wallet on signup:', walletError);
+          // Don't block signup, user can create wallet later via Deposit modal
+        }
+
         // Redirect to Stripe checkout with 14-day free trial
         try {
           // Use the starter plan priceId as default for new signups
           const defaultPriceId = import.meta.env.VITE_STRIPE_PRICE_STARTER || 'price_1QzZqQK9cein1vEZExkBcl89';
-          
+
           // Create checkout session via edge function
           const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`, {
             method: 'POST',
@@ -200,7 +236,7 @@ export default function SignUp() {
           }
 
           const { url } = await response.json();
-          
+
           if (url) {
             // Redirect to Stripe checkout
             window.location.href = url;
@@ -216,7 +252,7 @@ export default function SignUp() {
             description: "Please visit the pricing page to start your subscription",
             variant: "default",
           });
-          
+
           if (returnToPricing) {
             navigateToPricing();
           } else {
@@ -241,7 +277,7 @@ export default function SignUp() {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -250,7 +286,7 @@ export default function SignUp() {
       });
 
       if (error) throw error;
-      
+
       // Google OAuth will redirect the user, so no need to manually redirect here
     } catch (error) {
       console.error('Google signup error:', error);
@@ -269,7 +305,7 @@ export default function SignUp() {
       <div className="flex-grow flex flex-col items-center justify-center p-4">
         <Card className="w-full max-w-sm bg-white shadow-2xl border-0 rounded-2xl">
           <CardHeader className="text-center pb-6">
-            <div 
+            <div
               className="font-extrabold text-2xl mb-4 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
               onClick={() => navigate('/')}
             >
@@ -278,8 +314,8 @@ export default function SignUp() {
             </div>
             <CardTitle className="text-gray-900 text-xl font-bold">Create an Account</CardTitle>
             <CardDescription className="text-gray-600 text-sm">
-              {returnToPricing 
-                ? "Sign up to continue with your subscription" 
+              {returnToPricing
+                ? "Sign up to continue with your subscription"
                 : "Get started with 0nyx today."}
             </CardDescription>
           </CardHeader>
@@ -289,18 +325,18 @@ export default function SignUp() {
                 {error}
               </div>
             )}
-            
+
             {returnToPricing && (
               <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4">
                 After signing up, you'll be redirected back to choose your subscription plan.
               </div>
             )}
-            
+
             <div className="bg-purple-50 border border-purple-200 text-purple-700 px-4 py-3 rounded mb-4">
               <p className="font-semibold">🎉 Start Your 14-Day Free Trial</p>
               <p className="text-sm mt-1">No credit card required until your trial ends. Cancel anytime.</p>
             </div>
-          
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <div className="relative">
@@ -309,11 +345,11 @@ export default function SignUp() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                     </svg>
                   </div>
-                  <Input 
-                    id="email" 
-                    name="email" 
-                    type="email" 
-                    required 
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
                     placeholder="Enter your email"
                     autoComplete="email"
                     disabled={isLoading}
@@ -328,11 +364,11 @@ export default function SignUp() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
-                  <Input 
-                    id="password" 
-                    name="password" 
-                    type="password" 
-                    required 
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
                     placeholder="Create a password"
                     autoComplete="new-password"
                     minLength={6}
@@ -348,8 +384,8 @@ export default function SignUp() {
                 </div>
                 <p className="text-xs text-gray-500">Password must be at least 6 characters</p>
               </div>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full h-12 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-medium rounded-lg"
                 disabled={isLoading}
               >
@@ -363,7 +399,7 @@ export default function SignUp() {
                 )}
               </Button>
             </form>
-            
+
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -373,12 +409,12 @@ export default function SignUp() {
                   <span className="px-2 bg-white text-gray-500">Or continue with</span>
                 </div>
               </div>
-              
+
               <div className="mt-6 space-y-3">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="w-full h-12 bg-white text-gray-700 border-gray-300 hover:bg-gray-50 rounded-lg" 
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-12 bg-white text-gray-700 border-gray-300 hover:bg-gray-50 rounded-lg"
                   onClick={handleGoogleSignUp}
                   disabled={isLoading}
                 >
@@ -406,25 +442,25 @@ export default function SignUp() {
                   )}
                   Google
                 </Button>
-                <SolanaSignInButton 
+                <SolanaSignInButton
                   variant="outline"
                   className="w-full h-12 bg-white text-gray-700 border-gray-300 hover:bg-gray-50 rounded-lg"
                   label="Sign up with Solana"
                 />
               </div>
             </div>
-            
+
             <div className="mt-6 text-center text-xs text-gray-500">
               By signing up, you agree to our{' '}
               <a href="/terms" className="text-purple-500 hover:text-purple-600 underline">Terms</a>
               {' '}&{' '}
               <a href="/privacy" className="text-purple-500 hover:text-purple-600 underline">Privacy Policy</a>
             </div>
-            
+
             <div className="mt-4 text-center text-sm">
               <span className="text-muted-foreground">Already have an account?</span>{' '}
-              <a 
-                href="/signin" 
+              <a
+                href="/signin"
                 className="font-semibold text-purple-500 hover:text-purple-600 transition-colors"
               >
                 Sign in
@@ -439,29 +475,29 @@ export default function SignUp() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="flex items-center gap-6">
-              <a 
-                href="https://x.com/WagyuTech" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href="https://x.com/WagyuTech"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-600 hover:text-purple-500 transition-colors duration-300"
                 aria-label="X (Twitter)"
               >
-                <img 
-                  src="images/x-logo.png" 
-                  alt="X (Twitter)" 
+                <img
+                  src="images/x-logo.png"
+                  alt="X (Twitter)"
                   className="h-5 w-5 opacity-80 hover:opacity-100 transition-opacity"
                 />
               </a>
-              <a 
-                href="https://www.instagram.com/wagyutech.app/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href="https://www.instagram.com/wagyutech.app/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-600 hover:text-purple-500 transition-colors duration-300"
                 aria-label="Instagram"
               >
-                <img 
-                  src="images/instagram-logo.png" 
-                  alt="Instagram" 
+                <img
+                  src="images/instagram-logo.png"
+                  alt="Instagram"
                   className="h-5 w-5 opacity-80 hover:opacity-100 transition-opacity"
                 />
               </a>

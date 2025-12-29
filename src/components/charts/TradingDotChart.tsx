@@ -106,7 +106,7 @@ export function TradingDotChart({ trades = [], showCard = true }: TradingDotChar
               </span>
               <span
                 className="text-sm font-bold"
-                style={{ color: theme === 'dark' ? 'rgb(59 130 246)' : 'rgb(59 130 246)' }}
+                style={{ color: theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)' }}
               >
                 {totalTrades}
               </span>
@@ -117,7 +117,7 @@ export function TradingDotChart({ trades = [], showCard = true }: TradingDotChar
               </span>
               <span
                 className="text-sm font-bold"
-                style={{ color: theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)' }}
+                style={{ color: theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)' }}
               >
                 {totalTrades > 0 ? ((winningTrades / totalTrades) * 100).toFixed(1) : '0.0'}%
               </span>
@@ -208,7 +208,7 @@ export function TradingDotChart({ trades = [], showCard = true }: TradingDotChar
             </div>
             <div className="text-right">
               <div className="text-sm text-slate-400 dark:text-slate-600">Total P&L</div>
-              <div className={`text-lg font-bold ${totalPnL >= 0 ? 'text-blue-400 dark:text-blue-600' : 'text-purple-400 dark:text-purple-600'}`}>
+              <div className={`text-lg font-bold ${totalPnL >= 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                 {formatCurrency(totalPnL)}
               </div>
             </div>

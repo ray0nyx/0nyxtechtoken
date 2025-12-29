@@ -60,8 +60,8 @@ const SharpeSortinoBarChart = ({ trades, riskFreeRate = 0, showCard = true }: Sh
                 className="text-sm font-bold"
                 style={{
                   color: sharpeChange >= 0
-                    ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                    : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                    ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
+                    : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
                 }}
               >
                 {sharpeChange >= 0 ? '+' : ''}{sharpeChange.toFixed(1)}%
@@ -75,8 +75,8 @@ const SharpeSortinoBarChart = ({ trades, riskFreeRate = 0, showCard = true }: Sh
                 className="text-sm font-bold"
                 style={{
                   color: sortinoChange >= 0
-                    ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                    : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                    ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
+                    : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
                 }}
               >
                 {sortinoChange >= 0 ? '+' : ''}{sortinoChange.toFixed(1)}%
@@ -127,8 +127,8 @@ const SharpeSortinoBarChart = ({ trades, riskFreeRate = 0, showCard = true }: Sh
                   return (
                     <div className="bg-[#0a0a0a] border border-neutral-800 rounded-lg shadow-lg p-3 backdrop-blur-sm">
                       <p className="font-medium mb-1 text-white">{label}</p>
-                      <p className="text-sm text-neutral-300">Sharpe: {payload[0].value.toFixed(2)}</p>
-                      <p className="text-sm text-neutral-400">Sortino: {payload[1].value.toFixed(2)}</p>
+                      <p className="text-sm text-neutral-300">Sharpe: {(payload[0].value as number).toFixed(2)}</p>
+                      <p className="text-sm text-neutral-400">Sortino: {(payload[1].value as number).toFixed(2)}</p>
                     </div>
                   );
                 }
@@ -155,24 +155,24 @@ const SharpeSortinoBarChart = ({ trades, riskFreeRate = 0, showCard = true }: Sh
           Monthly P&L Sharpe/Sortino
           <div className="ml-auto flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-blue-400 dark:text-blue-600">Sharpe:</span>
-              <span className="text-lg font-bold text-blue-400 dark:text-blue-600">
+              <span className="text-sm text-gray-500">Sharpe:</span>
+              <span className="text-lg font-bold text-gray-500">
                 {currentSharpe.toFixed(2)}
               </span>
               {sharpeChange !== 0 && (
-                <div className={`flex items-center gap-1 text-xs ${sharpeChange > 0 ? 'text-emerald-400 dark:text-emerald-600' : 'text-red-400 dark:text-red-600'}`}>
+                <div className={`flex items-center gap-1 text-xs ${sharpeChange > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                   {sharpeChange > 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   <span>{Math.abs(sharpeChange).toFixed(1)}%</span>
                 </div>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-purple-400 dark:text-purple-600">Sortino:</span>
-              <span className="text-lg font-bold text-purple-400 dark:text-purple-600">
+              <span className="text-sm text-gray-500">Sortino:</span>
+              <span className="text-lg font-bold text-gray-500">
                 {currentSortino.toFixed(2)}
               </span>
               {sortinoChange !== 0 && (
-                <div className={`flex items-center gap-1 text-xs ${sortinoChange > 0 ? 'text-emerald-400 dark:text-emerald-600' : 'text-red-400 dark:text-red-600'}`}>
+                <div className={`flex items-center gap-1 text-xs ${sortinoChange > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                   {sortinoChange > 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   <span>{Math.abs(sortinoChange).toFixed(1)}%</span>
                 </div>
@@ -206,7 +206,7 @@ const SharpeSortinoBarChart = ({ trades, riskFreeRate = 0, showCard = true }: Sh
               dataKey="month"
               stroke={axisColor}
               tick={{
-                fill: theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)', // green-500
+                fill: theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)', // gray-500
                 fontSize: 12,
                 filter: 'url(#glowText)'
               }}
@@ -214,7 +214,7 @@ const SharpeSortinoBarChart = ({ trades, riskFreeRate = 0, showCard = true }: Sh
             <YAxis
               stroke={axisColor}
               tick={{
-                fill: theme === 'dark' ? 'rgb(59 130 246)' : 'rgb(59 130 246)', // blue-500
+                fill: theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)', // gray-500
                 fontSize: 12,
                 filter: 'url(#glowText)'
               }}

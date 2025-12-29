@@ -59,8 +59,8 @@ export default function QuickBuyButtons({
           className={cn(
             "px-4 py-1.5 rounded-md text-xs font-medium transition-colors shadow-sm",
             isBuyMode
-              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
-              : "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20",
+              ? "bg-neutral-600/10 text-neutral-400 border border-neutral-500/20 hover:bg-neutral-500/20"
+              : "bg-neutral-400/10 text-neutral-500 border border-neutral-400/20 hover:bg-neutral-400/20",
             disabled && "opacity-50 cursor-not-allowed"
           )}
         >
@@ -88,8 +88,8 @@ export default function QuickBuyButtons({
           className={cn(
             "px-4 py-1.5 rounded-md text-xs font-medium transition-colors shadow-sm",
             isBuyMode
-              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
-              : "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20",
+              ? "bg-neutral-600/10 text-neutral-400 border border-neutral-500/20 hover:bg-neutral-500/20"
+              : "bg-neutral-400/10 text-neutral-500 border border-neutral-400/20 hover:bg-neutral-400/20",
             (disabled || !customAmount) && "opacity-50 cursor-not-allowed"
           )}
         >

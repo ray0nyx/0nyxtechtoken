@@ -210,7 +210,7 @@ export default function TradingPanel({
           className={cn(
             "flex-1 py-2 text-sm font-semibold transition-all rounded-md",
             isBuy
-              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+              ? "bg-neutral-600/10 text-neutral-300 border border-neutral-500/20"
               : isDark
                 ? "text-neutral-500 hover:text-gray-300"
                 : "text-gray-600 hover:text-gray-900"
@@ -223,7 +223,7 @@ export default function TradingPanel({
           className={cn(
             "flex-1 py-2 text-sm font-medium transition-all rounded-md",
             !isBuy
-              ? "bg-red-500/10 text-red-400 border border-red-500/20"
+              ? "bg-neutral-400/10 text-neutral-400 border border-neutral-400/20"
               : isDark
                 ? "text-neutral-500 hover:text-gray-300"
                 : "text-gray-600 hover:text-gray-900"
@@ -281,8 +281,8 @@ export default function TradingPanel({
                 "py-2 text-xs font-medium rounded-md transition-colors border",
                 amount === preset.toString()
                   ? isBuy
-                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                    : "bg-red-500/10 text-red-400 border-red-500/30"
+                    ? "bg-neutral-600/10 text-neutral-300 border-neutral-500/30"
+                    : "bg-neutral-400/10 text-neutral-400 border-neutral-400/30"
                   : isDark
                     ? "bg-[#0a0a0a] text-neutral-400 hover:text-gray-200 border-neutral-800 hover:border-neutral-600"
                     : "bg-gray-50 text-gray-600 hover:text-gray-900 border-gray-200"
@@ -361,8 +361,8 @@ export default function TradingPanel({
                   "py-1.5 text-xs font-medium rounded-md transition-colors border",
                   slippage === preset && !customSlippage
                     ? isBuy
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                      : "bg-red-500/10 text-red-400 border-red-500/30"
+                      ? "bg-neutral-600/10 text-neutral-300 border-neutral-500/30"
+                      : "bg-neutral-400/10 text-neutral-400 border-neutral-400/30"
                     : isDark
                       ? "bg-[#0a0a0a] text-neutral-400 hover:text-gray-200 border-neutral-800 hover:border-neutral-600"
                       : "bg-gray-50 text-gray-600 border border-gray-200"
@@ -409,11 +409,11 @@ export default function TradingPanel({
             <div className="flex gap-1">
               <button
                 onClick={() => setLimitPrice((currentPrice * 0.95).toString())}
-                className={cn("flex-1 py-1 text-xs rounded", isDark ? "bg-red-500/20 text-red-400" : "bg-red-100 text-red-600")}
+                className={cn("flex-1 py-1 text-xs rounded", isDark ? "bg-neutral-400/20 text-neutral-400" : "bg-gray-100 text-gray-600")}
               >-5%</button>
               <button
                 onClick={() => setLimitPrice((currentPrice * 0.98).toString())}
-                className={cn("flex-1 py-1 text-xs rounded", isDark ? "bg-red-500/10 text-red-300" : "bg-red-50 text-red-500")}
+                className={cn("flex-1 py-1 text-xs rounded", isDark ? "bg-neutral-400/10 text-neutral-500" : "bg-gray-50 text-gray-500")}
               >-2%</button>
               <button
                 onClick={() => setLimitPrice(currentPrice.toString())}
@@ -421,11 +421,11 @@ export default function TradingPanel({
               >Market</button>
               <button
                 onClick={() => setLimitPrice((currentPrice * 1.02).toString())}
-                className={cn("flex-1 py-1 text-xs rounded", isDark ? "bg-emerald-500/10 text-emerald-300" : "bg-green-50 text-green-500")}
+                className={cn("flex-1 py-1 text-xs rounded", isDark ? "bg-neutral-600/10 text-neutral-400" : "bg-gray-50 text-gray-500")}
               >+2%</button>
               <button
                 onClick={() => setLimitPrice((currentPrice * 1.05).toString())}
-                className={cn("flex-1 py-1 text-xs rounded", isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-green-100 text-green-600")}
+                className={cn("flex-1 py-1 text-xs rounded", isDark ? "bg-neutral-600/20 text-neutral-300" : "bg-gray-100 text-gray-600")}
               >+5%</button>
             </div>
           </div>
@@ -508,7 +508,7 @@ export default function TradingPanel({
                       className={cn(
                         "py-1.5 text-xs rounded",
                         stopLossPercent === pct
-                          ? "bg-red-500/20 text-red-400 border border-red-500/50"
+                          ? "bg-neutral-400/20 text-neutral-400 border border-neutral-400/50"
                           : isDark ? "bg-[#1a1f2e] text-gray-400 border border-[#1f2937]" : "bg-gray-50 text-gray-600 border border-gray-200"
                       )}
                     >
@@ -527,7 +527,7 @@ export default function TradingPanel({
                   checked={enableTakeProfit}
                   onCheckedChange={(checked) => setEnableTakeProfit(checked as boolean)}
                 />
-                <label htmlFor="enable-tp" className={cn("text-xs font-medium cursor-pointer", isDark ? "text-emerald-400" : "text-emerald-600")}>
+                <label htmlFor="enable-tp" className={cn("text-xs font-medium cursor-pointer", isDark ? "text-neutral-300" : "text-gray-600")}>
                   🎯 Take Profit
                 </label>
               </div>
@@ -541,7 +541,7 @@ export default function TradingPanel({
                       className={cn(
                         "py-1.5 text-xs rounded",
                         takeProfitPercent === pct
-                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50"
+                          ? "bg-neutral-600/20 text-neutral-300 border border-neutral-500/50"
                           : isDark ? "bg-[#1a1f2e] text-gray-400 border border-[#1f2937]" : "bg-gray-50 text-gray-600 border border-gray-200"
                       )}
                     >
@@ -562,8 +562,8 @@ export default function TradingPanel({
           className={cn(
             "w-full py-6 text-base font-semibold rounded-lg",
             isBuy
-              ? "bg-emerald-600 text-white hover:bg-emerald-700 border-0"
-              : "bg-red-600 text-white hover:bg-red-700 border-0"
+              ? "bg-neutral-600 text-white hover:bg-neutral-700 border-0"
+              : "bg-neutral-400 text-white hover:bg-neutral-500 border-0"
           )}
         >
           {isSubmitting ? 'Processing...' : `${isBuy ? 'Buy' : 'Sell'} ${tokenSymbol}`}
@@ -574,13 +574,13 @@ export default function TradingPanel({
           <div className="text-center">
             <div className={cn("text-xs", isDark ? "text-gray-500" : "text-gray-400")}>Bought</div>
             <div className={cn("text-sm font-medium", isDark ? "text-white" : "text-gray-900")}>
-              <span className="text-emerald-400">≡</span> {stats.bought}
+              <span className="text-neutral-400">≡</span> {stats.bought}
             </div>
           </div>
           <div className="text-center">
             <div className={cn("text-xs", isDark ? "text-gray-500" : "text-gray-400")}>Sold</div>
             <div className={cn("text-sm font-medium", isDark ? "text-white" : "text-gray-900")}>
-              <span className="text-red-400">≡</span> {stats.sold}
+              <span className="text-neutral-500">≡</span> {stats.sold}
             </div>
           </div>
           <div className="text-center">
@@ -591,7 +591,7 @@ export default function TradingPanel({
           </div>
           <div className="text-center">
             <div className={cn("text-xs", isDark ? "text-gray-500" : "text-gray-400")}>PnL ⓘ</div>
-            <div className={cn("text-sm font-medium", stats.pnl >= 0 ? "text-emerald-400" : "text-red-400")}>
+            <div className={cn("text-sm font-medium", stats.pnl >= 0 ? "text-neutral-300" : "text-neutral-500")}>
               <span className="text-gray-400">≡</span> +{stats.pnl} (+{stats.pnlPercent}%)
             </div>
           </div>
@@ -636,27 +636,27 @@ export default function TradingPanel({
             <div className="grid grid-cols-3 gap-2 text-xs">
               <div>
                 <span className={cn("block", isDark ? "text-gray-500" : "text-gray-400")}>Top 10 H.</span>
-                <span className="text-emerald-400">▲ {tokenInfo.top10H}%</span>
+                <span className="text-neutral-400">▲ {tokenInfo.top10H}%</span>
               </div>
               <div>
                 <span className={cn("block", isDark ? "text-gray-500" : "text-gray-400")}>Dev H.</span>
-                <span className="text-emerald-400">▲ {tokenInfo.devH}%</span>
+                <span className="text-neutral-400">▲ {tokenInfo.devH}%</span>
               </div>
               <div>
                 <span className={cn("block", isDark ? "text-gray-500" : "text-gray-400")}>Snipers H.</span>
-                <span className="text-emerald-400">▲ {tokenInfo.snipersH}%</span>
+                <span className="text-neutral-400">▲ {tokenInfo.snipersH}%</span>
               </div>
               <div>
                 <span className={cn("block", isDark ? "text-gray-500" : "text-gray-400")}>Insiders</span>
-                <span className="text-emerald-400">⊘ {tokenInfo.insiders}%</span>
+                <span className="text-neutral-400">⊘ {tokenInfo.insiders}%</span>
               </div>
               <div>
                 <span className={cn("block", isDark ? "text-gray-500" : "text-gray-400")}>Bundlers</span>
-                <span className="text-emerald-400">⊘ {tokenInfo.bundlers}%</span>
+                <span className="text-neutral-400">⊘ {tokenInfo.bundlers}%</span>
               </div>
               <div>
                 <span className={cn("block", isDark ? "text-gray-500" : "text-gray-400")}>L.P. Burned</span>
-                <span className="text-emerald-400">⊘ {tokenInfo.lpBurned}%</span>
+                <span className="text-neutral-400">⊘ {tokenInfo.lpBurned}%</span>
               </div>
             </div>
 
@@ -676,8 +676,8 @@ export default function TradingPanel({
                 <span className={cn(
                   "px-1.5 py-0.5 rounded text-xs",
                   tokenInfo.dexPaid
-                    ? "bg-emerald-500/20 text-emerald-400"
-                    : "bg-red-500/20 text-red-400"
+                    ? "bg-neutral-600/20 text-neutral-300"
+                    : "bg-neutral-400/20 text-neutral-500"
                 )}>
                   ⊘ {tokenInfo.dexPaid ? 'Paid' : 'Not Paid'}
                 </span>

@@ -112,7 +112,7 @@ export function DailyPnLChart({ trades, limitMonths, showCard = true }: DailyPnL
                   {formatCurrency(currentDailyPnL)}
                 </span>
                 {percentageChange !== 0 && (
-                  <div className={`flex items-center gap-1 text-xs ${isPositive ? 'text-emerald-400 dark:text-emerald-600' : 'text-red-400 dark:text-red-600'}`}>
+                  <div className={`flex items-center gap-1 text-xs ${isPositive ? 'text-gray-500' : 'text-gray-300'}`}>
                     {isPositive ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     <span>{Math.abs(percentageChange).toFixed(1)}%</span>
                   </div>

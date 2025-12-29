@@ -23,7 +23,7 @@ interface ProfitFactorChartProps {
 const CustomYAxisTick = ({ x, y, payload }: any) => {
   const value = payload.value;
   const isPositive = value >= 0;
-  const color = isPositive ? '#6b7280' : '#4b5563';
+  const color = isPositive ? '#6b7280' : '#d1d5db';
 
   return (
     <g transform={`translate(${x},${y})`}>
@@ -110,7 +110,7 @@ export function ProfitFactorChart({ trades = [], limitMonths, showCard = true }:
     }, {} as Record<string, { wins: number; losses: number }>);
 
     // Convert to chart data
-    let chartData = Object.entries(monthlyData).map(([month, data]) => {
+    let chartData = Object.entries(monthlyData).map(([month, data]: [string, { wins: number; losses: number }]) => {
       let profitFactor = 0;
       if (data.losses > 0) {
         profitFactor = data.wins / data.losses;
@@ -207,7 +207,8 @@ export function ProfitFactorChart({ trades = [], limitMonths, showCard = true }:
           period: 'Start',
           profitFactor: 0,
           wins: 0,
-          losses: 0
+          losses: 0,
+          monthKey: 'start'
         });
       }
     }
@@ -265,8 +266,8 @@ export function ProfitFactorChart({ trades = [], limitMonths, showCard = true }:
               className="text-sm font-bold"
               style={{
                 color: percentageChange >= 0
-                  ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                  : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                  ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)' // gray-500
+                  : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)' // gray-300
               }}
             >
               {percentageChange >= 0 ? '+' : ''}{percentageChange.toFixed(1)}%
@@ -311,7 +312,7 @@ export function ProfitFactorChart({ trades = [], limitMonths, showCard = true }:
             <Tooltip
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
-                  const profitFactor = payload[0].value;
+                  const profitFactor = payload[0].value as number;
                   const displayValue = profitFactor === 2 ? "Good (No Losses)" : profitFactor.toFixed(2);
 
                   return (
@@ -381,7 +382,7 @@ export function ProfitFactorChart({ trades = [], limitMonths, showCard = true }:
             <Tooltip
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
-                  const profitFactor = payload[0].value;
+                  const profitFactor = payload[0].value as number;
                   const displayValue = profitFactor === 2 ? "Good (No Losses)" : profitFactor.toFixed(2);
 
                   return (
@@ -435,8 +436,8 @@ export function ProfitFactorChart({ trades = [], limitMonths, showCard = true }:
               </div>
               {percentageChange !== 0 && (
                 <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium ${percentageChange > 0
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'bg-red-500/20 text-red-400'
+                  ? 'bg-gray-500/20 text-gray-500'
+                  : 'bg-gray-300/20 text-gray-300'
                   }`}>
                   {percentageChange > 0 ? (
                     <ChevronUp className="h-3 w-3" />

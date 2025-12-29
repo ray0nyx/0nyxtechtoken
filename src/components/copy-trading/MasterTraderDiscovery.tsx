@@ -9,31 +9,34 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Users, 
-  Star, 
-  TrendingUp, 
-  TrendingDown, 
-  Shield, 
-  Clock, 
+import {
+  Users,
+  Activity as Star,
+  Activity as TrendingUp,
+  Activity as TrendingDown,
+  Shield,
+  Clock,
   DollarSign,
   Target,
-  Eye,
+  Search as Eye,
   Plus,
-  Minus,
-  ArrowUp,
-  ArrowDown,
-  Filter,
+  Square as Minus,
+  ChevronUp as ArrowUp,
+  ChevronDown as ArrowDown,
+  Search as Filter,
   Search,
   ExternalLink,
   CheckCircle,
-  AlertTriangle
+  AlertCircle as AlertTriangle
 } from 'lucide-react';
 
 interface MasterTraderProfile {
   id: string;
   userId: string;
+  walletAddress?: string;
   profileName: string;
+  solBalance?: number;
+  balanceUSD?: number;
   strategyType: 'scalping' | 'swing' | 'arbitrage' | 'mean_reversion' | 'trend_following';
   riskLevel: 'conservative' | 'moderate' | 'aggressive' | 'high_frequency';
   performance: {
@@ -137,8 +140,8 @@ export const MasterTraderDiscovery: React.FC<MasterTraderDiscoveryProps> = ({
     let filtered = masterTraders.filter(trader => {
       // Search filter
       if (searchQuery && !trader.profileName.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          !trader.bio.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          !trader.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))) {
+        !trader.bio.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !trader.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))) {
         return false;
       }
 
@@ -315,6 +318,19 @@ export const MasterTraderDiscovery: React.FC<MasterTraderDiscoveryProps> = ({
               </CardHeader>
 
               <CardContent className="space-y-4">
+                {/* Wallet Balance Info */}
+                {trader.walletAddress && (
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-neutral-900 rounded-lg border border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center space-x-2">
+                      <DollarSign className="w-4 h-4 text-cyan-500" />
+                      <span className="text-sm font-medium">SOL Balance</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold">{trader.solBalance?.toFixed(4) || '0.0000'} SOL</div>
+                      <div className="text-xs text-gray-500">${trader.balanceUSD?.toLocaleString() || '0'}</div>
+                    </div>
+                  </div>
+                )}
                 {/* Strategy and Risk Level */}
                 <div className="flex items-center space-x-2">
                   <Badge className={getStrategyColor(trader.strategyType)}>
@@ -332,9 +348,8 @@ export const MasterTraderDiscovery: React.FC<MasterTraderDiscoveryProps> = ({
                       <TrendingUp className="w-3 h-3" />
                       <span>Return</span>
                     </div>
-                    <div className={`font-semibold ${
-                      trader.performance.totalReturn >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <div className={`font-semibold ${trader.performance.totalReturn >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
                       {(trader.performance.totalReturn * 100).toFixed(1)}%
                     </div>
                   </div>
@@ -403,7 +418,7 @@ export const MasterTraderDiscovery: React.FC<MasterTraderDiscoveryProps> = ({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {/* View details */}}
+                        onClick={() => {/* View details */ }}
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -425,10 +440,10 @@ export const MasterTraderDiscovery: React.FC<MasterTraderDiscoveryProps> = ({
                   <div className="pt-2 border-t border-gray-200 dark:border-gray-900">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">Status</span>
-                      <Badge 
+                      <Badge
                         variant={
                           relationship.status === 'active' ? 'default' :
-                          relationship.status === 'paused' ? 'secondary' : 'destructive'
+                            relationship.status === 'paused' ? 'secondary' : 'destructive'
                         }
                       >
                         {relationship.status}
@@ -442,9 +457,8 @@ export const MasterTraderDiscovery: React.FC<MasterTraderDiscoveryProps> = ({
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">P&L</span>
-                      <span className={`font-medium ${
-                        relationship.totalPnl >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
+                      <span className={`font-medium ${relationship.totalPnl >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
                         ${relationship.totalPnl.toFixed(2)}
                       </span>
                     </div>
@@ -480,7 +494,7 @@ export const MasterTraderDiscovery: React.FC<MasterTraderDiscoveryProps> = ({
                   className="mt-1"
                 />
               </div>
-              
+
               <div className="text-sm text-gray-500">
                 <p>• Minimum investment: $1,000</p>
                 <p>• Performance fee: 20%</p>

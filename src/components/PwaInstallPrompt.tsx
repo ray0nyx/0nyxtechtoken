@@ -30,7 +30,7 @@ export function PwaInstallPrompt() {
 
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    
+
     if (outcome === 'accepted') {
       setDeferredPrompt(null);
       setIsInstallable(false);
@@ -43,7 +43,7 @@ export function PwaInstallPrompt() {
     <div className="fixed bottom-4 right-4 z-50">
       <Button
         onClick={handleInstallClick}
-        className="bg-magenta-500 hover:bg-magenta-600 text-white flex items-center gap-2"
+        className="bg-gray-200 hover:bg-gray-300 text-gray-900 flex items-center gap-2"
       >
         <Download className="h-4 w-4" />
         Install App

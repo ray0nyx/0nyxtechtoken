@@ -30,6 +30,11 @@ export function WinRateChart({ trades = [], showCard = true }: WinRateChartProps
       new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
     );
 
+    interface MonthlyData {
+      wins: number;
+      total: number;
+    }
+
     // Group trades by month
     const monthlyData = sortedTrades.reduce((acc, trade) => {
       const date = new Date(trade.entry_date);
@@ -45,7 +50,7 @@ export function WinRateChart({ trades = [], showCard = true }: WinRateChartProps
       }
 
       return acc;
-    }, {} as Record<string, { wins: number; total: number }>);
+    }, {} as Record<string, MonthlyData>);
 
     // Convert to chart data
     return Object.entries(monthlyData).map(([month, data]) => ({
@@ -83,8 +88,8 @@ export function WinRateChart({ trades = [], showCard = true }: WinRateChartProps
               className="text-sm font-bold"
               style={{
                 color: percentageChange >= 0
-                  ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                  : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                  ? 'rgb(107 114 128)' // gray-500
+                  : 'rgb(209 213 219)' // gray-300
               }}
             >
               {percentageChange >= 0 ? '+' : ''}{percentageChange.toFixed(1)}%
@@ -170,19 +175,19 @@ export function WinRateChart({ trades = [], showCard = true }: WinRateChartProps
   if (!showCard) return chartContent;
 
   return (
-    <Card className="shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-blue-500/10 overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 from-slate-50 to-slate-100">
-      <CardHeader className="bg-blue-500/10 dark:bg-blue-500/20">
+    <Card className="shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-gray-500/10 overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 from-slate-50 to-slate-100">
+      <CardHeader className="bg-gray-500/10 dark:bg-gray-500/20">
         <CardTitle className="text-white dark:text-slate-900 flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-blue-500/20 dark:bg-blue-500/30">
-            <Target className="h-4 w-4 text-blue-400 dark:text-blue-600" />
+          <div className="p-1.5 rounded-lg bg-gray-500/20 dark:bg-gray-500/30">
+            <Target className="h-4 w-4 text-gray-500" />
           </div>
           Win Rate Over Time
           <div className="ml-auto flex items-center gap-2">
-            <span className="text-lg font-bold text-blue-400 dark:text-blue-600">
+            <span className="text-lg font-bold text-gray-500">
               {currentWinRate.toFixed(1)}%
             </span>
             {percentageChange !== 0 && (
-              <div className={`flex items-center gap-1 text-sm ${percentageChange > 0 ? 'text-emerald-400 dark:text-emerald-600' : 'text-red-400 dark:text-red-600'}`}>
+              <div className={`flex items-center gap-1 text-sm ${percentageChange > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                 {percentageChange > 0 ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 <span>{Math.abs(percentageChange).toFixed(1)}%</span>
               </div>

@@ -64,7 +64,7 @@ export function AverageWinLossChart({ trades = [], showCard = true }: AverageWin
     }, {} as Record<string, { wins: number[]; losses: number[] }>);
 
     // Convert to chart data
-    return Object.entries(weeklyData).map(([week, data]) => ({
+    return Object.entries(weeklyData).map(([week, data]: [string, { wins: number[]; losses: number[] }]) => ({
       date: week,
       period: format(parseISO(week), 'MMM dd'),
       avgWin: data.wins.length > 0 ? data.wins.reduce((a, b) => a + b, 0) / data.wins.length : 0,
@@ -104,8 +104,8 @@ export function AverageWinLossChart({ trades = [], showCard = true }: AverageWin
                 className="text-sm font-bold"
                 style={{
                   color: winChange >= 0
-                    ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                    : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                    ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
+                    : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
                 }}
               >
                 {winChange >= 0 ? '+' : ''}{winChange.toFixed(1)}%
@@ -119,8 +119,8 @@ export function AverageWinLossChart({ trades = [], showCard = true }: AverageWin
                 className="text-sm font-bold"
                 style={{
                   color: lossChange >= 0
-                    ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                    : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                    ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
+                    : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
                 }}
               >
                 {lossChange >= 0 ? '+' : ''}{lossChange.toFixed(1)}%
@@ -211,24 +211,24 @@ export function AverageWinLossChart({ trades = [], showCard = true }: AverageWin
           Average Win/Loss Over Time
           <div className="ml-auto flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-blue-400 dark:text-blue-600">Avg Win:</span>
-              <span className="text-lg font-bold text-blue-400 dark:text-blue-600">
+              <span className="text-sm text-gray-500">Avg Win:</span>
+              <span className="text-lg font-bold text-gray-500">
                 {formatCurrency(currentAvgWin)}
               </span>
               {winChange !== 0 && (
-                <div className={`flex items-center gap-1 text-xs ${winChange > 0 ? 'text-emerald-400 dark:text-emerald-600' : 'text-red-400 dark:text-red-600'}`}>
+                <div className={`flex items-center gap-1 text-xs ${winChange > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                   {winChange > 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   <span>{Math.abs(winChange).toFixed(1)}%</span>
                 </div>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-purple-400 dark:text-purple-600">Avg Loss:</span>
-              <span className="text-lg font-bold text-purple-400 dark:text-purple-600">
+              <span className="text-sm text-gray-300">Avg Loss:</span>
+              <span className="text-lg font-bold text-gray-300">
                 {formatCurrency(currentAvgLoss)}
               </span>
               {lossChange !== 0 && (
-                <div className={`flex items-center gap-1 text-xs ${lossChange > 0 ? 'text-emerald-400 dark:text-emerald-600' : 'text-red-400 dark:text-red-600'}`}>
+                <div className={`flex items-center gap-1 text-xs ${lossChange > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                   {lossChange > 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   <span>{Math.abs(lossChange).toFixed(1)}%</span>
                 </div>

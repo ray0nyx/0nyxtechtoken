@@ -144,18 +144,18 @@ export function TradeDurationPnLChart({ trades = [], showCard = true }: TradeDur
   if (!showCard) return chartContent;
 
   return (
-    <Card className="shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-blue-500/10 overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 from-slate-50 to-slate-100">
-      <CardHeader className="bg-blue-500/10 dark:bg-blue-500/20">
+    <Card className="shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-gray-500/10 overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 from-slate-50 to-slate-100">
+      <CardHeader className="bg-gray-500/10 dark:bg-gray-500/20">
         <CardTitle className="text-white dark:text-slate-900 flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-blue-500/20 dark:bg-blue-500/30">
-            <Clock className="h-4 w-4 text-blue-400 dark:text-blue-600" />
+          <div className="p-1.5 rounded-lg bg-gray-500/20 dark:bg-gray-500/30">
+            <Clock className="h-4 w-4 text-gray-500" />
           </div>
           Trade Duration vs P&L
           <div className="ml-auto flex items-center gap-2">
-            <span className="text-lg font-bold text-blue-400 dark:text-blue-600">
+            <span className="text-lg font-bold text-gray-500">
               {averageDuration.toFixed(0)}m
             </span>
-            <div className="flex items-center gap-1 text-sm text-blue-400 dark:text-blue-600">
+            <div className="flex items-center gap-1 text-sm text-gray-500">
               <ChevronUp className="h-4 w-4" />
               <span>Avg Duration</span>
             </div>

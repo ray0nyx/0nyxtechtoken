@@ -7,8 +7,6 @@ import {
     Settings,
     Home,
     Search,
-    Search as Bell,
-    Search as Star,
     ChevronDown,
     Search as Menu,
     Search as LayoutDashboard,
@@ -56,6 +54,9 @@ import { SubscriptionStatus } from '@/components/subscription/SubscriptionStatus
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { BrokerSyncModal } from '@/components/trades/BrokerSyncModal';
 import { useToast } from '@/components/ui/use-toast';
+import { DepositModal } from '@/components/wallet/DepositModal';
+import { WithdrawModal } from '@/components/wallet/WithdrawModal';
+import { fetchSolanaWalletBalance } from '@/lib/wallet-balance-service';
 
 export function AppNavigation() {
     const navigate = useNavigate();
@@ -66,8 +67,12 @@ export function AppNavigation() {
     const { isAffiliate } = useAffiliate();
     const { canAccessTradeSync } = useSubscription();
     const [showBrokerSyncModal, setShowBrokerSyncModal] = useState(false);
+    const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+    const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const { toast } = useToast();
+    const [solBalance, setSolBalance] = useState<number>(0);
+    const [turnkeyAddress, setTurnkeyAddress] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchUserProfile = async () => {
@@ -90,6 +95,53 @@ export function AppNavigation() {
         fetchUserProfile();
     }, [supabase]);
 
+    // Fetch Turnkey wallet and balance
+    useEffect(() => {
+        let intervalId: NodeJS.Timeout;
+
+        const initWalletTracking = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                // Get Turnkey wallet
+                const { data: wallets } = await supabase
+                    .from('user_wallets')
+                    .select('wallet_address')
+                    .eq('user_id', user.id)
+                    .eq('wallet_type', 'turnkey')
+                    .limit(1);
+
+                if (wallets && wallets.length > 0) {
+                    const address = wallets[0].wallet_address;
+                    setTurnkeyAddress(address);
+
+                    // Fetch initial balance
+                    const updateBalance = async () => {
+                        try {
+                            const balanceData = await fetchSolanaWalletBalance(address);
+                            setSolBalance(balanceData.balances['SOL']?.amount || 0);
+                        } catch (err) {
+                            console.error("Error fetching SOL balance:", err);
+                        }
+                    };
+
+                    updateBalance();
+                    // Poll every 10 seconds for real-time updates
+                    intervalId = setInterval(updateBalance, 10000);
+                }
+            } catch (error) {
+                console.error("Error initializing wallet tracking:", error);
+            }
+        };
+
+        initWalletTracking();
+
+        return () => {
+            if (intervalId) clearInterval(intervalId);
+        };
+    }, [supabase]);
+
     const handleSignOut = async () => {
         await supabase.auth.signOut();
         navigate('/signin');
@@ -102,7 +154,7 @@ export function AppNavigation() {
         { name: "Journal", href: "/app/journal", icon: BookOpen },
         { name: "Analytics", href: "/app/performance", icon: BarChart3 },
         { name: "Backtesting", href: "/app/backtesting", icon: TrendingUp },
-        { name: "Algo Deployment", href: "/app/quantbacktesting", icon: Activity },
+        { name: "Algo Deployment", href: "/app/algo", icon: Activity },
     ];
 
     const secondaryNavigation = [
@@ -227,19 +279,74 @@ export function AppNavigation() {
                             <Plus className="h-4 w-4 mr-1" /> Add Trade
                         </Button>
 
-                        {/* Network / Status - Mocking SOL from screenshot */}
-                        <div className="hidden sm:flex items-center gap-2 bg-[#18181b] rounded-full px-3 py-1.5 border border-white/10">
-                            <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
-                            <span className="text-xs font-medium text-gray-300">SOL</span>
-                        </div>
+                        {/* SOL Balance Display with Dropdown */}
+                        {turnkeyAddress && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-white/5 transition-colors cursor-pointer text-sm">
+                                        <span className="text-purple-400 font-bold">SOL</span>
+                                        <span className="font-medium text-white">{solBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 })}</span>
+                                        <ChevronDown className="h-3 w-3 text-gray-400 ml-1" />
+                                    </div>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="bg-[#18181b] border-white/10 text-white min-w-[140px]">
+                                    <DropdownMenuItem
+                                        onClick={() => setIsWithdrawModalOpen(true)}
+                                        className="cursor-pointer hover:bg-white/5 focus:bg-white/5"
+                                    >
+                                        Withdraw
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
 
-                        <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white">
-                            <Star className="h-5 w-5" />
+                        {/* Deposit Button */}
+                        <Button
+                            size="sm"
+                            onClick={() => setIsDepositModalOpen(true)}
+                            className="hidden sm:flex items-center gap-2 bg-[#6366f1] hover:bg-[#4f46e5] text-white rounded-full px-5 font-medium shadow-[0_0_10px_rgba(99,102,241,0.3)] transition-all hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] border-none"
+                        >
+                            <span className="text-xs">Deposit</span>
                         </Button>
 
-                        <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white">
-                            <Bell className="h-5 w-5" />
-                        </Button>
+
+                        {/* Notifications Bell */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-white">
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
+                                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-80 bg-[#18181b] border-white/10 text-gray-300" align="end">
+                                <DropdownMenuLabel className="text-white">Notifications</DropdownMenuLabel>
+                                <DropdownMenuSeparator className="bg-white/10" />
+                                <div className="max-h-[400px] overflow-y-auto">
+                                    <DropdownMenuItem className="flex flex-col items-start gap-1 p-4 cursor-pointer hover:bg-white/5 focus:bg-white/5">
+                                        <div className="font-medium text-white">New wallet connected</div>
+                                        <div className="text-xs text-gray-400">Phantom wallet successfully connected</div>
+                                        <div className="text-xs text-gray-500 mt-1">2 minutes ago</div>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="flex flex-col items-start gap-1 p-4 cursor-pointer hover:bg-white/5 focus:bg-white/5">
+                                        <div className="font-medium text-white">Price Alert</div>
+                                        <div className="text-xs text-gray-400">SOL reached $100 target</div>
+                                        <div className="text-xs text-gray-500 mt-1">1 hour ago</div>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="flex flex-col items-start gap-1 p-4 cursor-pointer hover:bg-white/5 focus:bg-white/5">
+                                        <div className="font-medium text-white">Wallet Activity</div>
+                                        <div className="text-xs text-gray-400">Received 0.5 SOL</div>
+                                        <div className="text-xs text-gray-500 mt-1">3 hours ago</div>
+                                    </DropdownMenuItem>
+                                </div>
+                                <DropdownMenuSeparator className="bg-white/10" />
+                                <DropdownMenuItem className="text-center text-blue-400 hover:text-blue-300 cursor-pointer hover:bg-white/5 focus:bg-white/5">
+                                    View all notifications
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
 
                         {/* Profile Menu */}
                         <DropdownMenu>
@@ -288,6 +395,22 @@ export function AppNavigation() {
                     });
                 }}
             />
+
+            <DepositModal
+                isOpen={isDepositModalOpen}
+                onOpenChange={setIsDepositModalOpen}
+            />
+
+            <WithdrawModal
+                isOpen={isWithdrawModalOpen}
+                onClose={() => setIsWithdrawModalOpen(false)}
+                currentBalance={solBalance}
+                walletAddress={turnkeyAddress}
+            />
+
+            <SearchPopup>
+                {/* No trigger needed here, controlled by SearchPopup internal logic or other triggers */}
+            </SearchPopup>
         </nav>
     );
 }

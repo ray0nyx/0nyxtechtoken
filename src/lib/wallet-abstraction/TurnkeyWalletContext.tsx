@@ -207,6 +207,27 @@ export function TurnkeyWalletProvider({ children }: TurnkeyWalletProviderProps) 
                 // Don't fail - wallet was created successfully
             }
 
+            // Also add to wallet_tracking so it shows up in the list/aggregates
+            console.log('📝 Adding wallet to tracking:', walletDetails.address);
+            const { data: trackingData, error: trackingError } = await supabase
+                .from('wallet_tracking')
+                .upsert({
+                    user_id: user.id,
+                    wallet_address: walletDetails.address,
+                    blockchain: 'solana',
+                    label: 'New Wallet',
+                    is_active: true,
+                }, {
+                    onConflict: 'user_id,wallet_address',
+                })
+                .select();
+
+            if (trackingError) {
+                console.error('❌ Error adding to wallet_tracking:', trackingError);
+            } else {
+                console.log('✅ Wallet added to tracking:', trackingData);
+            }
+
             setWallet(walletDetails);
             setAdapter(createTurnkeyWalletAdapter(walletDetails));
 

@@ -61,8 +61,8 @@ const TradeFrequencyHistogram = ({ trades, showCard = true }: TradeFrequencyHist
                 className="text-sm font-bold"
                 style={{
                   color: tradeCountChange >= 0
-                    ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                    : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                    ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
+                    : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
                 }}
               >
                 {tradeCountChange >= 0 ? '+' : ''}{tradeCountChange.toFixed(1)}%
@@ -76,8 +76,8 @@ const TradeFrequencyHistogram = ({ trades, showCard = true }: TradeFrequencyHist
                 className="text-sm font-bold"
                 style={{
                   color: pnlChange >= 0
-                    ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                    : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                    ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
+                    : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
                 }}
               >
                 {pnlChange >= 0 ? '+' : ''}{pnlChange.toFixed(1)}%
@@ -161,24 +161,24 @@ const TradeFrequencyHistogram = ({ trades, showCard = true }: TradeFrequencyHist
           Trade Frequency Histogram
           <div className="ml-auto flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-blue-400 dark:text-blue-600">Trades:</span>
-              <span className="text-lg font-bold text-blue-400 dark:text-blue-600">
+              <span className="text-sm text-gray-500">Trades:</span>
+              <span className="text-lg font-bold text-gray-500">
                 {currentTradeCount}
               </span>
               {tradeCountChange !== 0 && (
-                <div className={`flex items-center gap-1 text-xs ${tradeCountChange > 0 ? 'text-emerald-400 dark:text-emerald-600' : 'text-red-400 dark:text-red-600'}`}>
+                <div className={`flex items-center gap-1 text-xs ${tradeCountChange > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                   {tradeCountChange > 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   <span>{Math.abs(tradeCountChange).toFixed(1)}%</span>
                 </div>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-purple-400 dark:text-purple-600">P&L:</span>
-              <span className={`text-lg font-bold ${currentPnl >= 0 ? 'text-emerald-400 dark:text-emerald-600' : 'text-red-400 dark:text-red-600'}`}>
+              <span className="text-sm text-gray-500">P&L:</span>
+              <span className={`text-lg font-bold ${currentPnl >= 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                 ${currentPnl.toFixed(2)}
               </span>
               {pnlChange !== 0 && (
-                <div className={`flex items-center gap-1 text-xs ${pnlChange > 0 ? 'text-emerald-400 dark:text-emerald-600' : 'text-red-400 dark:text-red-600'}`}>
+                <div className={`flex items-center gap-1 text-xs ${pnlChange > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                   {pnlChange > 0 ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   <span>{Math.abs(pnlChange).toFixed(1)}%</span>
                 </div>

@@ -142,7 +142,7 @@ export function WinLossDistributionChart({ trades = [], showCard = true }: WinLo
               </span>
               <span
                 className="text-sm font-bold"
-                style={{ color: theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)' }}
+                style={{ color: theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)' }}
               >
                 ${currentWins.toFixed(2)}
               </span>
@@ -155,8 +155,8 @@ export function WinLossDistributionChart({ trades = [], showCard = true }: WinLo
                 className="text-sm font-bold"
                 style={{
                   color: isPositive
-                    ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                    : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                    ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
+                    : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
                 }}
               >
                 {isPositive ? '+' : ''}{percentageChange.toFixed(1)}%

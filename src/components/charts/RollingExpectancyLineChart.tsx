@@ -58,8 +58,8 @@ const RollingExpectancyLineChart = ({ trades, windowSize = 20, showCard = true }
               className="text-sm font-bold"
               style={{
                 color: percentageChange >= 0
-                  ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                  : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                  ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
+                  : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
               }}
             >
               {percentageChange >= 0 ? '+' : ''}{percentageChange.toFixed(1)}%
@@ -112,7 +112,7 @@ const RollingExpectancyLineChart = ({ trades, windowSize = 20, showCard = true }
                   return (
                     <div className="bg-[#0a0a0a] border border-neutral-800 rounded-lg shadow-lg p-3 backdrop-blur-sm">
                       <p className="font-medium mb-1 text-white">Trade #{label}</p>
-                      <p className="text-sm text-neutral-300">Expectancy: ${payload[0].value.toFixed(2)}</p>
+                      <p className="text-sm text-neutral-300">Expectancy: ${(payload[0].value as number).toFixed(2)}</p>
                     </div>
                   );
                 }
@@ -144,11 +144,11 @@ const RollingExpectancyLineChart = ({ trades, windowSize = 20, showCard = true }
           </div>
           Rolling 20 Trade Expectancy
           <div className="ml-auto flex items-center gap-2">
-            <span className="text-lg font-bold text-orange-400 dark:text-orange-600">
+            <span className="text-lg font-bold text-gray-500">
               {currentExpectancy.toFixed(2)}
             </span>
             {percentageChange !== 0 && (
-              <div className={`flex items-center gap-1 text-sm ${percentageChange > 0 ? 'text-emerald-400 dark:text-emerald-600' : 'text-red-400 dark:text-red-600'}`}>
+              <div className={`flex items-center gap-1 text-sm ${percentageChange > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                 {percentageChange > 0 ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 <span>{Math.abs(percentageChange).toFixed(1)}%</span>
               </div>
@@ -177,7 +177,7 @@ const RollingExpectancyLineChart = ({ trades, windowSize = 20, showCard = true }
               dataKey="date"
               stroke={axisColor}
               tick={{
-                fill: theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)', // green-500
+                fill: theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)', // gray-500
                 fontSize: 12,
                 filter: 'url(#glowText)'
               }}
@@ -185,7 +185,7 @@ const RollingExpectancyLineChart = ({ trades, windowSize = 20, showCard = true }
             <YAxis
               stroke={axisColor}
               tick={{
-                fill: theme === 'dark' ? 'rgb(59 130 246)' : 'rgb(59 130 246)', // blue-500
+                fill: theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)', // gray-500
                 fontSize: 12,
                 filter: 'url(#glowText)'
               }}

@@ -45,7 +45,14 @@ export function MonthlyWinLossAreaChart({ trades, showCard = true }: MonthlyWinL
   const data = React.useMemo(() => {
     if (!trades?.length) return [];
 
-    const monthlyData = trades.reduce((acc: any, trade: any) => {
+    interface MonthlyData {
+      month: string;
+      winningDays: number;
+      losingDays: number;
+      breakEvenDays: number;
+    }
+
+    const monthlyData = trades.reduce((acc: Record<string, MonthlyData>, trade: any) => {
       const date = parseISO(trade.entry_date);
       const monthKey = format(date, 'MMM yyyy');
 
@@ -68,7 +75,7 @@ export function MonthlyWinLossAreaChart({ trades, showCard = true }: MonthlyWinL
       }
 
       return acc;
-    }, {});
+    }, {} as Record<string, MonthlyData>);
 
     return Object.values(monthlyData);
   }, [trades]);
@@ -112,8 +119,8 @@ export function MonthlyWinLossAreaChart({ trades, showCard = true }: MonthlyWinL
                 className="text-sm font-bold"
                 style={{
                   color: winningDaysChange >= 0
-                    ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                    : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                    ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
+                    : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
                 }}
               >
                 {winningDaysChange >= 0 ? '+' : ''}{winningDaysChange.toFixed(1)}%
@@ -127,8 +134,8 @@ export function MonthlyWinLossAreaChart({ trades, showCard = true }: MonthlyWinL
                 className="text-sm font-bold"
                 style={{
                   color: losingDaysChange >= 0
-                    ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                    : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                    ? theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
+                    : theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
                 }}
               >
                 {losingDaysChange >= 0 ? '+' : ''}{losingDaysChange.toFixed(1)}%
@@ -227,27 +234,27 @@ export function MonthlyWinLossAreaChart({ trades, showCard = true }: MonthlyWinL
   }
 
   return (
-    <Card className="border-slate-700/50 dark:border-slate-700/50 border-slate-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-cyan-500/10 overflow-hidden bg-slate-900 dark:bg-slate-900">
-      <CardHeader className="bg-cyan-500/10 dark:bg-cyan-500/20 pb-3">
+    <Card className="border-slate-700/50 dark:border-slate-700/50 border-slate-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-gray-500/10 overflow-hidden bg-slate-900 dark:bg-slate-900">
+      <CardHeader className="bg-gray-500/10 dark:bg-gray-500/20 pb-3">
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg font-medium text-white dark:text-slate-900 flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-cyan-500/20 dark:bg-cyan-500/30">
-              <TrendingUp className="h-4 w-4 text-cyan-400 dark:text-cyan-600" />
+            <div className="p-1.5 rounded-lg bg-gray-500/20 dark:bg-gray-500/30">
+              <TrendingUp className="h-4 w-4 text-gray-500" />
             </div>
             Monthly Win/Loss Area Chart
           </CardTitle>
           <div className="flex items-center gap-4">
             <div className="text-right">
               <div className="text-sm text-slate-400 dark:text-slate-600">Winning Days</div>
-              <div className="text-lg font-bold text-blue-400 dark:text-blue-600">{currentWinningDays}</div>
+              <div className="text-lg font-bold text-gray-500">{currentWinningDays}</div>
             </div>
             <div className="text-right">
               <div className="text-sm text-slate-400 dark:text-slate-600">Losing Days</div>
-              <div className="text-lg font-bold text-purple-400 dark:text-purple-600">{currentLosingDays}</div>
+              <div className="text-lg font-bold text-gray-300">{currentLosingDays}</div>
             </div>
             <div className="text-right">
               <div className="text-sm text-slate-400 dark:text-slate-600">Break Even</div>
-              <div className="text-lg font-bold text-orange-400 dark:text-orange-600">{currentBreakEvenDays}</div>
+              <div className="text-lg font-bold text-gray-400">{currentBreakEvenDays}</div>
             </div>
           </div>
         </div>

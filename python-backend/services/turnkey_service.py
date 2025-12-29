@@ -9,6 +9,10 @@ import aiohttp
 from typing import Optional, Dict, Any
 import base64
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 logger = logging.getLogger(__name__)
 
 # Turnkey API configuration
@@ -65,47 +69,80 @@ class TurnkeyService:
         if not self.is_configured():
             raise RuntimeError("Turnkey not configured. Set TURNKEY_API_KEY, TURNKEY_API_SECRET, TURNKEY_ORGANIZATION_ID")
         
-        url = f"{self.base_url}/api/v1/sub-organizations"
+        # Correct Turnkey API endpoint
+        url = f"{self.base_url}/public/v1/submit/create_sub_organization"
+        
+        # Get current timestamp in milliseconds
+        import time
+        timestamp_ms = str(int(time.time() * 1000))
+        
+        # Turnkey uses API key authentication
         headers = {
             "Content-Type": "application/json",
             "X-Turnkey-Api-Key": self.api_key,
-            "X-Turnkey-Api-Secret": self.api_secret,
         }
         
+        # Activity-based request format with timestamp
         payload = {
-            "subOrganizationName": f"Axiom-User-{user_id}",
-            "rootUsers": [
-                {
-                    "userName": user_email,
-                    "userEmail": user_email,
-                    "apiKeys": [],
-                    "authenticators": [],
-                    "oauthProviders": [],
-                }
-            ],
-            "rootQuorumThreshold": 1,
-            "wallet": {
-                "walletName": f"Wallet-{user_id}",
-                "accounts": [
+            "type": "ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V4",
+            "timestampMs": timestamp_ms,
+            "organizationId": self.organization_id,
+            "parameters": {
+                "subOrganizationName": f"Axiom-User-{user_id}",
+                "rootUsers": [
                     {
-                        "curve": "CURVE_ED25519",
-                        "pathFormat": "PATH_FORMAT_BIP32",
-                        "path": "m/44'/501'/0'/0'",
-                        "addressFormat": "ADDRESS_FORMAT_SOLANA",
+                        "userName": user_email,
+                        "userEmail": user_email,
+                        "apiKeys": [],
+                        "authenticators": [],
                     }
                 ],
-            },
+                "rootQuorumThreshold": 1,
+                "wallet": {
+                    "walletName": f"Wallet-{user_id}",
+                    "accounts": [
+                        {
+                            "curve": "CURVE_ED25519",
+                            "pathFormat": "PATH_FORMAT_BIP32",
+                            "path": "m/44'/501'/0'/0'",
+                            "addressFormat": "ADDRESS_FORMAT_SOLANA",
+                        }
+                    ],
+                },
+            }
         }
         
         try:
+            logger.info(f"🔑 Turnkey API Request:")
+            logger.info(f"  URL: {url}")
+            logger.info(f"  Org ID: {self.organization_id}")
+            logger.info(f"  Timestamp: {timestamp_ms}")
+            
             async with self._session.post(url, headers=headers, json=payload) as response:
+                response_text = await response.text()
+                
+                logger.info(f"🔑 Turnkey API Response:")
+                logger.info(f"  Status: {response.status}")
+                logger.info(f"  Response: {response_text[:1000]}")
+                
                 if not response.ok:
-                    error_text = await response.text()
-                    logger.error(f"Turnkey API error: {response.status} - {error_text}")
-                    raise Exception(f"Failed to create sub-organization: {response.status}")
+                    logger.error(f"❌ Turnkey API error: {response.status} - {response_text}")
+                    raise Exception(f"Failed to create sub-organization: {response.status} - {response_text}")
                 
                 data = await response.json()
-                return data
+                
+                # Extract wallet info from Turnkey response
+                result = data.get("activity", {}).get("result", {})
+                sub_org_id = result.get("subOrganizationId", "")
+                wallet_addresses = result.get("walletAddresses", [])
+                wallet_id = result.get("walletId", "")
+                
+                return {
+                    "subOrganizationId": sub_org_id,
+                    "subOrganizationName": f"Axiom-User-{user_id}",
+                    "walletId": wallet_id,
+                    "walletAddress": wallet_addresses[0] if wallet_addresses else "",
+                }
         except Exception as e:
             logger.error(f"Error creating Turnkey sub-organization: {e}")
             raise

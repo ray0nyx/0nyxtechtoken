@@ -52,91 +52,69 @@ export class TurnkeyService {
   }
 
   /**
-   * Create a sub-organization for a user
+   * Create a sub-organization for a user (via Node.js Turnkey service)
    */
   async createSubOrganization(
     userId: string,
     userEmail: string
   ): Promise<TurnkeySubOrganization> {
-    const response = await fetch(`${this.baseUrl}/api/v1/sub-organizations`, {
+    const apiUrl = 'http://localhost:3001';
+
+    const response = await fetch(`${apiUrl}/api/turnkey/create-wallet`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Turnkey-Api-Key': this.apiKey,
-        'X-Turnkey-Api-Secret': this.apiSecret,
       },
       body: JSON.stringify({
-        subOrganizationName: `Axiom-User-${userId}`,
-        rootUsers: [
-          {
-            userName: userEmail,
-            userEmail: userEmail,
-            apiKeys: [],
-            authenticators: [],
-            oauthProviders: [],
-          },
-        ],
-        rootQuorumThreshold: 1,
-        wallet: {
-          walletName: `Wallet-${userId}`,
-          accounts: [
-            {
-              curve: 'CURVE_ED25519',
-              pathFormat: 'PATH_FORMAT_BIP32',
-              path: "m/44'/501'/0'/0'",
-              addressFormat: 'ADDRESS_FORMAT_SOLANA',
-            },
-          ],
-        },
+        userId,
+        userEmail,
       }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Failed to create sub-organization: ${error.message || response.statusText}`);
+      const error = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(`Failed to create sub-organization: ${error.error || error.message || response.statusText}`);
     }
 
     const data = await response.json();
-    
-    // Extract wallet address from the response
-    const walletAddress = data.wallet?.accounts?.[0]?.address || '';
-    
+
     return {
       subOrganizationId: data.subOrganizationId,
       subOrganizationName: data.subOrganizationName,
-      walletId: data.wallet?.walletId || '',
-      walletAddress,
+      walletId: data.walletId,
+      walletAddress: data.walletAddress,
     };
   }
 
   /**
-   * Get wallet information
+   * Get wallet information (via proxy to avoid CORS)
    */
   async getWallet(walletId: string, organizationId: string): Promise<TurnkeyWallet> {
+    const apiUrl = 'http://localhost:3001';
+
     const response = await fetch(
-      `${this.baseUrl}/api/v1/wallets/${walletId}?organizationId=${organizationId}`,
+      `${apiUrl}/api/turnkey/get-wallet/${walletId}?organizationId=${organizationId}`,
       {
         method: 'GET',
         headers: {
-          'X-Turnkey-Api-Key': this.apiKey,
-          'X-Turnkey-Api-Secret': this.apiSecret,
+          'Content-Type': 'application/json',
         },
       }
     );
 
     if (!response.ok) {
-      throw new Error(`Failed to get wallet: ${response.statusText}`);
+      const error = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(`Failed to get wallet: ${error.error || response.statusText}`);
     }
 
     const data = await response.json();
-    const address = data.wallet?.accounts?.[0]?.address || '';
-    
+
     return {
-      walletId: data.wallet?.walletId || walletId,
+      walletId: data.walletId || walletId,
       organizationId,
-      address,
-      publicKey: new PublicKey(address),
-      createdAt: data.wallet?.createdAt || new Date().toISOString(),
+      address: data.address,
+      publicKey: new PublicKey(data.address),
+      createdAt: data.createdAt || new Date().toISOString(),
     };
   }
 
@@ -148,7 +126,7 @@ export class TurnkeyService {
     request: SignatureRequest
   ): Promise<SignatureResponse> {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
-    
+
     const response = await fetch(`${apiUrl}/api/turnkey/sign`, {
       method: 'POST',
       headers: {

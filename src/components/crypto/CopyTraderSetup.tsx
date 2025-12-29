@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertCircle, TrendingUp, Shield, Zap, DollarSign, Target, Play, Pause, CheckCircle } from 'lucide-react';
+import { AlertCircle, TrendingUp, Shield, DollarSign, Target, Play, Pause, CheckCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -177,10 +177,9 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-black border-slate-700">
         <DialogHeader>
           <DialogTitle className="text-2xl text-white flex items-center gap-2">
-            <Zap className="w-6 h-6 text-emerald-400" />
             Copy Trading Setup
           </DialogTitle>
           <DialogDescription className="text-slate-400">
@@ -190,7 +189,7 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
         </DialogHeader>
 
         {/* Trader Quick Stats */}
-        <div className="grid grid-cols-4 gap-3 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+        <div className="grid grid-cols-4 gap-3 p-4 bg-[#0a0a0a] rounded-lg border border-slate-800">
           <div>
             <p className="text-xs text-slate-400 mb-1">ROI</p>
             <p className={`text-lg font-bold ${(trader.roi ?? 0) > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -212,7 +211,7 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
         </div>
 
         <Tabs defaultValue="position" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-slate-800">
+          <TabsList className="grid w-full grid-cols-3 bg-[#0a0a0a] border border-slate-800">
             <TabsTrigger value="position">Position Sizing</TabsTrigger>
             <TabsTrigger value="risk">Risk Management</TabsTrigger>
             <TabsTrigger value="tokens">Token Filters</TabsTrigger>
@@ -231,7 +230,7 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
                   type="number"
                   value={allocatedCapital}
                   onChange={(e) => setAllocatedCapital(parseFloat(e.target.value) || 0)}
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-black border-slate-800 text-white focus:border-emerald-500 transition-colors"
                   min="0"
                   step="10"
                 />
@@ -264,7 +263,7 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
                     type="number"
                     value={fixedPositionSize}
                     onChange={(e) => setFixedPositionSize(parseFloat(e.target.value) || 0)}
-                    className="bg-slate-800 border-slate-700 text-white"
+                    className="bg-black border-slate-800 text-white focus:border-emerald-500 transition-colors"
                     min="1"
                   />
                 </div>
@@ -295,7 +294,7 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
                   type="number"
                   value={maxPositionSize}
                   onChange={(e) => setMaxPositionSize(parseFloat(e.target.value) || 0)}
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-black border-slate-800 text-white focus:border-emerald-500 transition-colors"
                   min="0"
                 />
                 <p className="text-xs text-slate-400 mt-1">
@@ -344,7 +343,7 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
                   value={stopLossPercentage}
                   onChange={(e) => setStopLossPercentage(parseFloat(e.target.value) || 0)}
                   placeholder="e.g. 10 for -10%"
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-black border-slate-800 text-white focus:border-emerald-500 transition-colors"
                   min="0"
                   max="100"
                 />
@@ -361,7 +360,7 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
                   value={takeProfitPercentage}
                   onChange={(e) => setTakeProfitPercentage(parseFloat(e.target.value) || 0)}
                   placeholder="e.g. 50 for +50%"
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-black border-slate-800 text-white focus:border-emerald-500 transition-colors"
                   min="0"
                 />
                 <p className="text-xs text-slate-400 mt-1">
@@ -376,7 +375,7 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
                   type="number"
                   value={maxDailyTrades}
                   onChange={(e) => setMaxDailyTrades(parseInt(e.target.value) || 0)}
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-black border-slate-800 text-white focus:border-emerald-500 transition-colors"
                   min="1"
                 />
               </div>
@@ -388,7 +387,7 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
                   value={maxDailyLoss}
                   onChange={(e) => setMaxDailyLoss(parseFloat(e.target.value) || 0)}
                   placeholder="0 = no limit"
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-black border-slate-800 text-white focus:border-emerald-500 transition-colors"
                   min="0"
                 />
               </div>
@@ -405,7 +404,7 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
                   value={tokenWhitelist}
                   onChange={(e) => setTokenWhitelist(e.target.value)}
                   placeholder="One token address per line&#10;Leave empty to copy all tokens"
-                  className="w-full h-24 px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm resize-none"
+                  className="w-full h-24 px-3 py-2 bg-black border border-slate-800 rounded-md text-white text-sm resize-none focus:border-emerald-500 transition-colors"
                 />
                 <p className="text-xs text-slate-400 mt-1">
                   Only copy trades involving these tokens
@@ -434,7 +433,7 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
                   value={minLiquidity}
                   onChange={(e) => setMinLiquidity(parseFloat(e.target.value) || 0)}
                   placeholder="0 = no minimum"
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-black border-slate-800 text-white focus:border-emerald-500 transition-colors"
                   min="0"
                 />
                 <p className="text-xs text-slate-400 mt-1">
@@ -446,7 +445,6 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
               <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                 <div>
                   <Label className="text-white flex items-center gap-2 mb-1">
-                    <Zap className="w-4 h-4 text-amber-400" />
                     Auto-Execute Trades
                   </Label>
                   <p className="text-xs text-slate-400">
@@ -466,7 +464,7 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
                   type="number"
                   value={priorityFee}
                   onChange={(e) => setPriorityFee(parseFloat(e.target.value) || 0)}
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-black border-slate-800 text-white focus:border-emerald-500 transition-colors"
                   step="0.000001"
                 />
                 <p className="text-xs text-slate-400 mt-1">
@@ -483,14 +481,14 @@ export default function CopyTraderSetup({ open, onOpenChange, trader }: CopyTrad
             variant="outline"
             onClick={() => handleSave(false)}
             disabled={saving}
-            className="flex-1 border-slate-600 text-white hover:bg-slate-800"
+            className="flex-1 border-gray-500 text-gray-300 hover:bg-gray-800"
           >
             Save Configuration
           </Button>
           <Button
             onClick={() => handleSave(true)}
             disabled={saving}
-            className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
           >
             {saving ? 'Activating...' : 'Save & Activate'}
           </Button>

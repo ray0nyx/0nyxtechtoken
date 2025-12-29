@@ -2470,6 +2470,45 @@ async def get_pump_fun_coins(
         return {"coins": [], "count": 0}
 
 
+@app.get("/api/pump-fun/coins/{mint}")
+async def get_pump_fun_coin_details(mint: str):
+    """Get details for a specific Pump.fun coin"""
+    import aiohttp
+    from aiohttp import ClientTimeout
+
+    logger.info(f"Fetching details for coin: {mint}")
+
+    # Try local cache/tracker first
+    # (Implementation omitted for brevity, going straight to API)
+
+    url = f"https://frontend-api.pump.fun/coins/{mint}"
+    timeout = ClientTimeout(total=10)
+    
+    import ssl
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json'
+    }
+
+    try:
+        async with aiohttp.ClientSession(timeout=timeout, connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
+            async with session.get(url, headers=headers) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    return data
+                elif resp.status == 404:
+                    return JSONResponse(status_code=404, content={"error": "Coin not found"})
+                else:
+                    return JSONResponse(status_code=resp.status, content={"error": "Upstream API error"})
+    except Exception as e:
+        logger.error(f"Error fetching coin details: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",

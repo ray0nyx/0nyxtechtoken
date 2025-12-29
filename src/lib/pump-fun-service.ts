@@ -170,21 +170,47 @@ export async function fetchKingOfTheHill(): Promise<PumpFunCoin[]> {
  */
 export async function fetchPumpFunCoinDetails(mint: string): Promise<PumpFunCoin | null> {
   try {
-    const response = await fetch(
-      `${PUMP_FUN_API}/coins/${mint}`,
-      {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-      }
-    );
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 
-    if (!response.ok) {
-      return null;
+    // 1. Try Pump.fun Backend Proxy
+    try {
+      const response = await fetch(`${apiUrl}/api/pump-fun/coins/${mint}`);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (e) {
+      // Ignore and try fallback
     }
 
-    return await response.json();
+    // 2. Fallback to Birdeye (via Backend Proxy) for established tokens
+    try {
+      const response = await fetch(`${apiUrl}/api/birdeye/token_overview?address=${mint}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Map Birdeye data to PumpFunCoin format
+        if (data && (data.data || data.success)) {
+          const info = data.data || data;
+          return {
+            mint: info.address || mint,
+            name: info.name || 'Unknown',
+            symbol: info.symbol || 'UNKNOWN',
+            description: 'Fetched via Birdeye',
+            image_uri: info.logoURI || info.logo_uri || '',
+            creator: '',
+            created_timestamp: Date.now(),
+            complete: true,
+            market_cap: info.mc || info.marketCap || 0,
+            usd_market_cap: info.mc || info.marketCap || 0,
+            show_name: true,
+            nsfw: false
+          } as PumpFunCoin;
+        }
+      }
+    } catch (e) {
+      console.warn('Fallback fetch failed:', e);
+    }
+
+    return null;
   } catch (error) {
     console.warn('Failed to fetch coin details:', error);
     return null;

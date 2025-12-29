@@ -46,6 +46,12 @@ export function MonthlyWinLossBarChart({ trades = [], showCard = true }: Monthly
   const data = React.useMemo(() => {
     if (!trades?.length) return [];
 
+    interface MonthlyData {
+      winningDays: number;
+      losingDays: number;
+      breakEvenDays: number;
+    }
+
     // Group trades by month
     const monthlyData = trades.reduce((acc, trade) => {
       const date = new Date(trade.entry_date);
@@ -66,7 +72,7 @@ export function MonthlyWinLossBarChart({ trades = [], showCard = true }: Monthly
       }
 
       return acc;
-    }, {} as Record<string, { winningDays: number; losingDays: number; breakEvenDays: number }>);
+    }, {} as Record<string, MonthlyData>);
 
     // Convert to chart data
     return Object.entries(monthlyData).map(([month, data]) => ({
@@ -102,7 +108,7 @@ export function MonthlyWinLossBarChart({ trades = [], showCard = true }: Monthly
               </span>
               <span
                 className="text-sm font-bold"
-                style={{ color: theme === 'dark' ? 'rgb(59 130 246)' : 'rgb(59 130 246)' }}
+                style={{ color: theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)' }}
               >
                 {currentWinningDays}
               </span>
@@ -113,7 +119,7 @@ export function MonthlyWinLossBarChart({ trades = [], showCard = true }: Monthly
               </span>
               <span
                 className="text-sm font-bold"
-                style={{ color: theme === 'dark' ? 'rgb(147 51 234)' : 'rgb(147 51 234)' }}
+                style={{ color: theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)' }}
               >
                 {currentLosingDays}
               </span>
@@ -190,29 +196,29 @@ export function MonthlyWinLossBarChart({ trades = [], showCard = true }: Monthly
   if (!showCard) return chartContent;
 
   return (
-    <Card className="shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-cyan-500/10 overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 from-slate-50 to-slate-100">
-      <CardHeader className="bg-cyan-500/10 dark:bg-cyan-500/20">
+    <Card className="shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-gray-500/10 overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 from-slate-50 to-slate-100">
+      <CardHeader className="bg-gray-500/10 dark:bg-gray-500/20">
         <CardTitle className="text-white dark:text-slate-900 flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-cyan-500/20 dark:bg-cyan-500/30">
-            <Calendar className="h-4 w-4 text-cyan-400 dark:text-cyan-600" />
+          <div className="p-1.5 rounded-lg bg-gray-500/20 dark:bg-gray-500/30">
+            <Calendar className="h-4 w-4 text-gray-500" />
           </div>
           Monthly Win/Loss Days
           <div className="ml-auto flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-blue-400 dark:text-blue-600">Winning:</span>
-              <span className="text-lg font-bold text-blue-400 dark:text-blue-600">
+              <span className="text-sm text-gray-500">Winning:</span>
+              <span className="text-lg font-bold text-gray-500">
                 {currentWinningDays} days
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-purple-400 dark:text-purple-600">Losing:</span>
-              <span className="text-lg font-bold text-purple-400 dark:text-purple-600">
+              <span className="text-sm text-gray-300">Losing:</span>
+              <span className="text-lg font-bold text-gray-300">
                 {currentLosingDays} days
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-orange-400 dark:text-orange-600">Break Even:</span>
-              <span className="text-lg font-bold text-orange-400 dark:text-orange-600">
+              <span className="text-sm text-gray-400">Break Even:</span>
+              <span className="text-lg font-bold text-gray-400">
                 {currentBreakEvenDays} days
               </span>
             </div>

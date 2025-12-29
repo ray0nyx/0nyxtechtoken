@@ -25,10 +25,10 @@ import {
   Target,
   Shield,
   Search,
-  ArrowUpDown,
+  Search as ArrowUpDown,
   CheckCircle,
   ExternalLink,
-  Eye,
+  Search as Eye,
   Copy,
   Zap
 } from 'lucide-react';
@@ -66,7 +66,7 @@ export default function CopyTradingLeaderboard({ onSelectTrader }: CopyTradingLe
   const supabase = createClient();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+
   const [traders, setTraders] = useState<LeaderboardTrader[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -77,38 +77,12 @@ export default function CopyTradingLeaderboard({ onSelectTrader }: CopyTradingLe
 
   useEffect(() => {
     const init = async () => {
-      try {
-        // Check if leaderboard is empty
-        const { data, error } = await supabase
-          .from('copy_trading_leaderboard')
-          .select('id, wallet_address, is_active, blockchain')
-          .limit(1);
-        
-        console.log('Leaderboard check:', { data, error });
-        
-        if (!error && (!data || data.length === 0)) {
-          console.log('Leaderboard empty, seeding...');
-          const count = await seedCopyTradingLeaderboard();
-          console.log(`Seeded ${count} traders`);
-          toast({
-            title: 'Leaderboard Seeded',
-            description: `${count} top traders added`,
-          });
-        } else if (data && data.length > 0) {
-          console.log('Leaderboard already has data:', data.length);
-        }
-      } catch (e) {
-        console.error('Seeding error:', e);
-        toast({
-          title: 'Warning',
-          description: 'Failed to seed leaderboard. Showing existing traders.',
-          variant: 'destructive'
-        });
-      }
-      
+      // Manual cleanup if needed - one time or based on a condition
+      // await supabase.from('copy_trading_leaderboard').delete().neq('id', '0');
+
       fetchTraders();
     };
-    
+
     init();
   }, [sortBy]);
 
@@ -121,24 +95,24 @@ export default function CopyTradingLeaderboard({ onSelectTrader }: CopyTradingLe
         .select('*')
         .order(sortBy, { ascending: false, nullsLast: true })
         .limit(100);
-      
+
       // Only add filters if they make sense
       query = query.eq('blockchain', 'solana');
       // Don't filter by is_active initially - show all, then filter in UI
-      
+
       const { data, error } = await query;
-      
+
       if (error) {
         console.error('Query error:', error);
         throw error;
       }
-      
+
       console.log(`Fetched ${data?.length || 0} traders`);
-      
+
       // Filter active traders in memory
       const activeTraders = (data || []).filter(t => t.is_active !== false);
       setTraders(activeTraders);
-      
+
       if (activeTraders.length === 0 && data && data.length > 0) {
         console.warn('All traders are inactive');
         // Show inactive traders if no active ones found
@@ -245,8 +219,8 @@ export default function CopyTradingLeaderboard({ onSelectTrader }: CopyTradingLe
 
             {/* Risk Filter */}
             <div>
-              <Select 
-                value={maxRiskScore.toString()} 
+              <Select
+                value={maxRiskScore.toString()}
                 onValueChange={(value) => setMaxRiskScore(parseInt(value))}
               >
                 <SelectTrigger className="bg-gray-50 dark:bg-slate-800/50 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white">
@@ -312,7 +286,7 @@ export default function CopyTradingLeaderboard({ onSelectTrader }: CopyTradingLe
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                    <TableRow className="border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                  <TableRow className="border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                     <TableHead className="text-gray-700 dark:text-gray-300">Rank</TableHead>
                     <TableHead className="text-gray-700 dark:text-gray-300">Trader</TableHead>
                     <TableHead className="text-gray-700 dark:text-gray-300 text-right">30d P&L</TableHead>
@@ -329,9 +303,9 @@ export default function CopyTradingLeaderboard({ onSelectTrader }: CopyTradingLe
                   {filteredTraders.map((trader, index) => {
                     const riskBadge = getRiskBadge(trader.risk_score);
                     const isProfitable = trader.pnl_30d > 0;
-                    
+
                     return (
-                      <TableRow 
+                      <TableRow
                         key={trader.id}
                         className="border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer"
                         onClick={() => onSelectTrader && onSelectTrader(trader)}
@@ -460,7 +434,7 @@ export default function CopyTradingLeaderboard({ onSelectTrader }: CopyTradingLe
           <CardContent className="p-4">
             <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Avg Win Rate</p>
             <p className="text-2xl font-bold text-emerald-400">
-              {traders.length > 0 
+              {traders.length > 0
                 ? (traders.reduce((sum, t) => sum + t.win_rate, 0) / traders.length).toFixed(1)
                 : '0'
               }%

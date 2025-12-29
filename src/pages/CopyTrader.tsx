@@ -15,6 +15,7 @@ import { FollowerManagement } from '@/components/copy-trading/FollowerManagement
 import { PerformanceAnalytics } from '@/components/copy-trading/PerformanceAnalytics';
 import { RealTimeMetrics } from '@/components/copy-trading/RealTimeMetrics';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,34 +26,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Copy,
   Zap,
-  TrendingUp,
+  Activity as TrendingUp,
   Activity,
   Settings,
-  BarChart3,
+  BarChart2 as BarChart3,
   Shield,
-  AlertTriangle,
+  AlertCircle as AlertTriangle,
   Users,
   Search,
-  Filter,
-  Star,
+  Search as Filter,
+  Activity as Star,
   Target,
   Clock,
   DollarSign,
   TrendingDown,
   CheckCircle,
-  XCircle,
+  Circle as XCircle,
   Play,
   Pause,
   Square,
   RefreshCw,
-  Eye,
-  EyeOff,
+  Search as Eye,
+  Search as EyeOff,
   Plus,
-  Minus,
-  ArrowUp,
-  ArrowDown,
+  Square as Minus,
+  ChevronUp as ArrowUp,
+  ChevronDown as ArrowDown,
   ExternalLink,
-  Lock,
+  Clock as Lock,
   Download,
   Upload,
   MoreHorizontal
@@ -62,7 +63,10 @@ import {
 interface MasterTraderProfile {
   id: string;
   userId: string;
+  walletAddress?: string;
   profileName: string;
+  solBalance?: number;
+  balanceUSD?: number;
   strategyType: 'scalping' | 'swing' | 'arbitrage' | 'mean_reversion' | 'trend_following';
   riskLevel: 'conservative' | 'moderate' | 'aggressive' | 'high_frequency';
   performance: {
@@ -330,312 +334,44 @@ const SUPPORTED_BROKERS = [
 ];
 
 // Mock data generation functions for development
-const generateMockTradeSignals = (): TradeSignal[] => {
-  return [
-    {
-      id: 'signal_1',
-      masterTradeId: 'master_1',
-      symbol: 'BTCUSDT',
-      side: 'buy',
-      quantity: 0.001,
-      price: 45000,
-      orderType: 'market',
-      stopLoss: 44000,
-      takeProfit: 46000,
-      leverage: 1,
-      timestamp: new Date(Date.now() - 300000).toISOString(),
-      platform: 'binance',
-      metadata: { strategy: 'scalping' }
-    },
-    {
-      id: 'signal_2',
-      masterTradeId: 'master_2',
-      symbol: 'ETHUSDT',
-      side: 'sell',
-      quantity: 0.01,
-      price: 3200,
-      orderType: 'limit',
-      stopLoss: 3300,
-      takeProfit: 3100,
-      leverage: 2,
-      timestamp: new Date(Date.now() - 600000).toISOString(),
-      platform: 'coinbase',
-      metadata: { strategy: 'swing' }
-    }
-  ];
-};
+const generateMockTradeSignals = (): TradeSignal[] => [];
 
-const generateMockExecutionResults = (): ExecutionResult[] => {
-  return [
-    {
-      id: 'exec_1',
-      signalId: 'signal_1',
-      platform: 'binance',
-      success: true,
-      orderId: 'order_123',
-      filledQuantity: 0.001,
-      filledPrice: 45000,
-      remainingQuantity: 0,
-      fees: 0.045,
-      executionTime: new Date(Date.now() - 300000).toISOString(),
-      errorMessage: undefined,
-      replicationDelay: 45,
-      slippage: 0.001
-    },
-    {
-      id: 'exec_2',
-      signalId: 'signal_2',
-      platform: 'coinbase',
-      success: false,
-      orderId: undefined,
-      filledQuantity: 0,
-      filledPrice: undefined,
-      remainingQuantity: 0.01,
-      fees: 0,
-      executionTime: new Date(Date.now() - 600000).toISOString(),
-      errorMessage: 'Insufficient balance',
-      replicationDelay: 120,
-      slippage: undefined
-    }
-  ];
-};
+const generateMockExecutionResults = (): ExecutionResult[] => [];
 
-const generateMockCopyTradingSessions = (): CopyTradingSession[] => {
-  return [
-    {
-      id: 'session_1',
-      masterTradeId: 'master_1',
-      followerTradeId: 'follower_1',
-      masterConnectionId: 'conn_1',
-      followerRelationshipId: 'rel_1',
-      replicationDelayMs: 45,
-      slippage: 0.001,
-      fillQuality: 0.95,
-      executedAt: new Date(Date.now() - 300000).toISOString(),
-      status: 'completed',
-      errorMessage: undefined,
-      retryCount: 0
-    },
-    {
-      id: 'session_2',
-      masterTradeId: 'master_2',
-      followerTradeId: undefined,
-      masterConnectionId: 'conn_2',
-      followerRelationshipId: 'rel_2',
-      replicationDelayMs: 120,
-      slippage: undefined,
-      fillQuality: undefined,
-      executedAt: new Date(Date.now() - 600000).toISOString(),
-      status: 'failed',
-      errorMessage: 'Insufficient balance',
-      retryCount: 2
-    }
-  ];
-};
+const generateMockCopyTradingSessions = (): CopyTradingSession[] => [];
 
-const generateMockPerformanceMetrics = (): PerformanceMetrics => {
-  return {
-    totalTrades: 150,
-    successfulTrades: 142,
-    failedTrades: 8,
-    successRate: 94.67,
-    averageLatencyMs: 85,
-    totalPnl: 1250.75,
-    dailyPnl: 45.30,
-    maxDrawdown: 0.08,
-    sharpeRatio: 1.85,
-    winRate: 0.68,
-    profitFactor: 2.1,
-    platformPerformance: {
-      'binance': {
-        totalTrades: 80,
-        successfulTrades: 76,
-        averageLatency: 45,
-        successRate: 95.0
-      },
-      'coinbase': {
-        totalTrades: 70,
-        successfulTrades: 66,
-        averageLatency: 120,
-        successRate: 94.3
-      }
-    }
-  };
-};
+const generateMockPerformanceMetrics = (): PerformanceMetrics => ({
+  totalTrades: 0,
+  successfulTrades: 0,
+  failedTrades: 0,
+  successRate: 0,
+  averageLatencyMs: 0,
+  totalPnl: 0,
+  dailyPnl: 0,
+  maxDrawdown: 0,
+  sharpeRatio: 0,
+  winRate: 0,
+  profitFactor: 0,
+  platformPerformance: {}
+});
 
 const generateMockRiskLimits = (): RiskLimits => {
   return {
-    id: 'risk_1',
-    userId: 'user_123',
     maxDailyLoss: 1000,
     maxDrawdown: 0.15,
     maxPositionSize: 5000,
-    maxLeverage: 10,
-    stopLossEnabled: true,
-    takeProfitEnabled: true,
-    correlationLimit: 0.8,
-    volatilityLimit: 0.3,
+    allowedInstruments: ['BTC', 'ETH'],
+    leverageLimits: { 'BTC': 10, 'ETH': 5 },
+    autoLiquidationThreshold: 0.05,
+    correlationLimits: { 'BTC-ETH': 0.8 },
     circuitBreakerEnabled: true,
-    emergencyStopLoss: 0.05,
-    maxSlippage: 0.01,
-    maxLatency: 200,
-    updatedAt: new Date().toISOString()
+    maxCorrelation: 0.8
   };
 };
 
-const generateMockMasterTraders = (): MasterTraderProfile[] => {
-  return [
-    {
-      id: 'master_1',
-      userId: 'user_1',
-      profileName: 'Crypto Scalper Pro',
-      strategyType: 'scalping',
-      riskLevel: 'aggressive',
-      performance: {
-        totalReturn: 0.45,
-        sharpeRatio: 2.1,
-        maxDrawdown: 0.12,
-        winRate: 0.72,
-        totalTrades: 1250,
-        avgWin: 0.08,
-        avgLoss: 0.05,
-        profitFactor: 1.8,
-        volatility: 0.25,
-        var95: 0.15,
-        consistencyScore: 0.85
-      },
-      verification: {
-        isVerified: true,
-        trackRecordMonths: 24,
-        assetsUnderManagement: 5000000,
-        kycStatus: 'verified',
-        complianceScore: 95
-      },
-      feeStructure: {
-        performanceFee: 0.20,
-        managementFee: 0.02,
-        highWaterMark: true
-      },
-      social: {
-        followerCount: 1250,
-        averageRating: 4.8,
-        reviewCount: 89
-      },
-      isPublic: true,
-      isAcceptingFollowers: true,
-      minInvestment: 1000,
-      maxFollowers: 500,
-      bio: 'Professional crypto scalper with 5+ years experience. Focus on BTC and ETH with high-frequency strategies.',
-      tags: ['crypto', 'scalping', 'high-frequency', 'btc', 'eth'],
-      createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastTradeAt: new Date(Date.now() - 300000).toISOString()
-    },
-    {
-      id: 'master_2',
-      userId: 'user_2',
-      profileName: 'Swing Trader Elite',
-      strategyType: 'swing',
-      riskLevel: 'moderate',
-      performance: {
-        totalReturn: 0.28,
-        sharpeRatio: 1.6,
-        maxDrawdown: 0.08,
-        winRate: 0.65,
-        totalTrades: 450,
-        avgWin: 0.12,
-        avgLoss: 0.07,
-        profitFactor: 2.2,
-        volatility: 0.18,
-        var95: 0.10,
-        consistencyScore: 0.92
-      },
-      verification: {
-        isVerified: true,
-        trackRecordMonths: 36,
-        assetsUnderManagement: 12000000,
-        kycStatus: 'verified',
-        complianceScore: 98
-      },
-      feeStructure: {
-        performanceFee: 0.15,
-        managementFee: 0.015,
-        highWaterMark: true
-      },
-      social: {
-        followerCount: 2100,
-        averageRating: 4.9,
-        reviewCount: 156
-      },
-      isPublic: true,
-      isAcceptingFollowers: true,
-      minInvestment: 2500,
-      maxFollowers: 1000,
-      bio: 'Experienced swing trader specializing in crypto and traditional markets. Focus on risk management and consistent returns.',
-      tags: ['swing', 'crypto', 'traditional', 'risk-management', 'consistent'],
-      createdAt: new Date(Date.now() - 86400000 * 60).toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastTradeAt: new Date(Date.now() - 600000).toISOString()
-    }
-  ];
-};
+const generateMockMasterTraders = (): MasterTraderProfile[] => [];
 
-const generateMockFollowerRelationships = (): FollowerRelationship[] => {
-  return [
-    {
-      id: 'rel_1',
-      masterTraderId: 'master_1',
-      followerId: 'user_123',
-      allocatedCapital: 10000,
-      positionSizing: 'proportional',
-      maxPositionSize: 2000,
-      riskLimits: {
-        maxDailyLoss: 500,
-        maxDrawdown: 0.10,
-        stopLossEnabled: true,
-        takeProfitEnabled: true
-      },
-      replicationSettings: {
-        delay: 50,
-        allowPartialFills: true,
-        maxSlippage: 0.01
-      },
-      status: 'active',
-      startedAt: new Date(Date.now() - 86400000 * 7).toISOString(),
-      lastTradeAt: new Date(Date.now() - 300000).toISOString(),
-      totalTrades: 45,
-      successfulTrades: 42,
-      failedTrades: 3,
-      totalPnl: 1250.75
-    },
-    {
-      id: 'rel_2',
-      masterTraderId: 'master_2',
-      followerId: 'user_123',
-      allocatedCapital: 15000,
-      positionSizing: 'fixed',
-      maxPositionSize: 3000,
-      riskLimits: {
-        maxDailyLoss: 750,
-        maxDrawdown: 0.08,
-        stopLossEnabled: true,
-        takeProfitEnabled: true
-      },
-      replicationSettings: {
-        delay: 100,
-        allowPartialFills: false,
-        maxSlippage: 0.005
-      },
-      status: 'paused',
-      startedAt: new Date(Date.now() - 86400000 * 14).toISOString(),
-      lastTradeAt: new Date(Date.now() - 600000).toISOString(),
-      totalTrades: 28,
-      successfulTrades: 26,
-      failedTrades: 2,
-      totalPnl: 890.50
-    }
-  ];
-};
+const generateMockFollowerRelationships = (): FollowerRelationship[] => [];
 
 function CopyTrader() {
   const navigate = useNavigate();
@@ -648,6 +384,7 @@ function CopyTrader() {
   const [selectedConfig, setSelectedConfig] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Copy Trading State
   // Copy Trading State
   const [masterTraders, setMasterTraders] = useState<MasterTraderProfile[]>([]);
   const [followerRelationships, setFollowerRelationships] = useState<FollowerRelationship[]>([]);
@@ -667,6 +404,14 @@ function CopyTrader() {
   const [showFilters, setShowFilters] = useState(false);
   const [isRealtimeEnabled, setIsRealtimeEnabled] = useState(true);
   const [selectedMasterTrader, setSelectedMasterTrader] = useState<string | null>(null);
+
+  // Add Wallet Modal States
+  const [isAddWalletModalOpen, setIsAddWalletModalOpen] = useState(false);
+  const [newWalletAddress, setNewWalletAddress] = useState('');
+  const [newWalletName, setNewWalletName] = useState('');
+  const [isAddingWallet, setIsAddingWallet] = useState(false);
+
+  const supabase = createClient();
 
   // Real-time updates
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
@@ -807,13 +552,161 @@ function CopyTrader() {
 
   const loadMasterTraders = async (): Promise<MasterTraderProfile[]> => {
     try {
-      const response = await fetch('/api/copy-trading/master-traders');
-      if (!response.ok) {
-        return generateMockMasterTraders();
+      const { data, error } = await supabase
+        .from('master_traders')
+        .select('*');
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        return [];
       }
-      return await handleApiResponse(response, generateMockMasterTraders);
-    } catch {
-      return generateMockMasterTraders();
+
+      const { fetchSolanaWalletBalance } = await import('@/lib/wallet-balance-service');
+      const tradersWithBalances = await Promise.all(data.map(async (trader: any) => {
+        let solBalance = 0;
+        let balanceUSD = 0;
+
+        if (trader.wallet_address) {
+          try {
+            const balanceData = await fetchSolanaWalletBalance(trader.wallet_address);
+            solBalance = balanceData.balances['SOL']?.amount || 0;
+            balanceUSD = balanceData.totalUsdValue;
+          } catch (e) {
+            console.error(`Error fetching balance for ${trader.wallet_address}:`, e);
+          }
+        }
+
+        return {
+          id: trader.id,
+          userId: trader.userId || '',
+          walletAddress: trader.wallet_address,
+          profileName: trader.label || trader.profileName || 'Unknown Wallet',
+          solBalance,
+          balanceUSD,
+          strategyType: trader.strategyType || 'swing',
+          riskLevel: trader.riskLevel || 'moderate',
+          performance: trader.performance || {
+            totalReturn: 0,
+            sharpeRatio: 0,
+            maxDrawdown: 0,
+            winRate: 0,
+            totalTrades: 0,
+            avgWin: 0,
+            avgLoss: 0,
+            profitFactor: 0,
+            volatility: 0,
+            var95: 0,
+            consistencyScore: 0
+          },
+          verification: trader.verification || {
+            isVerified: trader.is_verified || false,
+            trackRecordMonths: 0,
+            assetsUnderManagement: 0,
+            kycStatus: 'pending',
+            complianceScore: 0
+          },
+          feeStructure: trader.feeStructure || {
+            performanceFee: 0,
+            managementFee: 0,
+            highWaterMark: false
+          },
+          social: trader.social || {
+            followerCount: trader.follower_count || 0,
+            averageRating: 0,
+            reviewCount: 0
+          },
+          isPublic: true,
+          isAcceptingFollowers: true,
+          minInvestment: 0,
+          maxFollowers: 100,
+          bio: trader.description || '',
+          tags: trader.tags || [],
+          createdAt: trader.created_at || new Date().toISOString(),
+          updatedAt: trader.updated_at || new Date().toISOString()
+        };
+      }));
+
+      return tradersWithBalances;
+    } catch (error) {
+      console.error('Error loading master traders:', error);
+      return [];
+    }
+  };
+
+  const handleAddWallet = async () => {
+    if (!newWalletAddress || !newWalletName) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please provide both a wallet address and a name.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsAddingWallet(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('master_traders')
+        .insert({
+          wallet_address: newWalletAddress,
+          label: newWalletName,
+          is_verified: false,
+          is_curated: false,
+          risk_level: 'moderate',
+          strategy_type: 'swing',
+          follower_count: 0
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: 'Wallet Added',
+        description: `Successfully added ${newWalletName} to tracked wallets.`,
+      });
+
+      // Refresh the list
+      const updatedTraders = await loadMasterTraders();
+
+      // Fetch balances for new wallets
+      const { fetchSolanaWalletBalance } = await import('@/lib/wallet-balance-service');
+      const tradersWithBalances = await Promise.all(updatedTraders.map(async (trader) => {
+        if (trader.walletAddress) {
+          try {
+            const balanceData = await fetchSolanaWalletBalance(trader.walletAddress);
+            return {
+              ...trader,
+              solBalance: balanceData.balances['SOL']?.amount || 0,
+              balanceUSD: balanceData.totalUsdValue
+            };
+          } catch (e) {
+            console.error(`Error fetching balance for ${trader.walletAddress}:`, e);
+            return trader;
+          }
+        }
+        return trader;
+      }));
+
+      setMasterTraders(tradersWithBalances);
+
+      // Reset and close
+      setNewWalletAddress('');
+      setNewWalletName('');
+      setIsAddWalletModalOpen(false);
+    } catch (error: any) {
+      console.error('Error adding wallet:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to add wallet.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAddingWallet(false);
     }
   };
 
@@ -1385,14 +1278,6 @@ function CopyTrader() {
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
                 <Copy className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Universal Copy Trading
-                </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Multi-Platform Trade Replication & Risk Management
-                </p>
-              </div>
 
               <Badge
                 variant="secondary"
@@ -1649,6 +1534,17 @@ function CopyTrader() {
                       {tab.label}
                     </button>
                   ))}
+                  <div className="flex items-center space-x-2 mr-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700"
+                      onClick={() => setIsAddWalletModalOpen(true)}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Wallet
+                    </Button>
+                  </div>
                 </nav>
               </div>
 
@@ -1681,12 +1577,8 @@ function CopyTrader() {
 
                 {activeTab === 'dashboard' && (
                   <CopyTradingDashboard
-                    configId={selectedConfig}
+                    configId={selectedConfig || undefined}
                     onConfigChange={setSelectedConfig}
-                    tradeSignals={tradeSignals}
-                    executionResults={executionResults}
-                    copyTradingSessions={copyTradingSessions}
-                    performanceMetrics={performanceMetrics}
                   />
                 )}
 
@@ -1969,10 +1861,6 @@ function CopyTrader() {
                 {activeTab === 'risk' && (
                   <RiskManagement
                     exchanges={exchanges}
-                    riskLimits={riskLimits}
-                    onUpdateRiskLimits={handleUpdateRiskLimits}
-                    followerRelationships={followerRelationships}
-                    performanceMetrics={performanceMetrics}
                   />
                 )}
 
@@ -2747,6 +2635,67 @@ function CopyTrader() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+      {/* Add Wallet Modal */}
+      {isAddWalletModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] backdrop-blur-sm">
+          <Card className="w-full max-w-md bg-white dark:bg-black border-gray-200 dark:border-gray-800 shadow-2xl">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Add Master Wallet</CardTitle>
+              <CardDescription>
+                Track and copy trades from a specific Solana wallet address.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Wallet Address
+                </label>
+                <Input
+                  placeholder="Paste Solana address here..."
+                  value={newWalletAddress}
+                  onChange={(e) => setNewWalletAddress(e.target.value)}
+                  className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Wallet Name
+                </label>
+                <Input
+                  placeholder="e.g. Whale Wallet #1"
+                  value={newWalletName}
+                  onChange={(e) => setNewWalletName(e.target.value)}
+                  className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800"
+                />
+              </div>
+
+              <div className="flex items-center space-x-3 pt-4">
+                <Button
+                  onClick={handleAddWallet}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={isAddingWallet}
+                >
+                  {isAddingWallet ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Adding...
+                    </>
+                  ) : 'Save Wallet'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsAddWalletModalOpen(false)}
+                  className="flex-1 border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900"
+                  disabled={isAddingWallet}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

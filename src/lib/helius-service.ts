@@ -39,6 +39,7 @@ export interface ParsedSwapTransaction {
 
 const HELIUS_API_KEY = import.meta.env.VITE_HELIUS_API_KEY || '';
 const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
+const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
 // Cache for recent transactions to avoid duplicates
 const recentTxCache = new Map<string, number>();
@@ -66,8 +67,8 @@ export async function fetchTokenTransactions(
       throw new Error(`Helius API error: ${response.status}`);
     }
 
-    const transactions: HeliusTransaction[] = await response.json();
-    return parseSwapTransactions(transactions, tokenAddress);
+    const transactions: any[] = await response.json();
+    return parseEnhancedTransactions(transactions, tokenAddress, true);
   } catch (error) {
     console.error('Failed to fetch Helius transactions:', error);
     return [];
@@ -75,42 +76,77 @@ export async function fetchTokenTransactions(
 }
 
 /**
- * Parse raw Helius transactions into swap transactions
+ * Fetch recent transactions for a wallet address
  */
-function parseSwapTransactions(
-  transactions: HeliusTransaction[],
-  tokenAddress: string
-): ParsedSwapTransaction[] {
-  const swaps: ParsedSwapTransaction[] = [];
-  const now = Date.now();
-
-  // Clean old cache entries
-  for (const [sig, timestamp] of recentTxCache.entries()) {
-    if (now - timestamp > CACHE_DURATION) {
-      recentTxCache.delete(sig);
-    }
+export async function fetchWalletTrades(
+  walletAddress: string,
+  limit: number = 100
+): Promise<ParsedSwapTransaction[]> {
+  if (!HELIUS_API_KEY) {
+    console.warn('No Helius API key configured, skipping wallet trade fetch');
+    return [];
   }
 
-  for (const tx of transactions) {
-    // Skip if already processed
-    if (recentTxCache.has(tx.signature)) continue;
-    
-    // Skip failed transactions
-    if (tx.status !== 'Success') continue;
-
-    // Look for token transfers involving our token
-    const tokenTransfer = tx.tokenTransfers?.find(t => 
-      t.mint.toLowerCase() === tokenAddress.toLowerCase()
+  try {
+    const response = await fetch(
+      `${HELIUS_BASE_URL}/addresses/${walletAddress}/transactions?api-key=${HELIUS_API_KEY}&limit=${limit}`,
+      { headers: { 'Accept': 'application/json' } }
     );
 
-    if (tokenTransfer) {
-      // Determine if it's a buy or sell based on native SOL movement
-      const solTransfer = tx.nativeTransfers?.[0];
-      const isBuy = solTransfer && solTransfer.amount > 0;
-      
-      const solAmount = solTransfer ? Math.abs(solTransfer.amount) / 1e9 : 0;
-      const tokenAmount = tokenTransfer.tokenAmount;
-      const pricePerToken = tokenAmount > 0 ? solAmount / tokenAmount : 0;
+    if (!response.ok) {
+      throw new Error(`Helius API error: ${response.status}`);
+    }
+
+    const transactions: any[] = await response.json();
+    return parseEnhancedTransactions(transactions, walletAddress);
+  } catch (error) {
+    console.error('Failed to fetch wallet trades from Helius:', error);
+    return [];
+  }
+}
+
+/**
+ * Parse enhanced Helius transactions into swap transactions
+ */
+function parseEnhancedTransactions(
+  transactions: any[],
+  filterAddress: string,
+  isTokenFilter: boolean = false
+): ParsedSwapTransaction[] {
+  const swaps: ParsedSwapTransaction[] = [];
+
+  for (const tx of transactions) {
+    if (tx.status !== 'Success') continue;
+
+    // 1. Try to use Helius's pre-parsed swap event
+    const swapEvent = tx.events?.swap;
+    if (swapEvent) {
+      const nativeInput = swapEvent.nativeInput;
+      const nativeOutput = swapEvent.nativeOutput;
+      const tokenInputs = swapEvent.tokenInputs || [];
+      const tokenOutputs = swapEvent.tokenOutputs || [];
+
+      const inputMint = nativeInput ? SOL_MINT : (tokenInputs[0]?.mint || '');
+      const outputMint = nativeOutput ? SOL_MINT : (tokenOutputs[0]?.mint || '');
+
+      const inputAmount = nativeInput
+        ? nativeInput.amount / 1e9
+        : (tokenInputs[0]?.rawTokenAmount?.tokenAmount || 0);
+
+      const outputAmount = nativeOutput
+        ? nativeOutput.amount / 1e9
+        : (tokenOutputs[0]?.rawTokenAmount?.tokenAmount || 0);
+
+      const isBuy = inputMint === SOL_MINT;
+      const tokenAddress = isBuy ? outputMint : inputMint;
+
+      // If filtering by token, ensure this swap involves that token
+      if (isTokenFilter && tokenAddress.toLowerCase() !== filterAddress.toLowerCase()) {
+        continue;
+      }
+
+      const solAmount = isBuy ? inputAmount : outputAmount;
+      const tokenAmount = isBuy ? outputAmount : inputAmount;
 
       swaps.push({
         id: tx.signature,
@@ -118,14 +154,52 @@ function parseSwapTransactions(
         tokenAddress,
         tokenAmount,
         solAmount,
-        pricePerToken,
-        priceUsd: 0, // Will be calculated with current SOL price
-        maker: tokenTransfer.fromUserAccount?.slice(0, 8) || 'Unknown',
+        pricePerToken: tokenAmount > 0 ? solAmount / tokenAmount : 0,
+        priceUsd: 0,
+        maker: isTokenFilter ? (tx.feePayer || 'Unknown') : filterAddress,
         timestamp: tx.timestamp * 1000,
         txHash: tx.signature,
       });
+      continue;
+    }
 
-      recentTxCache.set(tx.signature, now);
+    // 2. Fallback: Parse from token/native transfers (Critical for Pump.fun)
+    // Use lowercase for ALL address comparisons to be safe
+    const filterAddrLower = filterAddress.toLowerCase();
+
+    const tokenTransfer = isTokenFilter
+      ? tx.tokenTransfers?.find((t: any) => t.mint.toLowerCase() === filterAddrLower)
+      : tx.tokenTransfers?.find((t: any) =>
+        (t.fromUserAccount || '').toLowerCase() === filterAddrLower ||
+        (t.toUserAccount || '').toLowerCase() === filterAddrLower
+      );
+
+    if (tokenTransfer) {
+      const isOut = isTokenFilter
+        ? (tokenTransfer.fromUserAccount || '').toLowerCase() === (tx.feePayer || '').toLowerCase() // Guessing for token filter
+        : (tokenTransfer.fromUserAccount || '').toLowerCase() === filterAddrLower;
+
+      const solTransfer = tx.nativeTransfers?.find((n: any) =>
+        isOut
+          ? (n.toUserAccount || '').toLowerCase() === (isTokenFilter ? (tx.feePayer || '').toLowerCase() : filterAddrLower)
+          : (n.fromUserAccount || '').toLowerCase() === (isTokenFilter ? (tx.feePayer || '').toLowerCase() : filterAddrLower)
+      );
+
+      const solAmount = solTransfer ? Math.abs(solTransfer.amount) / 1e9 : 0;
+      const tokenAmount = tokenTransfer.tokenAmount;
+
+      swaps.push({
+        id: tx.signature,
+        type: isOut ? 'sell' : 'buy',
+        tokenAddress: tokenTransfer.mint,
+        tokenAmount,
+        solAmount,
+        pricePerToken: tokenAmount > 0 ? solAmount / tokenAmount : 0,
+        priceUsd: 0,
+        maker: isTokenFilter ? (tx.feePayer || 'Unknown') : filterAddress,
+        timestamp: tx.timestamp * 1000,
+        txHash: tx.signature,
+      });
     }
   }
 
@@ -148,7 +222,7 @@ export function subscribeToTransactions(
 
     try {
       const transactions = await fetchTokenTransactions(tokenAddress, 10);
-      
+
       // Only emit new transactions
       for (const tx of transactions) {
         if (tx.timestamp > lastTimestamp) {
@@ -185,7 +259,7 @@ export async function getSolPrice(): Promise<number> {
     const response = await fetch(
       'https://price.jup.ag/v4/price?ids=So11111111111111111111111111111111111111112'
     );
-    
+
     if (response.ok) {
       const data = await response.json();
       return data.data?.['So11111111111111111111111111111111111111112']?.price || 0;
@@ -193,6 +267,6 @@ export async function getSolPrice(): Promise<number> {
   } catch (error) {
     console.warn('Failed to fetch SOL price:', error);
   }
-  
+
   return 0;
 }

@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { 
-  Users, 
-  TrendingUp, 
+import {
+  Users,
+  TrendingUp,
   TrendingDown,
   Search,
-  Filter,
+  Search as Filter,
   CheckCircle,
   Shield,
   Target,
-  Eye,
+  Search as Eye,
   Copy,
-  ArrowUpDown,
+  Search as ArrowUpDown,
   ExternalLink,
-  Settings
+  Settings,
+  Plus,
+  Trash2,
+  Activity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,12 +24,14 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import MetricCard from '@/components/crypto/ui/MetricCard';
 import MiniSparkline from '@/components/crypto/MiniSparkline';
 import CopyTraderSetup from '@/components/crypto/CopyTraderSetup';
+import LiveTradesModal from '@/components/crypto/LiveTradesModal';
 import { createClient } from '@/lib/supabase/client';
+import { fetchSolanaWalletBalance } from '@/lib/wallet-balance-service';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/lib/crypto-aggregation-service';
 import { useTheme } from '@/components/ThemeProvider';
@@ -50,6 +55,9 @@ interface LeaderboardTrader {
   trades_30d: number;
   is_verified: boolean;
   last_trade_at: string;
+  label?: string | null;
+  solBalance?: number;
+  balanceUSD?: number;
 }
 
 export default function CopyTradingPage() {
@@ -65,7 +73,7 @@ export default function CopyTradingPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'roi' | 'total_pnl' | 'win_rate' | 'sharpe_ratio' | 'follower_count'>('roi');
   const [filterBlockchain, setFilterBlockchain] = useState<'all' | 'sol' | 'btc'>('all');
-  
+
   // Filters
   const [selectedRiskLevels, setSelectedRiskLevels] = useState<string[]>([]);
   const [minWinRate, setMinWinRate] = useState<number>(0);
@@ -74,7 +82,12 @@ export default function CopyTradingPage() {
   const [showCopySettings, setShowCopySettings] = useState(false);
   const [selectedTrader, setSelectedTrader] = useState<LeaderboardTrader | null>(null);
   const [showCopySetup, setShowCopySetup] = useState(false);
-  
+  const [showAddWalletModal, setShowAddWalletModal] = useState(false);
+  const [newWalletAddress, setNewWalletAddress] = useState('');
+  const [newWalletName, setNewWalletName] = useState('');
+  const [isAddingWallet, setIsAddingWallet] = useState(false);
+  const [showLiveTrades, setShowLiveTrades] = useState(false);
+
   // Copy Settings
   const [copySettings, setCopySettings] = useState({
     default_copy_mode: 'manual' as 'manual' | 'auto',
@@ -158,19 +171,89 @@ export default function CopyTradingPage() {
   const loadTraders = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('copy_trading_leaderboard')
-        .select('*')
-        .order(sortBy, { ascending: false });
+      // Fetch from both tables to get labels and metrics
+      const [leaderboardRes, masterRes] = await Promise.all([
+        supabase
+          .from('copy_trading_leaderboard')
+          .select('*')
+          .order(sortBy, { ascending: false }),
+        supabase
+          .from('master_traders')
+          .select('wallet_address, label, total_pnl, win_rate, total_trades')
+      ]);
 
-      const { data, error } = await query.limit(50);
+      if (leaderboardRes.error) throw leaderboardRes.error;
 
-      if (error) throw error;
+      // Create a map of wallet_address -> label from master_traders
+      const labelMap: Record<string, string> = {};
+      if (masterRes.data) {
+        masterRes.data.forEach(m => {
+          if (m.wallet_address && m.label) {
+            labelMap[m.wallet_address] = m.label;
+          }
+        });
+      }
 
-      setTraders(data || []);
-      setActiveTraders(data?.length || 0);
-      setTotalCopied(data?.reduce((sum, t) => sum + (t.assets_under_copy || 0), 0) || 0);
-      
+      // Map metrics to include labels
+      let mergedTraders = (leaderboardRes.data || []).map(trader => ({
+        ...trader,
+        label: labelMap[trader.wallet_address] || null
+      }));
+
+      // Find any master traders NOT in the leaderboard and add them with 0 metrics
+      const leaderboardAddresses = new Set(mergedTraders.map(t => t.wallet_address));
+      if (masterRes.data) {
+        masterRes.data.forEach(m => {
+          if (m.wallet_address && !leaderboardAddresses.has(m.wallet_address)) {
+            mergedTraders.push({
+              id: m.wallet_address,
+              wallet_address: m.wallet_address,
+              blockchain: 'solana',
+              label: m.label,
+              total_pnl: m.total_pnl || 0,
+              roi: 0,
+              win_rate: m.win_rate || 0,
+              total_trades: m.total_trades || 0,
+              max_drawdown: 0,
+              sharpe_ratio: null,
+              assets_under_copy: 0,
+              follower_count: 0,
+              risk_score: 50,
+              consistency_score: 50,
+              pnl_30d: m.total_pnl || 0,
+              roi_30d: 0,
+              trades_30d: m.total_trades || 0,
+              is_verified: false,
+              last_trade_at: new Date().toISOString()
+            } as any);
+          }
+        });
+      }
+
+      // Fetch live balances for all traders
+      try {
+        const enrichedTraders = await Promise.all(mergedTraders.map(async (trader) => {
+          try {
+            const balanceData = await fetchSolanaWalletBalance(trader.wallet_address);
+            return {
+              ...trader,
+              solBalance: balanceData.balances['SOL']?.amount || 0,
+              balanceUSD: balanceData.totalUsdValue
+            };
+          } catch (e) {
+            console.warn(`Could not fetch balance for ${trader.wallet_address}:`, e);
+            return trader;
+          }
+        }));
+        mergedTraders = enrichedTraders;
+      } catch (e) {
+        console.error('Error in balance enrichment:', e);
+      }
+
+      setTraders(mergedTraders);
+      setActiveTraders(mergedTraders?.length || 0);
+      setTotalCopied(mergedTraders?.reduce((sum, t) => sum + (t.assets_under_copy || 0), 0) || 0);
+
       // Calculate user's P&L from copy trading
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -178,12 +261,17 @@ export default function CopyTradingPage() {
           .from('copy_trading_positions')
           .select('current_pnl')
           .eq('user_id', user.id);
-        
+
         setYourPnL(copyPositions?.reduce((sum, p) => sum + (p.current_pnl || 0), 0) || 0);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading traders:', error);
+      toast({
+        title: 'Error loading leaderboard',
+        description: error.message,
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -215,6 +303,125 @@ export default function CopyTradingPage() {
     });
   };
 
+  const handleClearMockData = async () => {
+    try {
+      setLoading(true);
+      const { error: error1 } = await supabase
+        .from('copy_trading_leaderboard')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+      const { error: error2 } = await supabase
+        .from('master_traders')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+      if (error1) throw error1;
+      if (error2) throw error2;
+
+      toast({
+        title: 'Data Cleared',
+        description: 'All traders have been removed from the platform.',
+      });
+      loadTraders();
+    } catch (error: any) {
+      toast({
+        title: 'Error clearing data',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveWallet = async (trader: LeaderboardTrader) => {
+    try {
+      setLoading(true);
+
+      const { error: error1 } = await supabase
+        .from('master_traders')
+        .delete()
+        .eq('wallet_address', trader.wallet_address);
+
+      const { error: error2 } = await supabase
+        .from('copy_trading_leaderboard')
+        .delete()
+        .eq('wallet_address', trader.wallet_address);
+
+      if (error1) throw error1;
+      // error2 might be null if it wasn't in leaderboard, so we check specifically for errors
+      if (error2 && error2.code !== 'PGRST116') { // PGRST116 is not found, which is fine
+        // throw error2; // Actually just ignore if not in leaderboard
+      }
+
+      toast({
+        title: 'Wallet Removed',
+        description: `${trader.label || trader.wallet_address} has been removed from your tracking list.`,
+      });
+
+      // Update local state immediately for better UX
+      setTraders(prev => prev.filter(t => t.wallet_address !== trader.wallet_address));
+
+      loadTraders();
+    } catch (error: any) {
+      toast({
+        title: 'Error removing wallet',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddWallet = async () => {
+    if (!newWalletAddress || !newWalletName) {
+      toast({
+        title: 'Missing information',
+        description: 'Please provide both wallet address and name',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsAddingWallet(true);
+
+      const { error } = await supabase
+        .from('master_traders')
+        .insert({
+          wallet_address: newWalletAddress,
+          label: newWalletName,
+          is_verified: false,
+          total_pnl: 0,
+          win_rate: 0,
+          total_trades: 0,
+          risk_level: 'medium',
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Wallet Added',
+        description: `${newWalletName} has been added to your tracking list.`,
+      });
+
+      setShowAddWalletModal(false);
+      setNewWalletAddress('');
+      setNewWalletName('');
+      loadTraders();
+    } catch (error: any) {
+      toast({
+        title: 'Error adding wallet',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAddingWallet(false);
+    }
+  };
+
   const shortenAddress = (address: string) => {
     if (!address) return 'Unknown';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -242,23 +449,23 @@ export default function CopyTradingPage() {
       if (filterBlockchain === 'sol' && badge.label !== 'SOL') return false;
       if (filterBlockchain === 'btc' && badge.label !== 'BTC') return false;
     }
-    
+
     // Risk level filter
     if (selectedRiskLevels.length > 0) {
       const riskLevel = getRiskLevel(t.risk_score || 5);
       if (!selectedRiskLevels.includes(riskLevel)) return false;
     }
-    
+
     // Win rate filter
     if (minWinRate > 0 && (t.win_rate || 0) < minWinRate) {
       return false;
     }
-    
+
     // Verified only filter
     if (verifiedOnly && !t.is_verified) {
       return false;
     }
-    
+
     return true;
   });
 
@@ -273,13 +480,13 @@ export default function CopyTradingPage() {
           {[1, 2, 3].map((i) => (
             <div key={i} className={cn(
               "rounded-xl border p-4 h-24 animate-pulse",
-              isDark ? "bg-[#1a1f2e] border-[#1f2937]" : "bg-white border-gray-200"
+              isDark ? "bg-[#09090b] border-[#27272a]" : "bg-white border-gray-200"
             )}></div>
           ))}
         </div>
         <div className={cn(
           "rounded-xl border h-96 animate-pulse",
-          isDark ? "bg-[#1a1f2e] border-[#1f2937]" : "bg-white border-gray-200"
+          isDark ? "bg-[#09090b] border-[#27272a]" : "bg-white border-gray-200"
         )}></div>
       </div>
     );
@@ -292,24 +499,27 @@ export default function CopyTradingPage() {
         "text-2xl font-bold",
         isDark ? "text-white" : "text-gray-900"
       )}>Copy Trading</div>
-      
+
       {/* Stats Header */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <MetricCard
           label="Total Under Copy"
           value={formatCurrency(totalCopied)}
           icon={<Users className="w-5 h-5" />}
+          className={cn(isDark && "bg-[#09090b] border-[#27272a]")}
         />
         <MetricCard
           label="Active Traders"
           value={activeTraders.toString()}
           icon={<Target className="w-5 h-5" />}
+          className={cn(isDark && "bg-[#09090b] border-[#27272a]")}
         />
         <MetricCard
           label="Your P&L"
           value={formatCurrency(yourPnL)}
           change={yourPnL > 0 ? 12.5 : -5.2}
           icon={<TrendingUp className="w-5 h-5" />}
+          className={cn(isDark && "bg-[#09090b] border-[#27272a]")}
         />
       </div>
 
@@ -325,22 +535,22 @@ export default function CopyTradingPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={cn(
                   "pl-10",
-                  isDark 
-                    ? "bg-[#0f1419] border-[#374151] text-white placeholder:text-[#6b7280]"
+                  isDark
+                    ? "bg-[#09090b] border-[#27272a] text-white placeholder:text-[#6b7280]"
                     : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500"
                 )}
               />
             </div>
-            
+
             <Select value={filterBlockchain} onValueChange={(v: any) => setFilterBlockchain(v)}>
               <SelectTrigger className={cn(
                 "w-[120px]",
-                isDark ? "bg-[#0f1419] border-[#374151] text-[#9ca3af]" : "bg-white border-gray-300 text-gray-700"
+                isDark ? "bg-[#09090b] border-[#27272a] text-[#9ca3af]" : "bg-white border-gray-300 text-gray-700"
               )}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className={cn(
-                isDark ? "bg-[#1a1f2e] border-[#374151]" : "bg-white border-gray-200"
+                isDark ? "bg-[#09090b] border-[#27272a]" : "bg-white border-gray-200"
               )}>
                 <SelectItem value="all">All Chains</SelectItem>
                 <SelectItem value="sol">Solana</SelectItem>
@@ -352,7 +562,7 @@ export default function CopyTradingPage() {
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
               className={cn(
-                isDark ? "border-[#374151] text-[#9ca3af]" : "border-gray-300 text-gray-700"
+                isDark ? "border-[#27272a] text-[#9ca3af]" : "border-gray-300 text-gray-700"
               )}
             >
               <Filter className="w-4 h-4 mr-2" />
@@ -364,7 +574,7 @@ export default function CopyTradingPage() {
                 <Button
                   variant="outline"
                   className={cn(
-                    isDark ? "border-[#374151] text-[#9ca3af]" : "border-gray-300 text-gray-700"
+                    isDark ? "border-[#27272a] text-[#9ca3af]" : "border-gray-300 text-gray-700"
                   )}
                 >
                   <Settings className="w-4 h-4 mr-2" />
@@ -372,7 +582,7 @@ export default function CopyTradingPage() {
                 </Button>
               </DialogTrigger>
               <DialogContent className={cn(
-                isDark ? "bg-[#1a1f2e] border-[#374151]" : "bg-white border-gray-200"
+                isDark ? "bg-black border-[#27272a]" : "bg-white border-gray-200"
               )}>
                 <DialogHeader>
                   <DialogTitle className={cn(isDark ? "text-white" : "text-gray-900")}>
@@ -390,7 +600,7 @@ export default function CopyTradingPage() {
                     >
                       <SelectTrigger className={cn(
                         "mt-2",
-                        isDark ? "bg-[#0f1419] border-[#374151]" : "bg-white border-gray-300"
+                        isDark ? "bg-[#09090b] border-[#27272a]" : "bg-white border-gray-300"
                       )}>
                         <SelectValue />
                       </SelectTrigger>
@@ -411,7 +621,7 @@ export default function CopyTradingPage() {
                       min={100}
                       max={10000}
                       step={100}
-                      className="mt-2"
+                      className="mt-2 [&_[data-radix-slider-track]]:bg-gray-700 [&_[data-radix-slider-range]]:bg-gray-400 [&_[data-radix-slider-thumb]]:border-gray-400"
                     />
                   </div>
 
@@ -425,7 +635,7 @@ export default function CopyTradingPage() {
                       min={1}
                       max={50}
                       step={1}
-                      className="mt-2"
+                      className="mt-2 [&_[data-radix-slider-track]]:bg-gray-700 [&_[data-radix-slider-range]]:bg-gray-400 [&_[data-radix-slider-thumb]]:border-gray-400"
                     />
                   </div>
 
@@ -439,7 +649,7 @@ export default function CopyTradingPage() {
                       min={1}
                       max={50}
                       step={1}
-                      className="mt-2"
+                      className="mt-2 [&_[data-radix-slider-track]]:bg-gray-700 [&_[data-radix-slider-range]]:bg-gray-400 [&_[data-radix-slider-thumb]]:border-gray-400"
                     />
                   </div>
 
@@ -453,7 +663,7 @@ export default function CopyTradingPage() {
                       min={0.1}
                       max={5}
                       step={0.1}
-                      className="mt-2"
+                      className="mt-2 [&_[data-radix-slider-track]]:bg-gray-700 [&_[data-radix-slider-range]]:bg-gray-400 [&_[data-radix-slider-thumb]]:border-gray-400"
                     />
                   </div>
 
@@ -467,7 +677,7 @@ export default function CopyTradingPage() {
                       min={0.1}
                       max={10}
                       step={0.1}
-                      className="mt-2"
+                      className="mt-2 [&_[data-radix-slider-track]]:bg-gray-700 [&_[data-radix-slider-range]]:bg-gray-400 [&_[data-radix-slider-thumb]]:border-gray-400"
                     />
                   </div>
 
@@ -475,7 +685,7 @@ export default function CopyTradingPage() {
                     <Checkbox
                       id="stop-loss"
                       checked={copySettings.enable_stop_loss}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setCopySettings({ ...copySettings, enable_stop_loss: checked as boolean })
                       }
                     />
@@ -495,7 +705,7 @@ export default function CopyTradingPage() {
                         min={1}
                         max={50}
                         step={0.5}
-                        className="mt-2"
+                        className="mt-2 [&_[data-radix-slider-track]]:bg-gray-700 [&_[data-radix-slider-range]]:bg-gray-400 [&_[data-radix-slider-thumb]]:border-gray-400"
                       />
                     </div>
                   )}
@@ -504,7 +714,7 @@ export default function CopyTradingPage() {
                     <Checkbox
                       id="notifications"
                       checked={copySettings.notifications_enabled}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setCopySettings({ ...copySettings, notifications_enabled: checked as boolean })
                       }
                     />
@@ -517,28 +727,114 @@ export default function CopyTradingPage() {
                     <Button
                       variant="outline"
                       onClick={() => setShowCopySettings(false)}
+                      className="border-gray-500 text-gray-300 hover:bg-gray-800"
                     >
                       Cancel
                     </Button>
-                    <Button onClick={saveCopySettings}>
+                    <Button onClick={saveCopySettings} className="bg-gray-600 hover:bg-gray-500 text-white">
                       Save Settings
                     </Button>
                   </div>
                 </div>
               </DialogContent>
             </Dialog>
+
+            <Dialog open={showAddWalletModal} onOpenChange={setShowAddWalletModal}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    isDark ? "border-[#27272a] text-[#9ca3af]" : "border-gray-300 text-gray-700"
+                  )}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Wallet
+                </Button>
+              </DialogTrigger>
+              <DialogContent className={cn(
+                isDark ? "bg-black border-[#27272a]" : "bg-white border-gray-200"
+              )}>
+                <DialogHeader>
+                  <DialogTitle className={cn(isDark ? "text-white" : "text-gray-900")}>
+                    Add Master Wallet
+                  </DialogTitle>
+                  <DialogDescription>
+                    Track a Solana wallet address for copy trading.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="wallet-address">Wallet Address</Label>
+                    <Input
+                      id="wallet-address"
+                      placeholder="Solana address..."
+                      value={newWalletAddress}
+                      onChange={(e) => setNewWalletAddress(e.target.value)}
+                      className={cn(isDark && "bg-black border-gray-800")}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="wallet-name">Wallet Name / Label</Label>
+                    <Input
+                      id="wallet-name"
+                      placeholder="e.g. Whale Trader"
+                      value={newWalletName}
+                      onChange={(e) => setNewWalletName(e.target.value)}
+                      className={cn(isDark && "bg-black border-gray-800")}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowAddWalletModal(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleAddWallet}
+                      disabled={isAddingWallet}
+                    >
+                      {isAddingWallet ? "Adding..." : "Save Wallet"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowLiveTrades(true)}
+              className={cn(
+                "border-[#27272a] text-[#9ca3af] bg-black hover:bg-[#1a1a1a] transition-colors",
+                !isDark && "border-gray-200 text-gray-600 bg-white"
+              )}
+            >
+              <Activity className="w-4 h-4 mr-2" />
+              Live Trades
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearMockData}
+              className="text-red-500 hover:text-red-400 border-red-900/50 bg-black"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Clear All Data
+            </Button>
           </div>
 
           <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
             <SelectTrigger className={cn(
               "w-[160px]",
-              isDark ? "bg-[#0f1419] border-[#374151] text-[#9ca3af]" : "bg-white border-gray-300 text-gray-700"
+              isDark ? "bg-[#09090b] border-[#27272a] text-[#9ca3af]" : "bg-white border-gray-300 text-gray-700"
             )}>
               <ArrowUpDown className="w-4 h-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent className={cn(
-              isDark ? "bg-[#1a1f2e] border-[#374151]" : "bg-white border-gray-200"
+              isDark ? "bg-[#09090b] border-[#27272a]" : "bg-white border-gray-200"
             )}>
               <SelectItem value="roi">ROI</SelectItem>
               <SelectItem value="total_pnl">Total P&L</SelectItem>
@@ -553,7 +849,7 @@ export default function CopyTradingPage() {
         {showFilters && (
           <div className={cn(
             "rounded-xl border p-4",
-            isDark ? "bg-[#1a1f2e] border-[#374151]" : "bg-white border-gray-200"
+            isDark ? "bg-[#09090b] border-[#27272a]" : "bg-white border-gray-200"
           )}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Risk Level Filter */}
@@ -630,12 +926,12 @@ export default function CopyTradingPage() {
       {/* Leaderboard Table */}
       <div className={cn(
         "rounded-xl border overflow-hidden",
-        isDark ? "bg-[#1a1f2e] border-[#1f2937]" : "bg-white border-gray-200"
+        isDark ? "bg-[#09090b] border-[#27272a]" : "bg-white border-gray-200"
       )}>
         {/* Table Header */}
         <div className={cn(
           "hidden lg:grid lg:grid-cols-8 gap-4 px-6 py-3 border-b text-sm",
-          isDark ? "border-[#1f2937] text-[#6b7280]" : "border-gray-200 text-gray-600"
+          isDark ? "border-[#27272a] text-[#6b7280]" : "border-gray-200 text-gray-600"
         )}>
           <span className="col-span-2">Trader</span>
           <span className="text-right">ROI</span>
@@ -676,23 +972,22 @@ export default function CopyTradingPage() {
             filteredTraders.map((trader, index) => {
               const badge = getBlockchainBadge(trader.wallet_address);
               const sparklineData = Array.from({ length: 20 }, () => Math.random() * 100);
-              
+
               return (
                 <div
                   key={trader.id}
                   className={cn(
                     "grid grid-cols-2 lg:grid-cols-8 gap-4 px-6 py-4 transition-colors items-center",
-                    isDark ? "hover:bg-[#252b3d]" : "hover:bg-gray-50"
+                    isDark ? "hover:bg-[#27272a]" : "hover:bg-gray-50"
                   )}
                 >
                   {/* Trader Info */}
                   <div className="col-span-2 flex items-center gap-3">
                     <div className="relative">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                        badge.label === 'SOL' ? 'bg-gradient-to-br from-purple-500 to-teal-400' :
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${badge.label === 'SOL' ? 'bg-gradient-to-br from-purple-500 to-teal-400' :
                         badge.label === 'BTC' ? 'bg-gradient-to-br from-orange-400 to-yellow-500' :
-                        'bg-gradient-to-br from-blue-400 to-purple-500'
-                      }`}>
+                          'bg-gradient-to-br from-blue-400 to-purple-500'
+                        }`}>
                         {index + 1}
                       </div>
                       {trader.is_verified && (
@@ -705,18 +1000,24 @@ export default function CopyTradingPage() {
                           "font-semibold",
                           isDark ? "text-white" : "text-gray-900"
                         )}>
-                          {shortenAddress(trader.wallet_address)}
+                          {trader.label || shortenAddress(trader.wallet_address)}
                         </span>
                         <span className={`text-xs px-1.5 py-0.5 rounded ${badge.color}`}>
                           {badge.label}
                         </span>
                       </div>
-                        <div className={cn(
-                          "text-xs",
-                          isDark ? "text-[#6b7280]" : "text-gray-500"
-                        )}>
-                          {trader.total_trades} trades
-                        </div>
+                      <div className={cn(
+                        "text-xs flex items-center gap-2",
+                        isDark ? "text-[#6b7280]" : "text-gray-500"
+                      )}>
+                        <span>{trader.total_trades} trades</span>
+                        {trader.solBalance !== undefined && (
+                          <span className="flex items-center gap-1 border-l border-gray-800 pl-2">
+                            <span className="text-blue-400">{trader.solBalance.toFixed(2)} SOL</span>
+                            <span className="opacity-60 text-[10px]">(${trader.balanceUSD?.toFixed(0)})</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -760,7 +1061,7 @@ export default function CopyTradingPage() {
                       }}
                       className={cn(
                         "bg-transparent",
-                        isDark 
+                        isDark
                           ? "border-[#374151] text-[#9ca3af] hover:text-white"
                           : "border-gray-300 text-gray-600 hover:text-gray-900"
                       )}
@@ -769,11 +1070,33 @@ export default function CopyTradingPage() {
                       <Eye className="w-4 h-4" />
                     </Button>
                     <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveWallet(trader);
+                      }}
+                      className={cn(
+                        "bg-transparent hover:bg-red-500/10 hover:text-red-500 transition-colors",
+                        isDark
+                          ? "border-[#374151] text-[#9ca3af]"
+                          : "border-gray-300 text-gray-600"
+                      )}
+                      title="Remove Tracking"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                    <Button
                       size="sm"
                       onClick={() => handleCopyTrader(trader)}
-                      className="bg-[#3b82f6] hover:bg-[#2563eb] text-white"
+                      className={cn(
+                        "transition-all",
+                        isDark
+                          ? "bg-[#27272a] hover:bg-[#3f3f46] text-white"
+                          : "bg-gray-100 hover:bg-gray-200 text-gray-900"
+                      )}
                     >
-                      <Copy className="w-4 h-4 mr-1" />
+                      <Copy className="w-4 h-4 mr-1 text-gray-400" />
                       Copy
                     </Button>
                   </div>
@@ -812,6 +1135,13 @@ export default function CopyTradingPage() {
           }
         }}
         trader={selectedTrader}
+      />
+
+      <LiveTradesModal
+        open={showLiveTrades}
+        onOpenChange={setShowLiveTrades}
+        trackedWallets={traders.map(t => ({ address: t.wallet_address, label: t.label || t.wallet_address }))}
+        isDark={isDark}
       />
     </div>
   );

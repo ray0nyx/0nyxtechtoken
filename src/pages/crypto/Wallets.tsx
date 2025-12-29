@@ -1,60 +1,199 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, TrendingDown, Plus } from 'lucide-react';
+import { TrendingUp, TrendingDown, ChevronDown, Wallet as WalletIcon, Edit, Check, Trash2, X, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import CryptoAssetRow from '@/components/crypto/ui/CryptoAssetRow';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
 import WalletManager from '@/components/crypto/WalletManager';
 import { createClient } from '@/lib/supabase/client';
-import { fetchAggregatedCryptoData, type AggregatedCryptoStats } from '@/lib/crypto-aggregation-service';
 import { useTheme } from '@/components/ThemeProvider';
 import { cn } from '@/lib/utils';
 import {
   fetchUserTrackedWallets,
   fetchTokenPrices,
-  generateSparklineData,
   type WalletBalance,
   type TokenPrice
 } from '@/lib/wallet-balance-service';
+import { TurnkeyWalletProvider, useTurnkeyWallet } from '@/lib/wallet-abstraction/TurnkeyWalletContext';
+import { useAuth } from '@/hooks/useAuth';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useToast } from '@/components/ui/use-toast';
+import { Copy } from 'lucide-react';
 
-interface WalletAsset {
+interface WalletItem {
   id: string;
-  icon: string;
-  name: string;
-  symbol: string;
-  amount: number;
-  price: number;
-  priceUsd: number;
+  address: string;
+  label: string;
+  blockchain: 'solana' | 'bitcoin';
+  totalUsdValue: number;
   change24h: number;
   sparklineData: number[];
 }
 
-// Asset configurations
-const assetConfigs: Record<string, { icon: string; color: string }> = {
-  BTC: { icon: '/images/bitcoin-logo.png', color: '#f59e0b' },
-  SOL: { icon: '/images/solana-logo.png', color: '#8b5cf6' },
-  ETH: { icon: '/images/ethereum-logo.png', color: '#627eea' },
-  ADA: { icon: '/images/cardano-logo.png', color: '#0033ad' },
-  USDT: { icon: '/images/tether-logo.png', color: '#26a17b' },
-  USDC: { icon: '/images/usdc-logo.png', color: '#2775ca' },
-};
 
-export default function CryptoWallets() {
+
+function WalletsContent() {
   const navigate = useNavigate();
   const supabase = createClient();
   const { theme } = useTheme();
   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const { createWallet: createTurnkeyWallet, loading: turnkeyLoading } = useTurnkeyWallet();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { publicKey, connected } = useWallet();
 
   const [isLoading, setIsLoading] = useState(true);
   const [timePeriod, setTimePeriod] = useState<'24h' | '7d' | '30d'>('24h');
   const [totalBalance, setTotalBalance] = useState(0);
   const [totalChange, setTotalChange] = useState(0);
-  const [assets, setAssets] = useState<WalletAsset[]>([]);
+  const [wallets, setWallets] = useState<WalletItem[]>([]);
   const [showWalletManager, setShowWalletManager] = useState(false);
+  const [editingWalletAddress, setEditingWalletAddress] = useState<string | null>(null);
+  const [editingLabel, setEditingLabel] = useState('');
+  const [mainWalletAddress, setMainWalletAddress] = useState<string | null>(null);
+
+  // Load main wallet from localStorage on mount
+  useEffect(() => {
+    const savedMainWallet = localStorage.getItem('main_wallet_address');
+    if (savedMainWallet) {
+      setMainWalletAddress(savedMainWallet);
+    }
+  }, []);
+
+  // Handler to set a wallet as the main wallet
+  const handleSetMainWallet = (walletAddress: string) => {
+    localStorage.setItem('main_wallet_address', walletAddress);
+    setMainWalletAddress(walletAddress);
+    toast({
+      title: 'Main Wallet Set',
+      description: 'This wallet will be used for deposits and copy trading.',
+    });
+  };
+
+  // Handler to rename a wallet and save to Supabase
+  const handleRenameWallet = async (walletAddress: string, newLabel: string) => {
+    if (!user?.id || !newLabel.trim()) {
+      setEditingWalletAddress(null);
+      return;
+    }
+
+    try {
+      // Update in Supabase
+      const { error } = await supabase
+        .from('wallet_tracking')
+        .update({ label: newLabel.trim() })
+        .eq('user_id', user.id)
+        .eq('wallet_address', walletAddress);
+
+      if (error) {
+        console.error('Error renaming wallet:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to rename wallet. Please try again.',
+          variant: 'destructive',
+        });
+      } else {
+        // Update local state
+        setWallets(prev => prev.map(w =>
+          w.address === walletAddress ? { ...w, label: newLabel.trim() } : w
+        ));
+        toast({
+          title: 'Saved!',
+          description: 'Wallet name updated successfully.',
+        });
+      }
+    } catch (err) {
+      console.error('Error renaming wallet:', err);
+    }
+
+    setEditingWalletAddress(null);
+  };
+
+  // Handler to delete a wallet from tracking
+  const handleDeleteWallet = async (walletAddress: string) => {
+    if (!user?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('wallet_tracking')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('wallet_address', walletAddress);
+
+      if (error) {
+        console.error('Error deleting wallet:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to delete wallet. Please try again.',
+          variant: 'destructive',
+        });
+      } else {
+        // Remove from local state
+        setWallets(prev => prev.filter(w => w.address !== walletAddress));
+        toast({
+          title: 'Deleted',
+          description: 'Wallet removed successfully.',
+        });
+      }
+    } catch (err) {
+      console.error('Error deleting wallet:', err);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   useEffect(() => {
     loadWalletData();
   }, [timePeriod]);
+
+  // Auto-track connected Solana wallets
+  useEffect(() => {
+    const trackConnectedWallet = async () => {
+      if (connected && publicKey && user) {
+        const walletAddress = publicKey.toBase58();
+
+        try {
+          // Check if wallet is already tracked
+          const { data: existing } = await supabase
+            .from('wallet_tracking')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('wallet_address', walletAddress)
+            .maybeSingle();
+
+          if (!existing) {
+            // Add to tracking
+            await supabase
+              .from('wallet_tracking')
+              .insert({
+                user_id: user.id,
+                wallet_address: walletAddress,
+                blockchain: 'solana',
+                label: 'Connected Wallet',
+                is_active: true,
+              });
+
+            // Reload wallet data to show the new wallet
+            loadWalletData();
+          }
+        } catch (error) {
+          console.error('Error tracking connected wallet:', error);
+        }
+      }
+    };
+
+    trackConnectedWallet();
+  }, [connected, publicKey, user]);
 
 
   const loadWalletData = async () => {
@@ -66,6 +205,45 @@ export default function CryptoWallets() {
         return;
       }
 
+      // Sync Turnkey wallets from user_wallets to wallet_tracking
+      // This ensures all created wallets show up in the list
+      try {
+        const { data: turnkeyWallets } = await supabase
+          .from('user_wallets')
+          .select('wallet_address')
+          .eq('user_id', user.id)
+          .eq('wallet_type', 'turnkey')
+          .eq('is_active', true);
+
+        if (turnkeyWallets && turnkeyWallets.length > 0) {
+          for (const tw of turnkeyWallets) {
+            // Check if already in wallet_tracking
+            const { data: existing } = await supabase
+              .from('wallet_tracking')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('wallet_address', tw.wallet_address)
+              .maybeSingle();
+
+            if (!existing) {
+              // Add to tracking
+              console.log('📝 Syncing Turnkey wallet to tracking:', tw.wallet_address);
+              await supabase
+                .from('wallet_tracking')
+                .insert({
+                  user_id: user.id,
+                  wallet_address: tw.wallet_address,
+                  blockchain: 'solana',
+                  label: 'Main Wallet',
+                  is_active: true,
+                });
+            }
+          }
+        }
+      } catch (syncError) {
+        console.error('Error syncing Turnkey wallets:', syncError);
+      }
+
       // Fetch tracked wallets with real balances (with timeout)
       const walletBalances = await Promise.race([
         fetchUserTrackedWallets(user.id),
@@ -73,155 +251,154 @@ export default function CryptoWallets() {
       ]);
 
       if (walletBalances.length === 0) {
-        setAssets([]);
+        setWallets([]);
         setTotalBalance(0);
         setTotalChange(0);
         setIsLoading(false);
         return;
       }
 
-      // Aggregate balances by symbol across all wallets
-      const aggregatedBalances: Record<string, { amount: number; usdValue: number }> = {};
+      // Calculate total for all wallets
       let totalUsdValue = 0;
-
       walletBalances.forEach(wallet => {
-        Object.entries(wallet.balances).forEach(([symbol, balance]) => {
-          if (!aggregatedBalances[symbol]) {
-            aggregatedBalances[symbol] = { amount: 0, usdValue: 0 };
-          }
-          aggregatedBalances[symbol].amount += balance.amount;
-          aggregatedBalances[symbol].usdValue += balance.usdValue;
-        });
         totalUsdValue += wallet.totalUsdValue;
       });
 
-      // Get unique symbols to fetch prices
-      const symbols = Object.keys(aggregatedBalances);
-      const coinIds = symbols.map(s => {
-        const map: Record<string, string> = {
-          'BTC': 'bitcoin',
-          'SOL': 'solana',
-          'ETH': 'ethereum',
-          'ADA': 'cardano',
-          'USDT': 'tether',
-          'USDC': 'usd-coin',
-        };
-        return map[s] || s.toLowerCase();
+      // Get unique coin IDs to fetch price changes
+      const allSymbols = new Set<string>();
+      walletBalances.forEach(wallet => {
+        Object.keys(wallet.balances).forEach(symbol => allSymbols.add(symbol));
       });
 
-      // Fetch real prices from CoinGecko (fast, don't wait for images)
+      const symbolToId: Record<string, string> = {
+        'BTC': 'bitcoin',
+        'SOL': 'solana',
+        'ETH': 'ethereum',
+        'ADA': 'cardano',
+        'USDT': 'tether',
+        'USDC': 'usd-coin',
+      };
+      const coinIds = Array.from(allSymbols).map(s => symbolToId[s] || s.toLowerCase());
+
+      // Fetch real prices from CoinGecko to get 24h change
       const prices = await Promise.race<[Promise<Record<string, TokenPrice>>, Promise<Record<string, TokenPrice>>]>([
         fetchTokenPrices(coinIds),
         new Promise<Record<string, TokenPrice>>((resolve) => {
-          setTimeout(() => resolve({}), 5000); // 5s timeout for prices
+          setTimeout(() => resolve({}), 5000);
         })
       ]);
 
-      // Generate asset list with real data (optimized - skip sparklines on initial load)
-      const assetList = Object.entries(aggregatedBalances).map(([symbol, balance]) => {
-        const priceData = prices[symbol];
-        const currentPrice = priceData?.price || 0;
-        const change24h = priceData?.change24h || 0;
+      // Build wallet list with per-wallet data
+      const walletList: WalletItem[] = walletBalances.map((wallet, index) => {
+        // Calculate weighted average change for this wallet
+        let walletChange = 0;
+        if (wallet.totalUsdValue > 0) {
+          Object.entries(wallet.balances).forEach(([symbol, balance]) => {
+            const priceData = prices[symbol];
+            const weight = balance.usdValue / wallet.totalUsdValue;
+            const change = priceData?.change24h || 0;
+            walletChange += change * weight;
+          });
+        }
 
-        // Use image from CoinGecko if available, otherwise fallback to local config
-        const config = assetConfigs[symbol] || { icon: '', color: '#6b7280' };
-        let icon = priceData?.image || config.icon;
-
-        // Simple sparkline: just use current price (no network calls on initial load)
-        // Sparklines can be loaded later if needed
-        const simpleSparkline = Array.from({ length: 24 }, () => currentPrice);
+        // Simple sparkline based on current value (will be updated in background if needed)
+        const simpleSparkline = Array.from({ length: 24 }, () => wallet.totalUsdValue);
 
         return {
-          id: symbol,
-          icon: icon,
-          name: priceData?.name || (symbol === 'BTC' ? 'Bitcoin' :
-            symbol === 'SOL' ? 'Solana' :
-              symbol === 'ETH' ? 'Ethereum' :
-                symbol === 'ADA' ? 'Cardano' :
-                  symbol === 'USDT' ? 'Tether' :
-                    symbol === 'USDC' ? 'USD Coin' :
-                      symbol),
-          symbol,
-          amount: balance.amount,
-          price: currentPrice,
-          priceUsd: balance.usdValue,
-          change24h,
-          sparklineData: simpleSparkline, // Simple fallback, no network calls
+          id: `wallet-${index}`,
+          address: wallet.address,
+          label: wallet.label || (wallet.blockchain === 'solana' ? 'Solana Wallet' : 'Bitcoin Wallet'),
+          blockchain: wallet.blockchain,
+          totalUsdValue: wallet.totalUsdValue,
+          change24h: walletChange,
+          sparklineData: simpleSparkline,
         };
       });
 
       // Sort by USD value (descending)
-      assetList.sort((a, b) => b.priceUsd - a.priceUsd);
+      walletList.sort((a, b) => b.totalUsdValue - a.totalUsdValue);
 
-      // Calculate total change (weighted average)
-      // Only include assets with valid values and non-zero total
+      // Calculate total change (weighted average across all wallets)
       let totalChange = 0;
-      if (assetList.length > 0 && totalUsdValue > 0) {
-        const validAssets = assetList.filter(asset =>
-          asset.priceUsd > 0 &&
-          !isNaN(asset.change24h) &&
-          isFinite(asset.change24h) &&
-          asset.change24h !== null &&
-          asset.change24h !== undefined
-        );
-
-        if (validAssets.length > 0) {
-          totalChange = validAssets.reduce((sum, asset) => {
-            const weight = asset.priceUsd / totalUsdValue;
-            const change = asset.change24h || 0;
-            return sum + (change * weight);
-          }, 0);
-        }
+      if (walletList.length > 0 && totalUsdValue > 0) {
+        walletList.forEach(wallet => {
+          if (wallet.totalUsdValue > 0 && !isNaN(wallet.change24h) && isFinite(wallet.change24h)) {
+            const weight = wallet.totalUsdValue / totalUsdValue;
+            totalChange += wallet.change24h * weight;
+          }
+        });
       }
 
-      setAssets(assetList);
+      setWallets(walletList);
       setTotalBalance(totalUsdValue);
       setTotalChange(totalChange);
 
-      setIsLoading(false); // Set loading to false immediately after setting assets
+      // Auto-set first Turnkey wallet as main wallet if none is set
+      const savedMainWallet = localStorage.getItem('main_wallet_address');
+      if (!savedMainWallet && walletList.length > 0) {
+        // Prefer the wallet labeled "Main Wallet" (created by Turnkey on account creation)
+        const turnkeyWallet = walletList.find(w => w.label === 'Main Wallet');
+        const defaultMainWallet = turnkeyWallet || walletList[0];
+        localStorage.setItem('main_wallet_address', defaultMainWallet.address);
+        setMainWalletAddress(defaultMainWallet.address);
+      }
 
-      // Load sparklines and images in background (non-blocking)
-      // This happens after the UI is already rendered
-      setTimeout(() => {
-        assetList.forEach((asset) => {
-          // Only fetch sparkline if we have a valid price
-          if (asset.price > 0) {
-            generateSparklineData(asset.symbol, '1h', 24)
-              .then(sparkline => {
-                if (sparkline.length > 0) {
-                  setAssets(prev => prev.map(a =>
-                    a.symbol === asset.symbol
-                      ? { ...a, sparklineData: sparkline }
-                      : a
-                  ));
-                }
-              })
-              .catch(() => {
-                // Ignore sparkline errors
-              });
-          }
-        });
-      }, 100); // Small delay to ensure UI is rendered first
+      setIsLoading(false);
 
     } catch (error) {
       console.error('Error loading wallet data:', error);
-      setAssets([]);
+      setWallets([]);
       setTotalBalance(0);
       setTotalChange(0);
       setIsLoading(false);
     }
   };
 
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(2)}M`;
+  const handleCreateTurnkeyWallet = async () => {
+    if (!user?.email) return;
+
+    try {
+      const walletAddress = await createTurnkeyWallet(user.email);
+
+      // Show success notification with address
+      toast({
+        title: '✅ Wallet Created Successfully!',
+        description: (
+          <div className="space-y-2">
+            <p className="text-sm">Your new Solana wallet address:</p>
+            <div className="flex items-center gap-2 bg-black/20 p-2 rounded">
+              <code className="text-xs flex-1 break-all">{walletAddress}</code>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  navigator.clipboard.writeText(walletAddress);
+                  toast({
+                    title: 'Copied!',
+                    description: 'Wallet address copied to clipboard',
+                  });
+                }}
+              >
+                <Copy className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        ),
+        duration: 10000,
+      });
+
+      // Reload wallet lists to show the new wallet with balance
+      // Small delay to ensure DB commit is complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await loadWalletData();
+    } catch (error: any) {
+      console.error("Failed to create wallet", error);
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to create wallet. Please try again.',
+        variant: 'destructive',
+      });
     }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
   };
 
   const handleSend = (assetId: string) => {
@@ -301,8 +478,8 @@ export default function CryptoWallets() {
                 isDark ? "text-[#6b7280]" : "text-gray-500"
               )}>USD</span>
               <div className={`flex items-center gap-1 px-2 py-1 rounded text-sm ${(totalChange >= 0 && !isNaN(totalChange))
-                  ? 'bg-[#10b981]/20 text-[#10b981]'
-                  : 'bg-[#ef4444]/20 text-[#ef4444]'
+                ? 'bg-[#10b981]/20 text-[#10b981]'
+                : 'bg-[#ef4444]/20 text-[#ef4444]'
                 }`}>
                 {(totalChange >= 0 && !isNaN(totalChange)) ? (
                   <TrendingUp className="w-4 h-4" />
@@ -336,13 +513,37 @@ export default function CryptoWallets() {
               </SelectContent>
             </Select>
 
-            <Button
-              onClick={() => setShowWalletManager(true)}
-              className="bg-[#3b82f6] hover:bg-[#2563eb] text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Wallet
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className={cn(
+                    isDark ? "bg-[#27272a] hover:bg-[#3f3f46] text-white" : "bg-gray-100 hover:bg-gray-200 text-gray-900",
+                    "border border-transparent"
+                  )}
+                >
+                  Create
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className={cn(
+                isDark ? "bg-[#1a1f2e] border-white/10" : "bg-white border-gray-200"
+              )}>
+                <DropdownMenuItem
+                  onClick={handleCreateTurnkeyWallet}
+                  disabled={turnkeyLoading}
+                  className="cursor-pointer"
+                >
+                  <WalletIcon className="w-4 h-4 mr-2" />
+                  Wallet {turnkeyLoading && "(Creating...)"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <WalletMultiButton className={cn(
+              "!bg-[#3b82f6] hover:!bg-[#2563eb] !h-10 !px-4 !py-2 !rounded-md !text-sm !font-medium"
+            )}>
+              Connect Wallets
+            </WalletMultiButton>
           </div>
         </div>
       </div>
@@ -357,13 +558,13 @@ export default function CryptoWallets() {
           "hidden md:grid md:grid-cols-4 gap-4 px-6 py-3 border-b text-sm",
           isDark ? "border-white/10 text-gray-500" : "border-gray-200 text-gray-600"
         )}>
-          <span>Asset</span>
-          <span>Price</span>
-          <span className="text-center">24h change</span>
-          <span className="text-right">Actions</span>
+          <span>Wallet</span>
+          <span>Amount</span>
+          <span className="text-center">24h Change</span>
+          <span className="text-right">Chart</span>
         </div>
 
-        {/* Asset Rows */}
+        {/* Wallet Rows */}
         <div className={cn(
           "divide-y",
           isDark ? "divide-white/10" : "divide-gray-200"
@@ -379,7 +580,7 @@ export default function CryptoWallets() {
                 </div>
               </div>
             ))
-          ) : assets.length === 0 ? (
+          ) : wallets.length === 0 ? (
             <div className={cn(
               "flex flex-col items-center justify-center py-12",
               isDark ? "text-[#6b7280]" : "text-gray-500"
@@ -392,40 +593,195 @@ export default function CryptoWallets() {
               <p className={cn(
                 "text-lg mb-2",
                 isDark ? "text-white" : "text-gray-900"
-              )}>No assets found</p>
-              <p className="text-sm">Add a wallet to start tracking your assets</p>
+              )}>No wallets found</p>
+              <p className="text-sm">Create or connect a wallet to start tracking</p>
               <Button
                 onClick={() => setShowWalletManager(true)}
                 className="mt-4 bg-[#3b82f6] hover:bg-[#2563eb]"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Wallet
+                Create Wallet
               </Button>
             </div>
           ) : (
-            assets.map((asset) => (
-              <CryptoAssetRow
-                key={asset.id}
-                icon={asset.icon || (
-                  <span className={cn(
-                    "font-bold text-sm",
+            wallets.map((wallet) => (
+              <div
+                key={wallet.id}
+                className={cn(
+                  "group grid grid-cols-1 md:grid-cols-4 gap-4 p-4 md:p-6 items-center hover:bg-white/5 transition-colors cursor-pointer",
+                  isDark ? "hover:bg-white/5" : "hover:bg-gray-50"
+                )}
+              >
+                {/* Wallet Info */}
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center",
+                    wallet.blockchain === 'solana' ? "bg-purple-500/20" : "bg-orange-500/20"
+                  )}>
+                    <WalletIcon className={cn(
+                      "w-5 h-5",
+                      wallet.blockchain === 'solana' ? "text-purple-400" : "text-orange-400"
+                    )} />
+                  </div>
+                  <div>
+                    {/* Editable wallet label */}
+                    {editingWalletAddress === wallet.address ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editingLabel}
+                          onChange={(e) => setEditingLabel(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleRenameWallet(wallet.address, editingLabel);
+                            } else if (e.key === 'Escape') {
+                              setEditingWalletAddress(null);
+                            }
+                          }}
+                          className={cn(
+                            "bg-transparent border-b text-sm font-medium w-32 focus:outline-none",
+                            isDark ? "border-white/30 text-white" : "border-gray-300 text-gray-900"
+                          )}
+                          autoFocus
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRenameWallet(wallet.address, editingLabel);
+                          }}
+                          className="text-green-400 hover:text-green-300 transition-colors"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className={cn(
+                          "font-medium",
+                          isDark ? "text-white" : "text-gray-900"
+                        )}>
+                          {wallet.label}
+                        </p>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingWalletAddress(wallet.address);
+                            setEditingLabel(wallet.label);
+                          }}
+                          className={cn(
+                            "opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity",
+                            isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"
+                          )}
+                        >
+                          <Edit className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteWallet(wallet.address);
+                          }}
+                          className={cn(
+                            "opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity",
+                            isDark ? "text-gray-400 hover:text-red-400" : "text-gray-500 hover:text-red-500"
+                          )}
+                          title={(publicKey && wallet.address === publicKey.toBase58()) ? 'Unlink wallet' : 'Delete wallet'}
+                        >
+                          {(publicKey && wallet.address === publicKey.toBase58()) ? (
+                            <X className="w-3 h-3" />
+                          ) : (
+                            <Trash2 className="w-3 h-3" />
+                          )}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSetMainWallet(wallet.address);
+                          }}
+                          className={cn(
+                            "transition-opacity",
+                            mainWalletAddress === wallet.address
+                              ? "opacity-100 text-yellow-400"
+                              : "opacity-0 group-hover:opacity-100 hover:opacity-100",
+                            isDark ? "text-gray-400 hover:text-yellow-400" : "text-gray-500 hover:text-yellow-500"
+                          )}
+                          title="Set as main wallet"
+                        >
+                          <Star className={cn("w-3 h-3", mainWalletAddress === wallet.address && "fill-current")} />
+                        </button>
+                      </div>
+                    )}
+                    <p className={cn(
+                      "text-xs flex items-center gap-1",
+                      isDark ? "text-gray-500" : "text-gray-500"
+                    )}>
+                      <span>{wallet.address.slice(0, 4)}...{wallet.address.slice(-4)}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(wallet.address);
+                          toast({
+                            title: 'Copied!',
+                            description: 'Wallet address copied to clipboard',
+                          });
+                        }}
+                        className="hover:text-white transition-colors"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Amount (Total USD Value) */}
+                <div className="md:text-left">
+                  <p className={cn(
+                    "font-semibold text-lg",
                     isDark ? "text-white" : "text-gray-900"
                   )}>
-                    {asset.symbol.charAt(0)}
+                    ${wallet.totalUsdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+
+                {/* 24h Change */}
+                <div className="md:text-center">
+                  <span className={cn(
+                    "inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-medium",
+                    wallet.change24h >= 0
+                      ? "bg-[#10b981]/20 text-[#10b981]"
+                      : "bg-[#ef4444]/20 text-[#ef4444]"
+                  )}>
+                    {wallet.change24h >= 0 ? (
+                      <TrendingUp className="w-4 h-4" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4" />
+                    )}
+                    {isNaN(wallet.change24h) || !isFinite(wallet.change24h)
+                      ? '0.00'
+                      : `${wallet.change24h >= 0 ? '+' : ''}${wallet.change24h.toFixed(2)}`
+                    }%
                   </span>
-                )}
-                name={asset.name}
-                symbol={asset.symbol}
-                amount={asset.amount}
-                price={asset.price}
-                priceUsd={asset.priceUsd}
-                change24h={asset.change24h}
-                sparklineData={asset.sparklineData}
-                onSend={() => handleSend(asset.id)}
-                onReceive={() => handleReceive(asset.id)}
-                onTrade={() => handleTrade(asset.symbol)}
-                className="border-0"
-              />
+                </div>
+
+                {/* Mini Sparkline Chart */}
+                <div className="md:flex md:justify-end">
+                  <div className="w-24 h-8">
+                    <svg className="w-full h-full" viewBox="0 0 100 32">
+                      <polyline
+                        fill="none"
+                        stroke={wallet.change24h >= 0 ? "#10b981" : "#ef4444"}
+                        strokeWidth="2"
+                        points={wallet.sparklineData.map((val, i) => {
+                          const min = Math.min(...wallet.sparklineData);
+                          const max = Math.max(...wallet.sparklineData);
+                          const range = max - min || 1;
+                          const x = (i / (wallet.sparklineData.length - 1)) * 100;
+                          const y = 32 - ((val - min) / range) * 28 - 2;
+                          return `${x},${y}`;
+                        }).join(' ')}
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
             ))
           )}
         </div>
@@ -441,3 +797,10 @@ export default function CryptoWallets() {
   );
 }
 
+export default function CryptoWallets() {
+  return (
+    <TurnkeyWalletProvider>
+      <WalletsContent />
+    </TurnkeyWalletProvider>
+  );
+}

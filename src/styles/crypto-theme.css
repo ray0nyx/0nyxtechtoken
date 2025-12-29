@@ -1,12 +1,12 @@
 /* Crypto Dashboard Theme Variables */
 :root {
   /* Main backgrounds */
-  --crypto-bg-main: #0a0e17;
-  --crypto-bg-sidebar: #0f1419;
-  --crypto-bg-card: #1a1f2e;
-  --crypto-bg-card-hover: #252b3d;
-  --crypto-bg-input: #0f1419;
-  
+  --crypto-bg-main: #000000;
+  --crypto-bg-sidebar: #000000;
+  --crypto-bg-card: #000000;
+  --crypto-bg-card-hover: #0a0a0a;
+  --crypto-bg-input: #000000;
+
   /* Accent colors */
   --crypto-accent-blue: #3b82f6;
   --crypto-accent-green: #10b981;
@@ -14,16 +14,16 @@
   --crypto-accent-purple: #8b5cf6;
   --crypto-accent-orange: #f59e0b;
   --crypto-accent-teal: #14b8a6;
-  
+
   /* Text colors */
   --crypto-text-primary: #ffffff;
   --crypto-text-secondary: #9ca3af;
   --crypto-text-muted: #6b7280;
-  
+
   /* Border colors */
   --crypto-border: #374151;
   --crypto-border-light: #1f2937;
-  
+
   /* Chart colors */
   --crypto-chart-green: #22c55e;
   --crypto-chart-red: #ef4444;
@@ -81,4 +81,3 @@
 .crypto-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--crypto-text-muted);
 }
-

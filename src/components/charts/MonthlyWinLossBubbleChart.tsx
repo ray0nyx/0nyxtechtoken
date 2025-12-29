@@ -169,14 +169,14 @@ export function MonthlyWinLossBubbleChart({ trades = [], showCard = true }: Mont
             data={data}
             shape="circle"
             fill={(entry: any) =>
-              entry.pnl > 0 ? 'url(#winGradient)' :
+              (entry.pnl > 0 ? 'url(#winGradient)' :
                 entry.pnl < 0 ? 'url(#lossGradient)' :
-                  'url(#breakEvenGradient)'
+                  'url(#breakEvenGradient)') as string
             }
             stroke={(entry: any) =>
-              entry.pnl > 0 ? '#d4d4d4' :
+              (entry.pnl > 0 ? '#d4d4d4' :
                 entry.pnl < 0 ? '#525252' :
-                  '#404040'
+                  '#404040') as string
             }
           />
         </ScatterChart>
@@ -189,27 +189,27 @@ export function MonthlyWinLossBubbleChart({ trades = [], showCard = true }: Mont
   }
 
   return (
-    <Card className="border-slate-700/50 dark:border-slate-700/50 border-slate-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-cyan-500/10 overflow-hidden bg-slate-900 dark:bg-slate-900">
-      <CardHeader className="bg-cyan-500/10 dark:bg-cyan-500/20 pb-3">
+    <Card className="border-slate-700/50 dark:border-slate-700/50 border-slate-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-gray-500/10 overflow-hidden bg-slate-900 dark:bg-slate-900">
+      <CardHeader className="bg-gray-500/10 dark:bg-gray-500/20 pb-3">
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg font-medium text-white dark:text-slate-900 flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-cyan-500/20 dark:bg-cyan-500/30">
-              <Activity className="h-4 w-4 text-cyan-400 dark:text-cyan-600" />
+            <div className="p-1.5 rounded-lg bg-gray-500/20 dark:bg-gray-500/30">
+              <Activity className="h-4 w-4 text-gray-500" />
             </div>
             Monthly Win/Loss Bubble Chart
           </CardTitle>
           <div className="flex items-center gap-4">
             <div className="text-right">
               <div className="text-sm text-slate-400 dark:text-slate-600">Winning Days</div>
-              <div className="text-lg font-bold text-blue-400 dark:text-blue-600">{winningDays}</div>
+              <div className="text-lg font-bold text-gray-500">{winningDays}</div>
             </div>
             <div className="text-right">
               <div className="text-sm text-slate-400 dark:text-slate-600">Losing Days</div>
-              <div className="text-lg font-bold text-purple-400 dark:text-purple-600">{losingDays}</div>
+              <div className="text-lg font-bold text-gray-300">{losingDays}</div>
             </div>
             <div className="text-right">
               <div className="text-sm text-slate-400 dark:text-slate-600">Break Even</div>
-              <div className="text-lg font-bold text-orange-400 dark:text-orange-600">{breakEvenDays}</div>
+              <div className="text-lg font-bold text-gray-400">{breakEvenDays}</div>
             </div>
           </div>
         </div>

@@ -7,10 +7,10 @@ import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Brain, 
-  TrendingUp, 
-  Shield, 
+import {
+  Brain,
+  TrendingUp,
+  Shield,
   Zap,
   Settings,
   Bell,
@@ -19,9 +19,9 @@ import {
 
 export function InstitutionalHeader() {
   const location = useLocation();
-  
+
   return (
-    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+    <header className="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo and Title */}
@@ -39,39 +39,38 @@ export function InstitutionalHeader() {
                 </p>
               </div>
             </Link>
-            
-            <Badge 
-              variant="secondary" 
+
+            <Badge
+              variant="secondary"
               className="bg-gradient-to-r from-cyan-100 to-blue-100 text-cyan-700 border-cyan-200"
             >
               <Zap className="w-3 h-3 mr-1" />
               Pro
             </Badge>
           </div>
-          
+
           {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link 
+            <Link
               href="/institutional-backtester"
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === '/institutional-backtester'
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/institutional-backtester'
                   ? 'bg-gradient-to-r from-cyan-50 to-blue-50 text-cyan-700 dark:from-cyan-900/20 dark:to-blue-900/20 dark:text-cyan-400'
                   : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-              }`}
+                }`}
             >
               <Brain className="w-4 h-4" />
               <span>Backtester</span>
             </Link>
-            
-            <Link 
+
+            <Link
               href="/copy-trading"
               className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
             >
               <TrendingUp className="w-4 h-4" />
               <span>Copy Trading</span>
             </Link>
-            
-            <Link 
+
+            <Link
               href="/risk-management"
               className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
             >
@@ -79,7 +78,7 @@ export function InstitutionalHeader() {
               <span>Risk Management</span>
             </Link>
           </nav>
-          
+
           {/* Right Side Actions */}
           <div className="flex items-center space-x-4">
             {/* Status Indicator */}
@@ -89,7 +88,7 @@ export function InstitutionalHeader() {
                 System Online
               </span>
             </div>
-            
+
             {/* Notifications */}
             <Button
               variant="ghost"
@@ -101,7 +100,7 @@ export function InstitutionalHeader() {
                 3
               </span>
             </Button>
-            
+
             {/* Settings */}
             <Button
               variant="ghost"
@@ -110,7 +109,7 @@ export function InstitutionalHeader() {
             >
               <Settings className="w-5 h-5" />
             </Button>
-            
+
             {/* User Menu */}
             <div className="flex items-center space-x-3 pl-4 border-l border-gray-200 dark:border-gray-700">
               <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
@@ -128,31 +127,30 @@ export function InstitutionalHeader() {
           </div>
         </div>
       </div>
-      
+
       {/* Mobile Navigation */}
       <div className="md:hidden border-t border-gray-200 dark:border-gray-700">
         <div className="px-4 py-3 space-y-2">
-          <Link 
+          <Link
             href="/institutional-backtester"
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              router.pathname === '/institutional-backtester'
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${router.pathname === '/institutional-backtester'
                 ? 'bg-gradient-to-r from-cyan-50 to-blue-50 text-cyan-700 dark:from-cyan-900/20 dark:to-blue-900/20 dark:text-cyan-400'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-            }`}
+              }`}
           >
             <Brain className="w-4 h-4" />
             <span>Backtester</span>
           </Link>
-          
-          <Link 
+
+          <Link
             href="/copy-trading"
             className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
           >
             <TrendingUp className="w-4 h-4" />
             <span>Copy Trading</span>
           </Link>
-          
-          <Link 
+
+          <Link
             href="/risk-management"
             className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
           >

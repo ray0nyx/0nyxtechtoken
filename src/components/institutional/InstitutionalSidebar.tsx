@@ -7,10 +7,10 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
   Target,
   Clock,
   CheckCircle,
@@ -28,13 +28,13 @@ interface InstitutionalSidebarProps {
   onTabChange: (tab: string) => void;
 }
 
-export function InstitutionalSidebar({ 
-  backtests, 
-  exchanges, 
-  onSelectBacktest, 
-  onTabChange 
+export function InstitutionalSidebar({
+  backtests,
+  exchanges,
+  onSelectBacktest,
+  onTabChange
 }: InstitutionalSidebarProps) {
-  
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
@@ -47,7 +47,7 @@ export function InstitutionalSidebar({
         return <AlertCircle className="w-4 h-4 text-yellow-500" />;
     }
   };
-  
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -60,32 +60,32 @@ export function InstitutionalSidebar({
         return 'bg-yellow-100 text-yellow-700 border-yellow-200';
     }
   };
-  
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric'
     });
   };
-  
+
   const formatPercentage = (value: number) => {
     return `${(value * 100).toFixed(1)}%`;
   };
-  
+
   const activeBacktests = backtests.filter(b => b.status === 'running');
   const completedBacktests = backtests.filter(b => b.status === 'completed');
   const activeExchanges = exchanges.filter(e => e.is_active);
-  
+
   const totalReturn = completedBacktests.reduce((sum, backtest) => {
     return sum + (backtest.results?.total_return || 0);
   }, 0);
-  
+
   const avgReturn = completedBacktests.length > 0 ? totalReturn / completedBacktests.length : 0;
-  
+
   return (
     <div className="space-y-6">
       {/* Quick Stats */}
-      <Card>
+      <Card className="dark:bg-black dark:border-gray-800">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Zap className="w-5 h-5 text-cyan-600" />
@@ -121,9 +121,9 @@ export function InstitutionalSidebar({
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Quick Actions */}
-      <Card>
+      <Card className="dark:bg-black dark:border-gray-800">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Target className="w-5 h-5 text-cyan-600" />
@@ -139,7 +139,7 @@ export function InstitutionalSidebar({
             <TrendingUp className="w-4 h-4 mr-2" />
             New Backtest
           </Button>
-          
+
           <Button
             onClick={() => onTabChange('exchanges')}
             variant="outline"
@@ -148,7 +148,7 @@ export function InstitutionalSidebar({
             <LinkIcon className="w-4 h-4 mr-2" />
             Link Exchange
           </Button>
-          
+
           <Button
             onClick={() => onTabChange('risk')}
             variant="outline"
@@ -159,9 +159,9 @@ export function InstitutionalSidebar({
           </Button>
         </CardContent>
       </Card>
-      
+
       {/* Recent Backtests */}
-      <Card>
+      <Card className="dark:bg-black dark:border-gray-800">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Clock className="w-5 h-5 text-cyan-600" />
@@ -197,17 +197,16 @@ export function InstitutionalSidebar({
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Badge className={getStatusColor(backtest.status)}>
                       {backtest.status}
                     </Badge>
-                    
+
                     {backtest.results && (
                       <div className="text-right">
-                        <p className={`text-xs font-medium ${
-                          backtest.results.total_return >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
+                        <p className={`text-xs font-medium ${backtest.results.total_return >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
                           {formatPercentage(backtest.results.total_return)}
                         </p>
                       </div>
@@ -219,9 +218,9 @@ export function InstitutionalSidebar({
           )}
         </CardContent>
       </Card>
-      
+
       {/* Exchange Status */}
-      <Card>
+      <Card className="dark:bg-black dark:border-gray-800">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <LinkIcon className="w-5 h-5 text-cyan-600" />
@@ -246,9 +245,8 @@ export function InstitutionalSidebar({
                   className="flex items-center justify-between p-2 rounded-lg"
                 >
                   <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      exchange.is_active ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
+                    <div className={`w-2 h-2 rounded-full ${exchange.is_active ? 'bg-green-500' : 'bg-red-500'
+                      }`}></div>
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
                         {exchange.exchange_name}
@@ -258,7 +256,7 @@ export function InstitutionalSidebar({
                       </p>
                     </div>
                   </div>
-                  
+
                   <Badge className={exchange.is_active ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}>
                     {exchange.is_active ? 'Connected' : 'Disconnected'}
                   </Badge>
@@ -268,10 +266,10 @@ export function InstitutionalSidebar({
           )}
         </CardContent>
       </Card>
-      
+
       {/* Performance Summary */}
       {completedBacktests.length > 0 && (
-        <Card>
+        <Card className="dark:bg-black dark:border-gray-800">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <DollarSign className="w-5 h-5 text-cyan-600" />
@@ -284,29 +282,27 @@ export function InstitutionalSidebar({
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Total Return</span>
-              <span className={`text-sm font-medium ${
-                totalReturn >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <span className={`text-sm font-medium ${totalReturn >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
                 {formatPercentage(totalReturn)}
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Average Return</span>
-              <span className={`text-sm font-medium ${
-                avgReturn >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <span className={`text-sm font-medium ${avgReturn >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
                 {formatPercentage(avgReturn)}
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Success Rate</span>
               <span className="text-sm font-medium text-gray-900 dark:text-white">
                 {Math.round((completedBacktests.filter(b => b.results?.total_return > 0).length / completedBacktests.length) * 100)}%
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Best Return</span>
               <span className="text-sm font-medium text-green-600">

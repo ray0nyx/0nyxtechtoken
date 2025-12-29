@@ -94,8 +94,8 @@ export function TradingScatterPlot({ trades = [], showCard = true }: TradingScat
               className="text-sm font-bold"
               style={{
                 color: winRateChange >= 0
-                  ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                  : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                  ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
+                  : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
               }}
             >
               {winRateChange >= 0 ? '+' : ''}{winRateChange.toFixed(1)}%
@@ -203,13 +203,13 @@ export function TradingScatterPlot({ trades = [], showCard = true }: TradingScat
             </div>
             <div className="text-right">
               <div className="text-sm text-slate-400 dark:text-slate-600">Win Rate</div>
-              <div className="text-lg font-bold text-blue-400 dark:text-blue-600">
+              <div className="text-lg font-bold text-gray-500">
                 {totalTrades > 0 ? Math.round((winningTrades / totalTrades) * 100) : 0}%
               </div>
             </div>
             <div className="text-right">
               <div className="text-sm text-slate-400 dark:text-slate-600">Total P&L</div>
-              <div className={`text-lg font-bold ${totalPnL >= 0 ? 'text-blue-400 dark:text-blue-600' : 'text-purple-400 dark:text-purple-600'}`}>
+              <div className={`text-lg font-bold ${totalPnL >= 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                 {formatCurrency(totalPnL)}
               </div>
             </div>

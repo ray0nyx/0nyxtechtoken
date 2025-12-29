@@ -137,9 +137,9 @@ export async function fetchSolanaWalletBalance(address: string): Promise<WalletB
                   };
                 }
               }
-            }).catch(() => {});
+            }).catch(() => { });
           }
-        }).catch(() => {});
+        }).catch(() => { });
       }
     }
   } catch (error) {
@@ -175,7 +175,7 @@ export async function fetchBitcoinWalletBalance(address: string): Promise<Wallet
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Blockstream API format
         if (data.chain_stats) {
           balance = (data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum) / 1e8;
@@ -184,7 +184,7 @@ export async function fetchBitcoinWalletBalance(address: string): Promise<Wallet
         else if (data.balance !== undefined) {
           balance = data.balance / 1e8;
         }
-        
+
         if (balance > 0) break;
       }
     } catch (error) {
@@ -284,19 +284,24 @@ async function getJupiterTokenList(): Promise<Record<string, { logoURI?: string;
   }
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
     const response = await fetch(
       'https://token.jup.ag/strict',
       {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
-        cache: 'default',
+        signal: controller.signal,
       }
     );
+
+    clearTimeout(timeoutId);
 
     if (response.ok) {
       const tokens = await response.json();
       const tokenMap: Record<string, { logoURI?: string; symbol?: string; name?: string }> = {};
-      
+
       tokens.forEach((token: any) => {
         if (token.address) {
           tokenMap[token.address] = {
@@ -306,14 +311,14 @@ async function getJupiterTokenList(): Promise<Record<string, { logoURI?: string;
           };
         }
       });
-      
+
       jupiterTokenListCache = tokenMap;
       return tokenMap;
     }
   } catch (error) {
     console.warn('Failed to fetch Jupiter token list:', error);
   }
-  
+
   return null;
 }
 
@@ -341,11 +346,11 @@ export async function fetchTokenPrices(coinIds: string[]): Promise<Record<string
 
   try {
     const ids = coinIds.join(',');
-    
+
     // Fetch prices with timeout (fast, don't wait too long)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
-    
+
     const priceResponse = await fetch(
       `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`,
       {
@@ -368,14 +373,14 @@ export async function fetchTokenPrices(coinIds: string[]): Promise<Record<string
     // Build prices object immediately (don't wait for images)
     coinIds.forEach(coinId => {
       const coinPriceData = priceData[coinId];
-      const symbol = coinId === 'solana' ? 'SOL' : 
-                     coinId === 'bitcoin' ? 'BTC' : 
-                     coinId === 'ethereum' ? 'ETH' :
-                     coinId === 'cardano' ? 'ADA' :
-                     coinId === 'tether' ? 'USDT' :
-                     coinId === 'usd-coin' ? 'USDC' :
-                     coinId.toUpperCase();
-      
+      const symbol = coinId === 'solana' ? 'SOL' :
+        coinId === 'bitcoin' ? 'BTC' :
+          coinId === 'ethereum' ? 'ETH' :
+            coinId === 'cardano' ? 'ADA' :
+              coinId === 'tether' ? 'USDT' :
+                coinId === 'usd-coin' ? 'USDC' :
+                  coinId.toUpperCase();
+
       prices[symbol] = {
         symbol,
         price: coinPriceData?.usd || 0,
@@ -415,21 +420,21 @@ export async function fetchTokenPrices(coinIds: string[]): Promise<Record<string
       imageResults.forEach(result => {
         if (result.status === 'fulfilled' && result.value) {
           const { coinId, image, name } = result.value;
-          const symbol = coinId === 'solana' ? 'SOL' : 
-                         coinId === 'bitcoin' ? 'BTC' : 
-                         coinId === 'ethereum' ? 'ETH' :
-                         coinId === 'cardano' ? 'ADA' :
-                         coinId === 'tether' ? 'USDT' :
-                         coinId === 'usd-coin' ? 'USDC' :
-                         coinId.toUpperCase();
-          
+          const symbol = coinId === 'solana' ? 'SOL' :
+            coinId === 'bitcoin' ? 'BTC' :
+              coinId === 'ethereum' ? 'ETH' :
+                coinId === 'cardano' ? 'ADA' :
+                  coinId === 'tether' ? 'USDT' :
+                    coinId === 'usd-coin' ? 'USDC' :
+                      coinId.toUpperCase();
+
           if (prices[symbol]) {
             prices[symbol].image = image;
             prices[symbol].name = name;
           }
         }
       });
-    }).catch(() => {}); // Ignore errors
+    }).catch(() => { }); // Ignore errors
 
     return prices;
   } catch (error) {
@@ -458,7 +463,7 @@ export async function generateSparklineData(
       const backendUrl = import.meta.env.VITE_MARKET_DATA_API || 'http://localhost:8001';
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s timeout
-      
+
       const response = await fetch(
         `${backendUrl}/api/ohlcv/${symbol}?timeframe=${timeframe}&limit=${limit}`,
         { signal: controller.signal }
@@ -520,7 +525,7 @@ export async function generateSparklineData(
  */
 export async function fetchUserTrackedWallets(userId: string): Promise<WalletBalance[]> {
   const supabase = createClient();
-  
+
   const { data: wallets, error } = await supabase
     .from('wallet_tracking')
     .select('*')
@@ -536,29 +541,47 @@ export async function fetchUserTrackedWallets(userId: string): Promise<WalletBal
     return [];
   }
 
-  // Fetch balances for each wallet
+  // Fetch balances for each wallet, keeping wallet info attached
   const walletBalances = await Promise.all(
     wallets.map(async (wallet) => {
       try {
+        let balance: WalletBalance | null = null;
         if (wallet.blockchain === 'solana') {
-          return await fetchSolanaWalletBalance(wallet.wallet_address);
+          balance = await fetchSolanaWalletBalance(wallet.wallet_address);
         } else if (wallet.blockchain === 'bitcoin') {
-          return await fetchBitcoinWalletBalance(wallet.wallet_address);
+          balance = await fetchBitcoinWalletBalance(wallet.wallet_address);
         }
-        return null;
+
+        if (balance) {
+          // Attach the label from the database to the balance
+          return {
+            ...balance,
+            label: wallet.label,
+          };
+        }
+
+        // Even if balance fetch fails, return a wallet with zero balance so it shows in the list
+        return {
+          address: wallet.wallet_address,
+          blockchain: wallet.blockchain as 'solana' | 'bitcoin',
+          balances: {},
+          totalUsdValue: 0,
+          label: wallet.label,
+        };
       } catch (error) {
         console.error(`Error fetching balance for ${wallet.wallet_address}:`, error);
-        return null;
+        // Return wallet with zero balance on error so it still shows in the list
+        return {
+          address: wallet.wallet_address,
+          blockchain: wallet.blockchain as 'solana' | 'bitcoin',
+          balances: {},
+          totalUsdValue: 0,
+          label: wallet.label,
+        };
       }
     })
   );
 
-  // Filter out null results and add labels
-  return walletBalances
-    .filter((balance): balance is WalletBalance => balance !== null)
-    .map((balance, index) => ({
-      ...balance,
-      label: wallets[index]?.label,
-    }));
+  return walletBalances;
 }
 

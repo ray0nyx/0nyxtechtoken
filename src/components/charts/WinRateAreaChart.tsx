@@ -82,8 +82,8 @@ export function WinRateAreaChart({ trades = [], showCard = true }: WinRateAreaCh
               className="text-sm font-bold"
               style={{
                 color: percentageChange >= 0
-                  ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                  : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                  ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
+                  : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
               }}
             >
               {percentageChange >= 0 ? '+' : ''}{percentageChange.toFixed(1)}%
@@ -176,7 +176,7 @@ export function WinRateAreaChart({ trades = [], showCard = true }: WinRateAreaCh
               {currentWinRate.toFixed(1)}%
             </span>
             {percentageChange !== 0 && (
-              <div className={`flex items-center gap-1 text-sm ${percentageChange > 0 ? 'text-emerald-400 dark:text-emerald-600' : 'text-red-400 dark:text-red-600'}`}>
+              <div className={`flex items-center gap-1 text-sm ${percentageChange > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                 {percentageChange > 0 ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 <span>{Math.abs(percentageChange).toFixed(1)}%</span>
               </div>

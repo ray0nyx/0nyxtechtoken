@@ -122,8 +122,8 @@ export function DrawdownPnLChart({ trades = [], showCard = true }: DrawdownPnLCh
                 className="text-sm font-bold"
                 style={{
                   color: pnlChange >= 0
-                    ? theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
-                    : theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
+                    ? theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
+                    : theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
                 }}
               >
                 {pnlChange >= 0 ? '+' : ''}{pnlChange.toFixed(1)}%
@@ -137,8 +137,8 @@ export function DrawdownPnLChart({ trades = [], showCard = true }: DrawdownPnLCh
                 className="text-sm font-bold"
                 style={{
                   color: drawdownChange >= 0
-                    ? theme === 'dark' ? 'rgb(239 68 68)' : 'rgb(239 68 68)'
-                    : theme === 'dark' ? 'rgb(34 197 94)' : 'rgb(34 197 94)'
+                    ? theme === 'dark' ? 'rgb(209 213 219)' : 'rgb(209 213 219)'
+                    : theme === 'dark' ? 'rgb(107 114 128)' : 'rgb(107 114 128)'
                 }}
               >
                 {drawdownChange >= 0 ? '+' : ''}{drawdownChange.toFixed(1)}%
@@ -251,25 +251,25 @@ export function DrawdownPnLChart({ trades = [], showCard = true }: DrawdownPnLCh
   }
 
   return (
-    <Card className="border-slate-700/50 dark:border-slate-700/50 border-slate-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-purple-500/10 overflow-hidden bg-slate-900 dark:bg-slate-900">
-      <CardHeader className="bg-purple-500/10 dark:bg-purple-500/20 pb-3">
+    <Card className="border-slate-700/50 dark:border-slate-700/50 border-slate-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:shadow-gray-500/10 overflow-hidden bg-slate-900 dark:bg-slate-900">
+      <CardHeader className="bg-gray-500/10 dark:bg-gray-500/20 pb-3">
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg font-medium text-white dark:text-slate-900 flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-purple-500/20 dark:bg-purple-500/30">
-              <TrendingDown className="h-4 w-4 text-purple-400 dark:text-purple-600" />
+            <div className="p-1.5 rounded-lg bg-gray-500/20 dark:bg-gray-500/30">
+              <TrendingDown className="h-4 w-4 text-gray-500" />
             </div>
             P&L and Drawdown Chart
           </CardTitle>
           <div className="flex items-center gap-4">
             <div className="text-right">
               <div className="text-sm text-slate-400 dark:text-slate-600">Current P&L</div>
-              <div className={`text-lg font-bold ${currentPnL >= 0 ? 'text-blue-400 dark:text-blue-600' : 'text-purple-400 dark:text-purple-600'}`}>
+              <div className={`text-lg font-bold ${currentPnL >= 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                 {formatCurrency(currentPnL)}
               </div>
             </div>
             <div className="text-right">
               <div className="text-sm text-slate-400 dark:text-slate-600">Max Drawdown</div>
-              <div className="text-lg font-bold text-purple-400 dark:text-purple-600">
+              <div className="text-lg font-bold text-gray-300">
                 {formatCurrency(maxDrawdown)}
               </div>
             </div>

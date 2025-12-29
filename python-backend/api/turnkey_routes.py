@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any
 import logging
 
-from services.turnkey_service import get_turnkey_service, TurnkeyService
+from services.turnkey_service import TurnkeyService
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,8 @@ router = APIRouter(prefix="/api/turnkey", tags=["turnkey"])
 async def health_check():
     """Check if Turnkey service is available"""
     try:
-        async with get_turnkey_service() as service:
+        service = TurnkeyService()
+        async with service:
             return {
                 "available": service.is_configured(),
                 "status": "ok" if service.is_configured() else "not_configured"
@@ -42,7 +43,8 @@ async def create_sub_organization(request: Dict[str, Any]):
         if not user_id or not user_email:
             raise HTTPException(status_code=400, detail="userId and userEmail required")
         
-        async with get_turnkey_service() as service:
+        service = TurnkeyService()
+        async with service:
             result = await service.create_sub_organization(user_id, user_email)
             return result
     except Exception as e:
@@ -64,7 +66,8 @@ async def sign_transaction(request: Dict[str, Any]):
                 detail="walletId, organizationId, and transaction required"
             )
         
-        async with get_turnkey_service() as service:
+        service = TurnkeyService()
+        async with service:
             result = await service.sign_transaction(
                 wallet_id,
                 organization_id,
@@ -83,7 +86,8 @@ async def get_wallet(wallet_id: str, organization_id: str):
         if not organization_id:
             raise HTTPException(status_code=400, detail="organizationId required")
         
-        async with get_turnkey_service() as service:
+        service = TurnkeyService()
+        async with service:
             result = await service.get_wallet(wallet_id, organization_id)
             return result
     except Exception as e:

@@ -1192,7 +1192,7 @@ export default function CoinsPage() {
                 <div className="text-[10px] uppercase font-semibold text-neutral-600 mb-1 tracking-wide">24H</div>
                 <div className={cn(
                   "text-sm font-medium font-mono tracking-tight",
-                  tokenInfo.change24h >= 0 ? "text-emerald-400" : "text-red-400"
+                  tokenInfo.change24h >= 0 ? "text-neutral-400" : "text-neutral-500"
                 )}>
                   {tokenInfo.change24h >= 0 ? '+' : ''}{tokenInfo.change24h?.toFixed(4) || '0.0000'}
                 </div>
