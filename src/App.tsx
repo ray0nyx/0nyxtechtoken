@@ -74,8 +74,8 @@ const CryptoWallets = lazy(() => import('@/pages/crypto/Wallets'));
 const CopyTradingPage = lazy(() => import('@/pages/crypto/CopyTradingPage'));
 const OnChainAnalysisPage = lazy(() => import('@/pages/crypto/OnChainAnalysis'));
 const TokensPage = lazy(() => import('@/pages/crypto/Tokens'));
-const AxiomSurgePage = lazy(() => import('@/pages/crypto/AxiomSurgePage'));
-const ExplorePage = lazy(() => import('@/pages/crypto/ExplorePage'));
+const Surge = lazy(() => import('@/pages/crypto/AxiomSurgePage'));
+const Explore = lazy(() => import('@/pages/crypto/Explore'));
 const SolNavigator = lazy(() => import('@/pages/crypto/SolNavigator'));
 const EnhancedChartDemo = lazy(() => import('@/pages/test/EnhancedChartDemo'));
 const InstitutionalDashboard = lazy(() => import('@/pages/institutional/InstitutionalDashboard'));
@@ -84,6 +84,12 @@ const AdminUsers = lazy(() => import('@/pages/admin/Users'));
 const AdminAnalytics = lazy(() => import('@/pages/admin/Analytics'));
 const AdminAffiliates = lazy(() => import('@/pages/admin/Affiliates'));
 const AffiliateApplications = lazy(() => import('@/pages/admin/AffiliateApplications'));
+
+// ... (keep intermediate content unchanged if skipping lines, but here I'm replacing the block)
+
+// ... inside App component return ...
+
+
 
 // Lazy load heavy components
 const QuantLayout = lazy(() => import('@/components/quant/layout/QuantLayout'));
@@ -232,19 +238,17 @@ function App() {
 
                 {/* Crypto Dashboard Routes - Use main AppLayout */}
                 <Route path="/crypto" element={
-                  <SimpleAppGuard>
-                    <AppLayout />
-                  </SimpleAppGuard>
+                  <AppLayout />
                 }>
                   <Route index element={<Suspense fallback={<PageLoader />}><CryptoDashboard /></Suspense>} />
                   <Route path="dashboard" element={<Suspense fallback={<PageLoader />}><CryptoDashboard /></Suspense>} />
                   <Route path="wallets" element={<Suspense fallback={<PageLoader />}><CryptoWallets /></Suspense>} />
                   <Route path="copy-trading" element={<Suspense fallback={<PageLoader />}><CopyTradingPage /></Suspense>} />
                   <Route path="on-chain" element={<Suspense fallback={<PageLoader />}><OnChainAnalysisPage /></Suspense>} />
-                  <Route path="surge" element={<Suspense fallback={<PageLoader />}><AxiomSurgePage /></Suspense>} />
+                  <Route path="surge" element={<Suspense fallback={<PageLoader />}><Surge /></Suspense>} />
                   <Route path="tokens" element={<Suspense fallback={<PageLoader />}><TokensPage /></Suspense>} />
-                  <Route path="explore" element={<Suspense fallback={<PageLoader />}><ExplorePage /></Suspense>} />
-                  <Route path="solnavigator" element={<Suspense fallback={<PageLoader />}><SolNavigator /></Suspense>} />
+                  <Route path="explore" element={<Suspense fallback={<PageLoader />}><Explore /></Suspense>} />
+                  <Route path="sol-navigator" element={<Suspense fallback={<PageLoader />}><SolNavigator /></Suspense>} />
                   <Route path="settings" element={<Suspense fallback={<PageLoader />}><Settings /></Suspense>} />
                 </Route>
 

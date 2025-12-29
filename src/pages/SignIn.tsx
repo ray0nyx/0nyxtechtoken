@@ -61,8 +61,11 @@ export default function SignIn() {
             console.log('Developer user detected, navigating to analytics');
           }
 
-          // Always navigate to analytics for logged in users
-          navigate('/app/analytics');
+          // Navigate to previous page or analytics
+          const from = location.state?.from?.pathname || '/app/analytics';
+          const search = location.state?.from?.search || '';
+          console.log(`SignIn: Navigating to ${from}${search}`);
+          navigate(from + search);
         }
       } catch (error) {
         console.error('Error checking auth:', error);
@@ -108,8 +111,10 @@ export default function SignIn() {
 
         // Small delay to ensure auth state is propagated
         setTimeout(() => {
-          console.log('SignIn: Navigating to /app/analytics');
-          navigate('/app/analytics');
+          const from = location.state?.from?.pathname || '/app/analytics';
+          const search = location.state?.from?.search || '';
+          console.log(`SignIn: Navigating to ${from}${search}`);
+          navigate(from + search);
         }, 500);
       }
     } catch (error) {
@@ -166,7 +171,7 @@ export default function SignIn() {
         options: {
           redirectTo: returnToPricing
             ? `${window.location.origin}/app/pricing`
-            : `${window.location.origin}/app/analytics`
+            : `${window.location.origin}${location.state?.from?.pathname || '/app/analytics'}`
         }
       });
 

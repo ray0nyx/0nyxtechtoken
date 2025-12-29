@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { createClient } from '@/lib/supabase/client';
 import { Loading } from '@/components/ui/loading';
 import { getSIWSToken, getSIWSPublicKey } from '@/lib/solana/siws';
@@ -15,6 +15,7 @@ interface SimpleAppGuardProps {
  * Supports both Supabase auth (email/Google) and SIWS wallet auth (Phantom).
  */
 export function SimpleAppGuard({ children }: SimpleAppGuardProps) {
+  const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClient();
@@ -143,7 +144,7 @@ export function SimpleAppGuard({ children }: SimpleAppGuardProps) {
 
   if (!isAuthenticated) {
     console.log('SimpleAppGuard: Not authenticated, redirecting to signin');
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
   console.log('SimpleAppGuard: Access granted');

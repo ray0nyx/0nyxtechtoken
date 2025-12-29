@@ -11,7 +11,7 @@ import { RefreshCw, ChevronUp, Zap } from 'lucide-react';
 import AxiomTokenCard, { type AxiomTokenData } from '@/components/crypto/ui/AxiomTokenCard';
 import { fetchNewPumpFunCoins, type PumpFunCoin } from '@/lib/pump-fun-service';
 
-export default function AxiomPulsePage() {
+export default function Explore() {
     const navigate = useNavigate();
     const [newPairs, setNewPairs] = useState<AxiomTokenData[]>([]);
     const [finalStretch, setFinalStretch] = useState<AxiomTokenData[]>([]);

@@ -183,6 +183,8 @@ export async function fetchOHLCV(
   }
 }
 
+export { fetchOHLCV as fetchOHLCVData };
+
 export class BirdeyeWebSocketService {
   private ws: WebSocket | null = null;
   private subscribers: Map<string, {
@@ -277,6 +279,27 @@ export class BirdeyeWebSocketService {
     }
   }
 
+  subscribeTrade(address: string, callback: TradeCallback) {
+    const sub = this.subscribers.get(address) || {};
+    sub.trades = [...(sub.trades || []), callback];
+    this.subscribers.set(address, sub);
+    this.send('subscribe', address);
+    return () => this.unsubscribeTrade(address, callback);
+  }
+
+  private unsubscribeTrade(address: string, callback: TradeCallback) {
+    const sub = this.subscribers.get(address);
+    if (sub?.trades) {
+      sub.trades = sub.trades.filter(cb => cb !== callback);
+      if (sub.trades.length === 0 && !sub.price && !sub.ohlcv) {
+        this.subscribers.delete(address);
+        this.send('unsubscribe', address);
+      } else {
+        this.subscribers.set(address, sub);
+      }
+    }
+  }
+
   private handleMessage(data: any) {
     // Basic implementation to avoid errors
     if (data.type === 'price' && data.data) {
@@ -290,8 +313,56 @@ export class BirdeyeWebSocketService {
           priceChange24h: data.data.priceChange24hPercent || 0
         }));
       }
+    } else if (data.type === 'trade' && data.data) {
+      const sub = this.subscribers.get(data.data.address);
+      if (sub?.trades) {
+        sub.trades.forEach(cb => cb({
+          address: data.data.address,
+          txHash: data.data.txHash,
+          blockUnixTime: data.data.blockUnixTime,
+          source: data.data.source,
+          side: data.data.side,
+          price: data.data.price,
+          priceUsd: data.data.priceUsd,
+          volume: data.data.volume,
+          volumeUsd: data.data.volumeUsd,
+          owner: data.data.owner
+        }));
+      }
     }
   }
 }
 
 export const birdeyeWS = new BirdeyeWebSocketService();
+
+export function createBirdeyeWebSocket(address: string) {
+  birdeyeWS.connect();
+
+  const cleanups: (() => void)[] = [];
+
+  return {
+    onPrice: (callback: PriceCallback) => {
+      cleanups.push(birdeyeWS.subscribePrice(address, callback));
+    },
+    onTrade: (callback: TradeCallback) => {
+      cleanups.push(birdeyeWS.subscribeTrade(address, callback));
+    },
+    onStatus: (callback: StatusCallback) => {
+      birdeyeWS.onStatusChange(callback);
+    },
+    disconnect: () => {
+      cleanups.forEach(cleanup => cleanup());
+    }
+  };
+}
+
+export function formatOHLCVForChart(data: BirdeyeOHLCV[]) {
+  return data.map(item => ({
+    time: item.unixTime,
+    open: item.open,
+    high: item.high,
+    low: item.low,
+    close: item.close,
+    volume: item.volume
+  }));
+}

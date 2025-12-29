@@ -316,9 +316,9 @@ export function AppNavigation() {
                         <img
                             src="/images/ot white.svg"
                             alt="0nyxTech Logo"
-                            className="h-[750px] w-auto absolute left-0 top-1/2 -translate-y-1/2"
+                            className="h-32 w-auto absolute left-0 top-1/2 -translate-y-1/2 z-10"
                         />
-                        <div className="w-[250px]"></div>
+                        <div className="w-64"></div>
                     </Link>
 
                     {/* Desktop Navigation */}

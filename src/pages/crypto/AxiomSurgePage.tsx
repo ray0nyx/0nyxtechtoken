@@ -20,7 +20,8 @@ import {
 } from 'lucide-react';
 import AxiomTokenCard, { type AxiomTokenData } from '@/components/crypto/ui/AxiomTokenCard';
 import { fetchNewPumpFunCoins, fetchTrendingPumpFunCoins, type PumpFunCoin } from '@/lib/pump-fun-service';
-import { usePumpStream, type TokenEvent } from '@/lib/helius/usePumpStream';
+import { usePumpStream } from '@/lib/helius/usePumpStream';
+import { type TokenEvent } from '@/lib/helius/DataParser';
 
 type TabType = 'coins' | 'surge' | 'dex' | 'pump';
 
@@ -29,6 +30,11 @@ export default function AxiomSurgePage() {
     const [earlyTokens, setEarlyTokens] = useState<AxiomTokenData[]>([]);
     const [surgingTokens, setSurgingTokens] = useState<AxiomTokenData[]>([]);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        console.log('🚀 AxiomSurgePage MOUNTED');
+        return () => console.log('👋 AxiomSurgePage UNMOUNTED');
+    }, []);
     const [minMC, setMinMC] = useState(0);
     const [autoRefresh, setAutoRefresh] = useState(true);
 

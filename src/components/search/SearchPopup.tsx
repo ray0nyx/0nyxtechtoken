@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +45,7 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [marketStats, setMarketStats] = useState({ price: 0, change: 0, tps: 0 });
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (isOpen) {
@@ -153,7 +155,7 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
 
                 {/* Header Section */}
                 <div className="p-6 border-b border-white/5 space-y-4 bg-[#050505]">
-                    <div className="flex items-center justify-end gap-2 text-gray-400">
+                    <div className="flex items-center justify-end gap-2 text-gray-400 mr-8">
                         <span className="text-xs mr-2">Sort by</span>
                         <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-white hover:bg-white/10"><Clock className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-white hover:bg-white/10"><TrendingUp className="h-4 w-4" /></Button>
@@ -206,7 +208,14 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
                                 {loading && <div className="text-gray-500 text-center py-4">Loading tokens...</div>}
                                 {!loading && searchResults.length === 0 && <div className="text-gray-500 text-center py-4">No tokens found.</div>}
                                 {searchResults.map((token) => (
-                                    <div key={token.id} className="group flex items-center justify-between p-3 rounded-xl hover:bg-[#25262b] transition-colors cursor-pointer">
+                                    <div
+                                        key={token.id}
+                                        className="group flex items-center justify-between p-3 rounded-xl hover:bg-[#25262b] transition-colors cursor-pointer"
+                                        onDoubleClick={() => {
+                                            setIsOpen(false);
+                                            navigate(`/crypto/tokens?address=${token.id}`);
+                                        }}
+                                    >
                                         <div className="flex items-center gap-3">
                                             <img
                                                 src={token.image}

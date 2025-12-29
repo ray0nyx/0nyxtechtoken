@@ -25,6 +25,7 @@ import {
   Wallet,
   User,
   TrendingDown,
+  Search,
   Key,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -121,6 +122,11 @@ const cryptoMenuItems = [
     title: 'Surge',
     icon: Zap,
     path: '/crypto/surge',
+  },
+  {
+    title: 'DEX Screener',
+    icon: Search,
+    path: '/crypto/sol-navigator',
   },
   {
     title: 'Tokens',

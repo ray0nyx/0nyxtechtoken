@@ -328,21 +328,17 @@ export default function Index() {
 
                 {/* Main Headline */}
                 <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight max-w-5xl text-white">
-                  <span>Stop Trading </span>
-                  <span className="text-gray-400">Blind</span>
-                  <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e2e2e3] to-white">Quantify Every Trade</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e2e2e3] to-white">The fastest platform for </span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-purple-600">Web3</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e2e2e3] to-white"> Trading</span>
                 </h1>
 
                 {/* Subheadline */}
                 <p className="max-w-2xl text-gray-400 text-lg md:text-xl leading-relaxed">
-                  The only professional journal that correlates your discipline to <span className="text-white font-semibold">finality speed</span> and <span className="text-white font-semibold">execution costs</span> for Solana, Bitcoin & Futures trading.
+                  Experience Solana trading at the speed of light. 0nyx combines custom-built infrastructure with uncompromising security to give you the fastest, most reliable execution engine in the ecosystem.
                 </p>
 
-                {/* Pricing highlight with free trial */}
-                <div className="bg-white/5 border border-white/10 backdrop-blur-md shadow-2xl rounded-xl px-6 py-3 text-white font-bold text-lg">
-                  🎉 Start Your <span className="underline">14-Day Free Trial</span> - No Credit Card Required!
-                </div>
+
 
                 {/* CTA Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 mt-4">
@@ -356,25 +352,10 @@ export default function Index() {
                 </div>
 
                 {/* Trial benefits */}
-                <p className="text-sm text-gray-500 mt-4">
-                  ✓ 14-day free trial • ✓ Cancel anytime • ✓ No credit card required until trial ends
-                </p>
+
 
                 {/* Trust indicators */}
-                <div className="flex flex-wrap items-center justify-center gap-8 mt-10 text-gray-500 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-white/50" />
-                    <span>Bank-grade encryption</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-white/50" />
-                    <span>Real-time analytics</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-white/50" />
-                    <span>Non-custodial</span>
-                  </div>
-                </div>
+
 
                 {/* Hero Image */}
                 <div className="w-full max-w-5xl mt-12 relative">
@@ -862,10 +843,10 @@ export default function Index() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-purple-500/5 blur-[100px] -z-10"></div>
 
                 <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
-                  Ready to Quantify Your Trading?
+                  High-performance architecture meets institutional-grade security.
                 </h2>
                 <p className="text-xl text-gray-400 mb-10 leading-relaxed max-w-2xl mx-auto">
-                  Join thousands of traders who've stopped trading blind. Get started with professional analytics today.
+                  Join the next generation of Solana traders who demand more than just basic charts.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
                   <button
@@ -876,7 +857,7 @@ export default function Index() {
                     <ArrowUpRight className="ml-2 h-6 w-6 inline transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" />
                   </button>
                 </div>
-                <p className="mt-8 text-gray-500 text-sm">Professional analytics • 14-day free trial • Cancel anytime</p>
+
               </MotionDiv>
             </div>
           </section>
@@ -894,7 +875,7 @@ export default function Index() {
                 <a href="https://x.com/WagyuTech" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
                   <img src="/images/x-logo.png" alt="X" className="h-5 w-5 opacity-60 hover:opacity-100 invert" />
                 </a>
-                <a href="https://www.instagram.com/wagyutech.app/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
+                <a href="https://www.instagram.com/0nyxtech.xyz/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
                   <img src="/images/instagram-logo.png" alt="Instagram" className="h-5 w-5 opacity-60 hover:opacity-100 invert" />
                 </a>
                 <a href="/affiliates" className="text-gray-400 hover:text-white transition-colors text-sm font-medium">Affiliates</a>

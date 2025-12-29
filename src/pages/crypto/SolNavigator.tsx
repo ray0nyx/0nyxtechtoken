@@ -42,7 +42,7 @@ const HEATMAP_COLORS = [
     'bg-indigo-500', 'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500',
 ];
 
-export default function SolNavigator() {
+export default function DexScreener() {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [isConnected, setIsConnected] = useState(true);
@@ -126,6 +126,7 @@ export default function SolNavigator() {
                 heatmap.push({
                     color: HEATMAP_COLORS[Math.floor(Math.random() * HEATMAP_COLORS.length)],
                     intensity: 0.3 + Math.random() * 0.4,
+                    symbol: '',
                 });
             }
             setHeatmapData(heatmap);
