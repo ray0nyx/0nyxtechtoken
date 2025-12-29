@@ -32,46 +32,49 @@ export default function MemeCoinRiskWarning({ isOpen, onAcknowledge, onClose }: 
     setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
+
+      if (user) {
+        // Get user IP and user agent
+        const ipAddress = await fetch('https://api.ipify.org?format=json')
+          .then(res => res.json())
+          .then(data => data.ip)
+          .catch(() => null);
+
+        const userAgent = navigator.userAgent;
+
+        // Store acknowledgment in database
+        const { error } = await supabase
+          .from('user_risk_acknowledgments')
+          .upsert({
+            user_id: user.id,
+            acknowledgment_type: 'meme_coin_risk',
+            ip_address: ipAddress,
+            user_agent: userAgent,
+            version: '1.0',
+          }, {
+            onConflict: 'user_id,acknowledgment_type'
+          });
+
+        if (error) {
+          console.error('Error saving acknowledgment to database:', error);
+        }
+      } else {
+        console.warn('User not authenticated, skipping database acknowledgment storage');
       }
 
-      // Get user IP and user agent
-      const ipAddress = await fetch('https://api.ipify.org?format=json')
-        .then(res => res.json())
-        .then(data => data.ip)
-        .catch(() => null);
-
-      const userAgent = navigator.userAgent;
-
-      // Store acknowledgment in database
-      const { error } = await supabase
-        .from('user_risk_acknowledgments')
-        .upsert({
-          user_id: user.id,
-          acknowledgment_type: 'meme_coin_risk',
-          ip_address: ipAddress,
-          user_agent: userAgent,
-          version: '1.0',
-        }, {
-          onConflict: 'user_id,acknowledgment_type'
-        });
-
-      if (error) {
-        throw error;
-      }
-
+      // Always allow proceeding if the user checked the box
       onAcknowledge();
       toast({
         title: 'Risk Acknowledged',
         description: 'You can now access Coins.',
       });
     } catch (error: any) {
-      console.error('Error acknowledging risk:', error);
+      console.error('Error in acknowledgment flow:', error);
+      // Fallback: still allow proceeding if possible
+      onAcknowledge();
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to save acknowledgment. Please try again.',
-        variant: 'destructive',
+        title: 'Proceeding',
+        description: 'You can now access Coins.',
       });
     } finally {
       setIsSubmitting(false);

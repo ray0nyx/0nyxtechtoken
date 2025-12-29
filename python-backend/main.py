@@ -2527,7 +2527,7 @@ async def birdeye_proxy(path: str, request: Request):
     Routes requests to SolanaDataAggregator to handle failover (e.g. Rate Limits).
     """
     try:
-        from services.solana_data_aggregator import get_aggregator
+        from services.wagyu_api.data_aggregator import get_aggregator
         aggregator = await get_aggregator()
         
         # Get query params

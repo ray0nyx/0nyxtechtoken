@@ -43,6 +43,8 @@ class DataAggregator:
     
     def __init__(self):
         self.session: Optional[aiohttp.ClientSession] = None
+        self.birdeye_key = BIRDEYE_API_KEY
+        self.birdeye_key = BIRDEYE_API_KEY
     
     async def __aenter__(self):
         # Configure SSL context for production compatibility
@@ -697,3 +699,50 @@ class DataAggregator:
             logger.error(f"Error fetching surging tokens: {e}", exc_info=True)
         
         return []
+
+    # Compatibility methods for Birdeye Proxy
+    async def get_token_price(self, address: str) -> Dict[str, Any]:
+        """Proxy compatibility method for fetching token price"""
+        if not self.session:
+            async with self:
+                return await self._fetch_birdeye_direct(f"token/price?address={address}")
+        return await self._fetch_birdeye_direct(f"token/price?address={address}")
+
+    async def get_token_overview(self, address: str) -> Dict[str, Any]:
+        """Proxy compatibility method for fetching token overview"""
+        if not self.session:
+            async with self:
+                return await self._fetch_birdeye_direct(f"token/overview?address={address}")
+        return await self._fetch_birdeye_direct(f"token/overview?address={address}")
+
+    async def get_token_transactions(self, address: str, limit: int = 10, tx_type: str = "swap") -> Dict[str, Any]:
+        """Proxy compatibility method for fetching token transactions"""
+        path = f"txs/token?address={address}&limit={limit}&tx_type={tx_type}"
+        if not self.session:
+            async with self:
+                return await self._fetch_birdeye_direct(path)
+        return await self._fetch_birdeye_direct(path)
+
+    async def _fetch_birdeye_direct(self, path: str) -> Dict[str, Any]:
+        """Internal helper for direct Birdeye API calls via proxy logic"""
+        if not BIRDEYE_API_KEY or not self.session:
+            return {"success": False, "message": "Birdeye API key not configured or session not initialized"}
+        
+        url = f"{BIRDEYE_API_URL}/{path}"
+        headers = {
+            "X-API-KEY": BIRDEYE_API_KEY,
+            "Accept": "application/json",
+            "x-chain": "solana"
+        }
+        
+        try:
+            async with self.session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                data = await resp.json()
+                return data
+        except Exception as e:
+            logger.error(f"Birdeye direct fetch error for {path}: {e}")
+            return {"success": False, "message": str(e)}
+
+async def get_aggregator():
+    """Factory function for main.py to get an aggregator instance"""
+    return DataAggregator()

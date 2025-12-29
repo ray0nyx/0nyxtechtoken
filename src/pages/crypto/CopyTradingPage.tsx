@@ -30,12 +30,15 @@ import MetricCard from '@/components/crypto/ui/MetricCard';
 import MiniSparkline from '@/components/crypto/MiniSparkline';
 import CopyTraderSetup from '@/components/crypto/CopyTraderSetup';
 import LiveTradesModal from '@/components/crypto/LiveTradesModal';
+import { TraderRow } from '@/components/crypto/TraderRow';
 import { createClient } from '@/lib/supabase/client';
 import { fetchSolanaWalletBalance } from '@/lib/wallet-balance-service';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/lib/crypto-aggregation-service';
 import { useTheme } from '@/components/ThemeProvider';
 import { cn } from '@/lib/utils';
+import { useConnection } from '@solana/wallet-adapter-react';
+import { analyzeTraderPerformance, updateTraderLeaderboard } from '@/lib/trader-performance-tracker';
 
 interface LeaderboardTrader {
   id: string;
@@ -67,8 +70,10 @@ export default function CopyTradingPage() {
   const { toast } = useToast();
   const { theme } = useTheme();
   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const { connection } = useConnection();
 
   const [traders, setTraders] = useState<LeaderboardTrader[]>([]);
+  const [analyzingWallets, setAnalyzingWallets] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'roi' | 'total_pnl' | 'win_rate' | 'sharpe_ratio' | 'follower_count'>('roi');
@@ -171,64 +176,68 @@ export default function CopyTradingPage() {
   const loadTraders = async () => {
     setLoading(true);
     try {
-      // Fetch from both tables to get labels and metrics
-      const [leaderboardRes, masterRes] = await Promise.all([
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch the user's private tracking list from master_trader_followers
+      // joined with master_traders for the labels
+      const [followsRes, leaderboardRes] = await Promise.all([
+        supabase
+          .from('master_trader_followers')
+          .select(`
+            master_trader_id,
+            master_traders (
+              wallet_address,
+              label
+            )
+          `)
+          .eq('user_id', user.id),
         supabase
           .from('copy_trading_leaderboard')
           .select('*')
-          .order(sortBy, { ascending: false }),
-        supabase
-          .from('master_traders')
-          .select('wallet_address, label, total_pnl, win_rate, total_trades')
       ]);
 
+      if (followsRes.error) throw followsRes.error;
       if (leaderboardRes.error) throw leaderboardRes.error;
 
-      // Create a map of wallet_address -> label from master_traders
-      const labelMap: Record<string, string> = {};
-      if (masterRes.data) {
-        masterRes.data.forEach(m => {
-          if (m.wallet_address && m.label) {
-            labelMap[m.wallet_address] = m.label;
-          }
-        });
-      }
-
-      // Map metrics to include labels
-      let mergedTraders = (leaderboardRes.data || []).map(trader => ({
-        ...trader,
-        label: labelMap[trader.wallet_address] || null
+      // Create a map of wallet_address -> label from the user's follows
+      const userFollows = (followsRes.data || []).map((f: any) => ({
+        wallet_address: f.master_traders.wallet_address,
+        label: f.master_traders.label
       }));
 
-      // Find any master traders NOT in the leaderboard and add them with 0 metrics
-      const leaderboardAddresses = new Set(mergedTraders.map(t => t.wallet_address));
-      if (masterRes.data) {
-        masterRes.data.forEach(m => {
-          if (m.wallet_address && !leaderboardAddresses.has(m.wallet_address)) {
-            mergedTraders.push({
-              id: m.wallet_address,
-              wallet_address: m.wallet_address,
-              blockchain: 'solana',
-              label: m.label,
-              total_pnl: m.total_pnl || 0,
-              roi: 0,
-              win_rate: m.win_rate || 0,
-              total_trades: m.total_trades || 0,
-              max_drawdown: 0,
-              sharpe_ratio: null,
-              assets_under_copy: 0,
-              follower_count: 0,
-              risk_score: 50,
-              consistency_score: 50,
-              pnl_30d: m.total_pnl || 0,
-              roi_30d: 0,
-              trades_30d: m.total_trades || 0,
-              is_verified: false,
-              last_trade_at: new Date().toISOString()
-            } as any);
-          }
-        });
-      }
+      const labelMap: Record<string, string> = {};
+      userFollows.forEach(f => {
+        labelMap[f.wallet_address] = f.label;
+      });
+
+      // Map leaderboards to the user's tracked wallets
+      const leaderboardMap = new Map((leaderboardRes.data || []).map(l => [l.wallet_address, l]));
+
+      let mergedTraders = userFollows.map(follow => {
+        const stats = leaderboardMap.get(follow.wallet_address) as any;
+        return {
+          id: follow.wallet_address,
+          wallet_address: follow.wallet_address,
+          blockchain: 'solana' as const,
+          label: follow.label,
+          total_pnl: stats?.total_pnl || 0,
+          roi: stats?.roi || 0,
+          win_rate: stats?.win_rate || 0,
+          total_trades: stats?.total_trades || 0,
+          max_drawdown: stats?.max_drawdown || 0,
+          sharpe_ratio: stats?.sharpe_ratio || null,
+          assets_under_copy: stats?.assets_under_copy || 0,
+          follower_count: stats?.follower_count || 0,
+          risk_score: stats?.risk_score || 50,
+          consistency_score: stats?.consistency_score || 50,
+          pnl_30d: stats?.pnl_30d || 0,
+          roi_30d: stats?.roi_30d || 0,
+          trades_30d: stats?.trades_30d || 0,
+          is_verified: stats?.is_verified || false,
+          last_trade_at: stats?.last_trade_at || new Date().toISOString()
+        };
+      });
 
       // Fetch live balances for all traders
       try {
@@ -254,8 +263,41 @@ export default function CopyTradingPage() {
       setActiveTraders(mergedTraders?.length || 0);
       setTotalCopied(mergedTraders?.reduce((sum, t) => sum + (t.assets_under_copy || 0), 0) || 0);
 
+      // Trigger background analysis for traders with no stats
+      mergedTraders.forEach(trader => {
+        if ((trader.total_trades === 0 || !trader.roi) && !analyzingWallets.has(trader.wallet_address)) {
+          setAnalyzingWallets(prev => new Set(prev).add(trader.wallet_address));
+          console.log(`Starting background analysis for ${trader.wallet_address} (Limit: 1000)...`);
+          analyzeTraderPerformance(connection, trader.wallet_address, 1000)
+            .then(metrics => {
+              if (metrics) {
+                console.log(`Analysis complete for ${trader.wallet_address}:`, metrics);
+                updateTraderLeaderboard(metrics).then(() => {
+                  // Update local state for this specific trader
+                  setTraders(prev => {
+                    const updated = prev.map(t =>
+                      t.wallet_address === trader.wallet_address ? { ...t, ...metrics } : t
+                    );
+                    console.log(`Updated state for ${trader.wallet_address}, new ROI:`, updated.find(t => t.wallet_address === trader.wallet_address)?.roi);
+                    return updated;
+                  });
+                });
+              } else {
+                console.log(`Analysis returned no metrics for ${trader.wallet_address}`);
+              }
+            })
+            .catch(err => console.error('Background analysis failed:', err))
+            .finally(() => {
+              setAnalyzingWallets(prev => {
+                const next = new Set(prev);
+                next.delete(trader.wallet_address);
+                return next;
+              });
+            });
+        }
+      });
+
       // Calculate user's P&L from copy trading
-      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: copyPositions } = await supabase
           .from('copy_trading_positions')
@@ -339,21 +381,26 @@ export default function CopyTradingPage() {
     try {
       setLoading(true);
 
-      const { error: error1 } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // First find the master trader record
+      const { data: masterTrader } = await supabase
         .from('master_traders')
-        .delete()
-        .eq('wallet_address', trader.wallet_address);
+        .select('id')
+        .eq('wallet_address', trader.wallet_address)
+        .single();
 
-      const { error: error2 } = await supabase
-        .from('copy_trading_leaderboard')
-        .delete()
-        .eq('wallet_address', trader.wallet_address);
+      if (!masterTrader) throw new Error('Trader record not found');
 
-      if (error1) throw error1;
-      // error2 might be null if it wasn't in leaderboard, so we check specifically for errors
-      if (error2 && error2.code !== 'PGRST116') { // PGRST116 is not found, which is fine
-        // throw error2; // Actually just ignore if not in leaderboard
-      }
+      // Remove specifically from the user's followers list
+      const { error } = await supabase
+        .from('master_trader_followers')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('master_trader_id', masterTrader.id);
+
+      if (error) throw error;
 
       toast({
         title: 'Wallet Removed',
@@ -388,28 +435,53 @@ export default function CopyTradingPage() {
     try {
       setIsAddingWallet(true);
 
-      const { error } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // 1. Upsert into master_traders (global registry)
+      const { data: masterData, error: masterError } = await supabase
         .from('master_traders')
-        .insert({
+        .upsert({
           wallet_address: newWalletAddress,
           label: newWalletName,
-          is_verified: false,
-          total_pnl: 0,
-          win_rate: 0,
-          total_trades: 0,
           risk_level: 'medium',
+        }, { onConflict: 'wallet_address' })
+        .select('id')
+        .single();
+
+      if (masterError) throw masterError;
+
+      // 2. Link to user in master_trader_followers
+      const { error: followError } = await supabase
+        .from('master_trader_followers')
+        .upsert({
+          user_id: user.id,
+          master_trader_id: masterData.id,
+          is_active: true
         });
 
-      if (error) throw error;
+      if (followError) throw followError;
 
       toast({
         title: 'Wallet Added',
-        description: `${newWalletName} has been added to your tracking list.`,
+        description: `${newWalletName} has been added to your tracking list. Analysis started...`,
       });
 
       setShowAddWalletModal(false);
+      const addedAddress = newWalletAddress;
       setNewWalletAddress('');
       setNewWalletName('');
+
+      // Perform immediate analysis for the new wallet
+      analyzeTraderPerformance(connection, addedAddress, 1000)
+        .then(metrics => {
+          if (metrics) {
+            console.log(`Initial analysis complete for ${addedAddress}:`, metrics);
+            updateTraderLeaderboard(metrics).then(() => loadTraders());
+          }
+        })
+        .catch(err => console.error('Immediate analysis failed:', err));
+
       loadTraders();
     } catch (error: any) {
       toast({
@@ -930,15 +1002,16 @@ export default function CopyTradingPage() {
       )}>
         {/* Table Header */}
         <div className={cn(
-          "hidden lg:grid lg:grid-cols-8 gap-4 px-6 py-3 border-b text-sm",
-          isDark ? "border-[#27272a] text-[#6b7280]" : "border-gray-200 text-gray-600"
+          "hidden lg:grid lg:grid-cols-9 gap-4 px-6 py-3 border-b text-sm font-medium",
+          isDark ? "border-[#27272a] text-[#6b7280]" : "border-gray-200 text-gray-500"
         )}>
           <span className="col-span-2">Trader</span>
           <span className="text-right">ROI</span>
           <span className="text-right">Win Rate</span>
-          <span className="text-right">P&L (30d)</span>
+          <span className="text-right">PnL (30d)</span>
           <span className="text-right">Sharpe</span>
           <span className="text-right">Followers</span>
+          <span className="text-right">30d Trades</span>
           <span className="text-right">Action</span>
         </div>
 
@@ -969,158 +1042,19 @@ export default function CopyTradingPage() {
               )}>No traders found</p>
             </div>
           ) : (
-            filteredTraders.map((trader, index) => {
-              const badge = getBlockchainBadge(trader.wallet_address);
-              const sparklineData = Array.from({ length: 20 }, () => Math.random() * 100);
-
-              return (
-                <div
-                  key={trader.id}
-                  className={cn(
-                    "grid grid-cols-2 lg:grid-cols-8 gap-4 px-6 py-4 transition-colors items-center",
-                    isDark ? "hover:bg-[#27272a]" : "hover:bg-gray-50"
-                  )}
-                >
-                  {/* Trader Info */}
-                  <div className="col-span-2 flex items-center gap-3">
-                    <div className="relative">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${badge.label === 'SOL' ? 'bg-gradient-to-br from-purple-500 to-teal-400' :
-                        badge.label === 'BTC' ? 'bg-gradient-to-br from-orange-400 to-yellow-500' :
-                          'bg-gradient-to-br from-blue-400 to-purple-500'
-                        }`}>
-                        {index + 1}
-                      </div>
-                      {trader.is_verified && (
-                        <CheckCircle className="absolute -bottom-1 -right-1 w-4 h-4 text-[#3b82f6] bg-[#1a1f2e] rounded-full" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "font-semibold",
-                          isDark ? "text-white" : "text-gray-900"
-                        )}>
-                          {trader.label || shortenAddress(trader.wallet_address)}
-                        </span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${badge.color}`}>
-                          {badge.label}
-                        </span>
-                      </div>
-                      <div className={cn(
-                        "text-xs flex items-center gap-2",
-                        isDark ? "text-[#6b7280]" : "text-gray-500"
-                      )}>
-                        <span>{trader.total_trades} trades</span>
-                        {trader.solBalance !== undefined && (
-                          <span className="flex items-center gap-1 border-l border-gray-800 pl-2">
-                            <span className="text-blue-400">{trader.solBalance.toFixed(2)} SOL</span>
-                            <span className="opacity-60 text-[10px]">(${trader.balanceUSD?.toFixed(0)})</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ROI */}
-                  <div className="hidden lg:block text-right">
-                    <span className={`font-semibold ${trader.roi >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
-                      {trader.roi >= 0 ? '+' : ''}{trader.roi?.toFixed(1)}%
-                    </span>
-                  </div>
-
-                  {/* Win Rate */}
-                  <div className="hidden lg:block text-right">
-                    <span className={isDark ? "text-white" : "text-gray-900"}>{trader.win_rate?.toFixed(1)}%</span>
-                  </div>
-
-                  {/* P&L 30d */}
-                  <div className="hidden lg:block text-right">
-                    <span className={`font-semibold ${trader.pnl_30d >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
-                      {formatCurrency(trader.pnl_30d || 0)}
-                    </span>
-                  </div>
-
-                  {/* Sharpe */}
-                  <div className="hidden lg:block text-right">
-                    <span className={isDark ? "text-white" : "text-gray-900"}>{trader.sharpe_ratio?.toFixed(2) || '-'}</span>
-                  </div>
-
-                  {/* Followers */}
-                  <div className="hidden lg:block text-right">
-                    <span className={isDark ? "text-white" : "text-gray-900"}>{trader.follower_count || 0}</span>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(`https://solscan.io/account/${trader.wallet_address}`, '_blank');
-                      }}
-                      className={cn(
-                        "bg-transparent",
-                        isDark
-                          ? "border-[#374151] text-[#9ca3af] hover:text-white"
-                          : "border-gray-300 text-gray-600 hover:text-gray-900"
-                      )}
-                      title="View on Solscan"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveWallet(trader);
-                      }}
-                      className={cn(
-                        "bg-transparent hover:bg-red-500/10 hover:text-red-500 transition-colors",
-                        isDark
-                          ? "border-[#374151] text-[#9ca3af]"
-                          : "border-gray-300 text-gray-600"
-                      )}
-                      title="Remove Tracking"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleCopyTrader(trader)}
-                      className={cn(
-                        "transition-all",
-                        isDark
-                          ? "bg-[#27272a] hover:bg-[#3f3f46] text-white"
-                          : "bg-gray-100 hover:bg-gray-200 text-gray-900"
-                      )}
-                    >
-                      <Copy className="w-4 h-4 mr-1 text-gray-400" />
-                      Copy
-                    </Button>
-                  </div>
-
-                  {/* Mobile: Additional Info */}
-                  <div className="col-span-2 lg:hidden flex items-center justify-between text-sm">
-                    <div className="flex gap-4">
-                      <span className={`${trader.roi >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
-                        ROI: {trader.roi >= 0 ? '+' : ''}{trader.roi?.toFixed(1)}%
-                      </span>
-                      <span className={isDark ? "text-[#9ca3af]" : "text-gray-500"}>
-                        Win: {trader.win_rate?.toFixed(1)}%
-                      </span>
-                    </div>
-                    <MiniSparkline
-                      data={sparklineData}
-                      color={trader.roi >= 0 ? '#10b981' : '#ef4444'}
-                      width={60}
-                      height={24}
-                    />
-                  </div>
-                </div>
-              );
-            })
+            filteredTraders.map((trader, index) => (
+              <TraderRow
+                key={trader.id}
+                trader={trader}
+                index={index}
+                isDark={isDark}
+                analyzingWallets={analyzingWallets}
+                handleRemoveWallet={handleRemoveWallet}
+                handleCopyTrader={handleCopyTrader}
+                shortenAddress={shortenAddress}
+                getBlockchainBadge={getBlockchainBadge}
+              />
+            ))
           )}
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { fetchTokenOverview } from './birdeye-websocket-service';
 import { createClient } from './supabase/client';
 
 export interface WalletBalance {
@@ -298,50 +299,74 @@ export async function fetchTokenPrice(coinId: string): Promise<TokenPrice> {
 /**
  * Fetch token image from Jupiter token list for Solana tokens
  */
-let jupiterTokenListCache: Record<string, { logoURI?: string; symbol?: string; name?: string }> | null = null;
 
-async function getJupiterTokenList(): Promise<Record<string, { logoURI?: string; symbol?: string; name?: string }> | null> {
+/**
+ * Fetch token image from Jupiter token list for Solana tokens
+ */
+let jupiterTokenListCache: Record<string, { logoURI?: string; symbol?: string; name?: string }> | null = null;
+let jupiterTokenListPromise: Promise<Record<string, { logoURI?: string; symbol?: string; name?: string }> | null> | null = null;
+
+async function getJupiterTokenList(retries = 2): Promise<Record<string, { logoURI?: string; symbol?: string; name?: string }> | null> {
+  // 1. Return in-memory cache if available
   if (jupiterTokenListCache) {
     return jupiterTokenListCache;
   }
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-    const response = await fetch(
-      'https://token.jup.ag/strict',
-      {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        signal: controller.signal,
-      }
-    );
-
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      const tokens = await response.json();
-      const tokenMap: Record<string, { logoURI?: string; symbol?: string; name?: string }> = {};
-
-      tokens.forEach((token: any) => {
-        if (token.address) {
-          tokenMap[token.address] = {
-            logoURI: token.logoURI,
-            symbol: token.symbol,
-            name: token.name,
-          };
-        }
-      });
-
-      jupiterTokenListCache = tokenMap;
-      return tokenMap;
-    }
-  } catch (error) {
-    console.warn('Failed to fetch Jupiter token list:', error);
+  // 2. Return existing promise if request is already in flight (Deduplication)
+  if (jupiterTokenListPromise) {
+    return jupiterTokenListPromise;
   }
 
-  return null;
+  // 3. Start new request
+  jupiterTokenListPromise = (async () => {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout (increased for large file)
+
+        const response = await fetch(
+          'https://token.jup.ag/strict',
+          {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            signal: controller.signal,
+          }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const tokens = await response.json();
+          const tokenMap: Record<string, { logoURI?: string; symbol?: string; name?: string }> = {};
+
+          tokens.forEach((token: any) => {
+            if (token.address) {
+              tokenMap[token.address] = {
+                logoURI: token.logoURI,
+                symbol: token.symbol,
+                name: token.name,
+              };
+            }
+          });
+
+          jupiterTokenListCache = tokenMap;
+          return tokenMap;
+        }
+      } catch (error) {
+        console.warn(`Attempt ${i + 1} to fetch Jupiter token list failed:`, error);
+        if (i < retries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
+        }
+      }
+    }
+    return null;
+  })().finally(() => {
+    // Clear promise so future retries can happen if it failed, 
+    // or if we want to refresh (though current logic caches forever in memory)
+    jupiterTokenListPromise = null;
+  });
+
+  return jupiterTokenListPromise;
 }
 
 /**
@@ -349,12 +374,19 @@ async function getJupiterTokenList(): Promise<Record<string, { logoURI?: string;
  */
 async function fetchJupiterTokenImage(mintAddress: string): Promise<string | null> {
   try {
+    // 1. Try Jupiter Cache
     const tokenList = await getJupiterTokenList();
     if (tokenList && tokenList[mintAddress]) {
       return tokenList[mintAddress].logoURI || null;
     }
+
+    // 2. Fallback: Try Birdeye (supports much more metadata)
+    const overview = await fetchTokenOverview(mintAddress);
+    if (overview && overview.logoURI) {
+      return overview.logoURI;
+    }
   } catch (error) {
-    // Ignore errors - Jupiter API is optional
+    // Ignore errors - metadata is optional
   }
   return null;
 }

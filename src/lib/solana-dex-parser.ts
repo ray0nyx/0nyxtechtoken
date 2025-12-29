@@ -196,7 +196,10 @@ export async function parseDexTrades(
 
     // Parse token transfers
     const transfers = parseTokenTransfers(tx, walletAddress);
-    if (!transfers || !transfers.tokenIn || !transfers.tokenOut) continue;
+    if (!transfers || !transfers.tokenIn || !transfers.tokenOut) {
+      console.log(`No valid token transfers found in tx ${tx.transaction.signatures[0]} for ${dex}`);
+      continue;
+    }
 
     // Calculate fee (from transaction fee)
     const fee = (tx.meta?.fee || 0) / 1e9; // Convert lamports to SOL

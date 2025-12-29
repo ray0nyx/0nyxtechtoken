@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, TrendingDown, ChevronDown, Wallet as WalletIcon, Edit, Check, Trash2, X, Star } from 'lucide-react';
+import { TrendingUp, TrendingDown, ChevronDown, Wallet as WalletIcon, Edit, Check, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -728,7 +728,7 @@ function WalletsContent() {
                           )}
                           title="Set as main wallet"
                         >
-                          <Star className={cn("w-3 h-3", mainWalletAddress === wallet.address && "fill-current")} />
+                          <Check className={cn("w-3 h-3", mainWalletAddress === wallet.address ? "opacity-100" : "opacity-0")} />
                         </button>
                       </div>
                     )}

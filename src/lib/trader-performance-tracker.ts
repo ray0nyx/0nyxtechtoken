@@ -1,6 +1,6 @@
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { createClient } from './supabase/client';
-import { parseDexTrades, fetchWalletTransactions } from './solana-dex-parser';
+import { fetchWalletTrades, getSolPrice } from './helius-service';
 
 export interface TraderPerformanceMetrics {
   wallet_address: string;
@@ -35,23 +35,24 @@ export interface TraderPerformanceMetrics {
  * Analyze a wallet's trading performance
  */
 export async function analyzeTraderPerformance(
-  connection: Connection,
+  connection: any, // Connection type no longer strictly needed for Helius but kept for compatibility
   walletAddress: string,
   transactionLimit: number = 200
 ): Promise<TraderPerformanceMetrics | null> {
   try {
-    // Fetch transactions
-    const transactions = await fetchWalletTransactions(connection, walletAddress, transactionLimit);
-    
-    // Parse DEX trades
-    const trades = await parseDexTrades(transactions, walletAddress);
-    
+    // Fetch trades from Helius (much more reliable enhanced transactions)
+    const heliusApiKey = import.meta.env.VITE_HELIUS_API_KEY;
+    console.log(`Analyzing trader ${walletAddress} via Helius... (API Key: ${heliusApiKey ? 'Configured' : 'MISSING'})`);
+    const trades = await fetchWalletTrades(walletAddress, transactionLimit);
+    console.log(`[Helius] Found ${trades.length} parsed trades for ${walletAddress}`);
+
     if (trades.length === 0) {
+      console.log(`[Helius] No trades found for ${walletAddress}. This usually means Helius transactions don't match any trade patterns.`);
       return null;
     }
 
     // Sort by timestamp
-    trades.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    trades.sort((a, b) => a.timestamp - b.timestamp);
 
     // Calculate basic metrics
     let totalPnL = 0;
@@ -61,30 +62,70 @@ export async function analyzeTraderPerformance(
     let largestLoss = 0;
     const tradeSizes: number[] = [];
     const pnls: number[] = [];
-    
-    // Calculate P&L for each trade (simplified - assumes token amounts)
+
+    // Calculate P&L by token to determine win rate
+    const tokenStats = new Map<string, { buys: number, sells: number, buyVolume: number, sellVolume: number }>();
+
     trades.forEach(trade => {
-      const pnl = trade.amountOut - trade.amountIn;
+      const stats = tokenStats.get(trade.tokenAddress) || { buys: 0, sells: 0, buyVolume: 0, sellVolume: 0 };
+
+      if (trade.type === 'buy') {
+        stats.buys++;
+        stats.buyVolume += trade.solAmount;
+        totalPnL -= trade.solAmount;
+        tradeSizes.push(trade.solAmount);
+      } else {
+        stats.sells++;
+        stats.sellVolume += trade.solAmount;
+        totalPnL += trade.solAmount;
+        tradeSizes.push(trade.solAmount);
+      }
+
+      tokenStats.set(trade.tokenAddress, stats);
+    });
+
+    console.log(`Token distribution for ${walletAddress}:`, Object.fromEntries(tokenStats));
+
+    // Determine winning tokens (improved: use a slightly lower threshold for SOL dust)
+    tokenStats.forEach((stats, token) => {
+      const pnl = stats.sellVolume - stats.buyVolume;
       pnls.push(pnl);
-      totalPnL += pnl;
-      tradeSizes.push(trade.amountIn);
-      
-      if (pnl > 0) {
+
+      console.log(`Token ${token}: BuyVol=${stats.buyVolume.toFixed(4)}, SellVol=${stats.sellVolume.toFixed(4)}, PnL=${pnl.toFixed(4)}`);
+
+      if (pnl > 0.001) { // Positive P&L in SOL (> 0.001 SOL)
         winningTrades++;
         largestWin = Math.max(largestWin, pnl);
-      } else if (pnl < 0) {
+      } else if (pnl < -0.001) {
         losingTrades++;
         largestLoss = Math.max(largestLoss, Math.abs(pnl));
       }
     });
 
     const totalTrades = trades.length;
-    const winRate = (winningTrades / totalTrades) * 100;
+    const winRate = tokenStats.size > 0 ? (winningTrades / tokenStats.size) * 100 : 0;
     const avgPositionSize = tradeSizes.reduce((a, b) => a + b, 0) / tradeSizes.length;
 
-    // Calculate ROI (assuming starting capital = first trade size * 10)
-    const estimatedCapital = tradeSizes[0] * 10;
-    const roi = (totalPnL / estimatedCapital) * 100;
+    // Convert metrics to USD
+    // Convert metrics to USD
+    const solPrice = await getSolPrice().catch(() => 0); // Default to 0 if all fetches fail
+    const totalPnLUsd = totalPnL * solPrice;
+    const avgPositionSizeUsd = avgPositionSize * solPrice;
+
+    console.log(`Stats for ${walletAddress} (USD): Trades=${totalTrades}, Tokens=${tokenStats.size}, WinRate=${winRate.toFixed(2)}%, PnL=$${totalPnLUsd.toFixed(2)}`);
+
+    // Log token P&Ls for debugging
+    tokenStats.forEach((stats, token) => {
+      const tokenPnl = (stats.sellVolume - stats.buyVolume) * solPrice;
+      if (Math.abs(tokenPnl) > 0.1) {
+        console.log(`  Token ${token.slice(0, 8)}... P&L: $${tokenPnl.toFixed(2)}`);
+      }
+    });
+
+    // Calculate ROI (assuming starting capital is based on average position size in USD)
+    // Using a more realistic capital estimate: max(avg size * 5, $500)
+    const estimatedCapitalUsd = Math.max(avgPositionSizeUsd * 5, 500);
+    const roi = (totalPnLUsd / estimatedCapitalUsd) * 100;
 
     // Calculate time-based metrics
     const now = Date.now();
@@ -92,17 +133,19 @@ export async function analyzeTraderPerformance(
     const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
 
-    const trades24h = trades.filter(t => new Date(t.timestamp).getTime() > oneDayAgo);
-    const trades7d = trades.filter(t => new Date(t.timestamp).getTime() > sevenDaysAgo);
-    const trades30d = trades.filter(t => new Date(t.timestamp).getTime() > thirtyDaysAgo);
+    const trades24h = trades.filter(t => t.timestamp > oneDayAgo);
+    const trades7d = trades.filter(t => t.timestamp > sevenDaysAgo);
+    const trades30d = trades.filter(t => t.timestamp > thirtyDaysAgo);
 
-    const pnl24h = trades24h.reduce((sum, t) => sum + (t.amountOut - t.amountIn), 0);
-    const pnl7d = trades7d.reduce((sum, t) => sum + (t.amountOut - t.amountIn), 0);
-    const pnl30d = trades30d.reduce((sum, t) => sum + (t.amountOut - t.amountIn), 0);
+    const pnl24hUsd = trades24h.reduce((sum, t) => sum + (t.type === 'sell' ? t.solAmount : -t.solAmount), 0) * solPrice;
+    const pnl7dUsd = trades7d.reduce((sum, t) => sum + (t.type === 'sell' ? t.solAmount : -t.solAmount), 0) * solPrice;
+    const pnl30dUsd = trades30d.reduce((sum, t) => sum + (t.type === 'sell' ? t.solAmount : -t.solAmount), 0) * solPrice;
 
-    const roi24h = estimatedCapital > 0 ? (pnl24h / estimatedCapital) * 100 : 0;
-    const roi7d = estimatedCapital > 0 ? (pnl7d / estimatedCapital) * 100 : 0;
-    const roi30d = estimatedCapital > 0 ? (pnl30d / estimatedCapital) * 100 : 0;
+    console.log(`P&L (30d) for ${walletAddress}: $${pnl30dUsd.toFixed(2)} based on ${trades30d.length} trades`);
+
+    const roi24h = estimatedCapitalUsd > 0 ? (pnl24hUsd / (estimatedCapitalUsd / 10)) * 100 : 0;
+    const roi7d = estimatedCapitalUsd > 0 ? (pnl7dUsd / (estimatedCapitalUsd / 10)) * 100 : 0;
+    const roi30d = estimatedCapitalUsd > 0 ? (pnl30dUsd / (estimatedCapitalUsd / 10)) * 100 : 0;
 
     // Calculate Sharpe Ratio (simplified)
     const avgReturn = pnls.reduce((a, b) => a + b, 0) / pnls.length;
@@ -114,7 +157,7 @@ export async function analyzeTraderPerformance(
     let peak = 0;
     let maxDrawdown = 0;
     let cumulativePnL = 0;
-    
+
     pnls.forEach(pnl => {
       cumulativePnL += pnl;
       peak = Math.max(peak, cumulativePnL);
@@ -133,22 +176,22 @@ export async function analyzeTraderPerformance(
     const avgDurationInterval = `${avgDurationHours} hours`;
 
     // Calculate risk score (0-100, higher = riskier)
-    const riskScore = Math.min(100, 
+    const riskScore = Math.min(100,
       (maxDrawdown * 0.4) + // Higher drawdown = higher risk
       ((100 - winRate) * 0.3) + // Lower win rate = higher risk
-      ((avgPositionSize / estimatedCapital) * 100 * 0.3) // Larger positions = higher risk
+      ((avgPositionSizeUsd / estimatedCapitalUsd) * 100 * 0.3) // Larger positions = higher risk
     );
 
     // Calculate consistency score (0-100, higher = more consistent)
     const consistencyScore = Math.min(100,
       (winRate * 0.5) + // Higher win rate = more consistent
       (Math.min(totalTrades / 100, 1) * 20) + // More trades = more data = more consistent
-      ((100 - (stdDev / avgPositionSize) * 100) * 0.3) // Lower volatility = more consistent
+      ((100 - (stdDev / (avgPositionSizeUsd / solPrice)) * 100) * 0.3) // Lower volatility = more consistent (volatility is calculated on SOL PnL, so compare to SOL avg size)
     );
 
     return {
       wallet_address: walletAddress,
-      total_pnl: totalPnL,
+      total_pnl: totalPnLUsd,
       roi,
       win_rate: winRate,
       total_trades: totalTrades,
@@ -159,20 +202,20 @@ export async function analyzeTraderPerformance(
       sharpe_ratio: sharpeRatio,
       risk_score: riskScore,
       consistency_score: consistencyScore,
-      avg_position_size: avgPositionSize,
-      largest_win: largestWin,
-      largest_loss: largestLoss,
-      pnl_24h,
-      pnl_7d,
-      pnl_30d,
-      roi_24h,
-      roi_7d,
-      roi_30d,
+      avg_position_size: avgPositionSizeUsd,
+      largest_win: largestWin * solPrice,
+      largest_loss: largestLoss * solPrice,
+      pnl_24h: pnl24hUsd,
+      pnl_7d: pnl7dUsd,
+      pnl_30d: pnl30dUsd,
+      roi_24h: roi24h,
+      roi_7d: roi7d,
+      roi_30d: roi30d,
       trades_24h: trades24h.length,
       trades_7d: trades7d.length,
       trades_30d: trades30d.length,
-      first_trade_at: trades[0].timestamp,
-      last_trade_at: trades[trades.length - 1].timestamp,
+      first_trade_at: new Date(trades[0].timestamp).toISOString(),
+      last_trade_at: new Date(trades[trades.length - 1].timestamp).toISOString(),
     };
   } catch (error) {
     console.error(`Error analyzing trader ${walletAddress}:`, error);
@@ -187,7 +230,7 @@ export async function updateTraderLeaderboard(
   metrics: TraderPerformanceMetrics
 ): Promise<void> {
   const supabase = createClient();
-  
+
   try {
     const { error } = await supabase
       .from('copy_trading_leaderboard')
@@ -225,9 +268,12 @@ export async function updateTraderLeaderboard(
         onConflict: 'wallet_address'
       });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error updating leaderboard in Supabase:', error);
+      throw error;
+    }
+    console.log(`Successfully updated leaderboard for ${metrics.wallet_address}`);
   } catch (error) {
-    console.error('Error updating leaderboard:', error);
     throw error;
   }
 }
@@ -236,7 +282,7 @@ export async function updateTraderLeaderboard(
  * Analyze and update multiple traders
  */
 export async function batchAnalyzeTraders(
-  connection: Connection,
+  connection: any,
   walletAddresses: string[]
 ): Promise<{ success: number; failed: number }> {
   let success = 0;
@@ -251,7 +297,7 @@ export async function batchAnalyzeTraders(
       } else {
         failed++;
       }
-      
+
       // Rate limit: small delay between analyses
       await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (error) {
@@ -271,7 +317,7 @@ export async function getTopTraders(
   sortBy: 'roi' | 'total_pnl' | 'win_rate' | 'sharpe_ratio' = 'roi'
 ) {
   const supabase = createClient();
-  
+
   try {
     const { data, error } = await supabase
       .from('copy_trading_leaderboard')
