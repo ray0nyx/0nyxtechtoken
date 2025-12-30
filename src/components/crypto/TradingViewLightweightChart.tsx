@@ -5,7 +5,7 @@ import TradeBubbleOverlay from './TradeBubbleOverlay';
 import { useTradingStore } from '@/stores/useTradingStore';
 
 interface OHLCVData {
-  time: string | number;
+  time: any;
   open: number;
   high: number;
   low: number;
@@ -21,6 +21,7 @@ export interface OrderLine {
   side: 'buy' | 'sell';
   amount: number;
   draggable: boolean;
+  isPreview?: boolean;
 }
 
 // Real-time candle update from aggregator
@@ -41,7 +42,7 @@ interface TradingViewLightweightChartProps {
   showVolume?: boolean;
   showGrid?: boolean;
   theme?: 'dark' | 'light';
-  onCrosshairMove?: (data: { time: string | number; price: number; volume?: number } | null) => void;
+  onCrosshairMove?: (data: { time: any; price: number; volume?: number } | null) => void;
   onPriceUpdate?: (price: number) => void;
   realTimePrice?: number;
   // Real-time candle stream from aggregator (updates entire OHLC, not just close)
@@ -1200,89 +1201,7 @@ export default function TradingViewLightweightChart({
         />
       )}
 
-      {/* Current Price Display - Format based on price magnitude */}
-      {(() => {
-        // Prioritize realTimePrice > displayPrice > last candle close
-        const currentPrice = realTimePrice || displayPrice || (data.length > 0 ? data[data.length - 1]?.close : null);
-        if (!currentPrice || currentPrice <= 0) return null;
-
-        // Format price based on magnitude for better readability
-        // Enhanced formatting for very small prices (meme coins) - NEVER use scientific notation
-        const formatPrice = (price: number): string => {
-          if (!price || price <= 0) return '0';
-
-          if (price >= 1000) {
-            return price.toLocaleString('en-US', { maximumFractionDigits: 2 });
-          } else if (price >= 1) {
-            return price.toFixed(4);
-          } else if (price >= 0.01) {
-            return price.toFixed(6);
-          } else if (price >= 0.0001) {
-            return price.toFixed(8);
-          } else if (price >= 0.000001) {
-            return price.toFixed(10);
-          } else if (price >= 0.00000001) {
-            return price.toFixed(12);
-          } else {
-            // For extremely small prices, show full decimal (up to 18 places) - no scientific notation
-            return price.toFixed(18).replace(/\.?0+$/, '');
-          }
-        };
-
-        const priceColor = priceChange
-          ? (priceChange.value >= 0 ? currentColors.upColor : currentColors.downColor)
-          : (realTimePrice ? currentColors.upColor : currentColors.textColor);
-
-        // Calculate display value based on mode using scale factor
-        const currentMc = marketCap ? parseMarketCap(marketCap) : 0;
-        const latestDataClose = data.length > 0 ? data[data.length - 1].close : currentPrice;
-        const useMarketCapDisplay = displayMode === 'marketCap' && currentMc > 0;
-        const displayScaleFactor = useMarketCapDisplay && latestDataClose > 0 ? currentMc / latestDataClose : 1;
-
-        // Display market cap if in market cap mode
-        const displayValue = useMarketCapDisplay
-          ? currentPrice * displayScaleFactor
-          : currentPrice;
-
-        const formattedValue = displayMode === 'marketCap'
-          ? formatMarketCap(displayValue)
-          : formatPrice(displayValue);
-
-        const label = displayMode === 'marketCap' ? 'Market Cap' : 'Price';
-
-        return (
-          <div
-            className="absolute top-2 right-2 z-50 px-3 py-1.5 rounded-lg shadow-lg border"
-            style={{
-              backgroundColor: theme === 'dark' ? 'rgba(26, 31, 46, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-              borderColor: priceColor,
-              minWidth: '140px'
-            }}>
-            <div className="flex flex-col items-end">
-              <div className="text-[10px] uppercase tracking-wide mb-0.5" style={{ color: currentColors.textColor }}>
-                {label}
-              </div>
-              <div className="text-lg font-bold" style={{ color: priceColor }}>
-                {formattedValue}
-              </div>
-              {priceChange && Math.abs(priceChange.value) > 0.000001 ? (
-                <div className="text-xs mt-0.5" style={{
-                  color: priceChange.value >= 0 ? currentColors.upColor : currentColors.downColor
-                }}>
-                  {priceChange.value >= 0 ? '+' : ''}{displayMode === 'marketCap' ? formatMarketCap(priceChange.value) : formatPrice(priceChange.value)} ({priceChange.percent >= 0 ? '+' : ''}{priceChange.percent.toFixed(2)}%)
-                </div>
-              ) : realTimePrice ? (
-                <div className="text-xs mt-0.5 flex items-center gap-1" style={{
-                  color: currentColors.textColor
-                }}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                  Live
-                </div>
-              ) : null}
-            </div>
-          </div>
-        );
-      })()}
+      {/* Current Price Display overlay removed per user request */}
 
       {/* Chart Container */}
       <div

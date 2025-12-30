@@ -192,7 +192,7 @@ export default function AxiomTokenCard({
                 <div
                     onClick={onClick}
                     className={cn(
-                        "relative rounded-xl border bg-[#0B0E14] border-[#1E232E] cursor-pointer group transition-all duration-200 hover:border-[#3d4654] overflow-hidden",
+                        "relative rounded-xl border bg-black border-white/10 cursor-pointer group transition-all duration-200 hover:border-white/20 overflow-hidden",
                         compact ? "p-2" : "p-3"
                     )}
                 >
@@ -205,7 +205,7 @@ export default function AxiomTokenCard({
                                     <img
                                         src={imgSrc}
                                         alt={token.symbol}
-                                        className="w-10 h-10 rounded-lg object-cover bg-[#0B0E14]"
+                                        className="w-10 h-10 rounded-lg object-cover bg-black"
                                         onError={handleImgError}
                                         loading="lazy"
                                     />
@@ -216,7 +216,7 @@ export default function AxiomTokenCard({
                                 )}
                                 {/* Platform Badge */}
                                 <div className={cn(
-                                    "absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold border-2 border-[#0B0E14]",
+                                    "absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold border-2 border-black",
                                     token.platform === 'raydium' ? "bg-cyan-500 text-black" : "bg-green-500 text-black"
                                 )}>
                                     {token.platform === 'raydium' ? 'R' : 'P'}
@@ -267,14 +267,14 @@ export default function AxiomTokenCard({
 
                         {/* ATH Indicator line if applicable */}
                         {token.ath && (
-                            <div className="absolute top-0 right-0 text-[9px] text-gray-500 bg-[#0B0E14]/80 px-1 rounded">
+                            <div className="absolute top-0 right-0 text-[9px] text-gray-500 bg-black/80 px-1 rounded">
                                 ATH {formatNumber(token.ath)} {token.athMultiple ? `(${token.athMultiple.toFixed(1)}x)` : ''}
                             </div>
                         )}
                     </div>
 
                     {/* Bottom: Stats Row */}
-                    <div className="flex items-center justify-between text-[10px] text-gray-500 font-mono mt-2 pt-2 border-t border-[#1E232E]">
+                    <div className="flex items-center justify-between text-[10px] text-gray-500 font-mono mt-2 pt-2 border-t border-white/10">
                         <div className="flex items-center gap-3">
                             <span className="flex items-center gap-1" title="Volume">
                                 <span className="font-bold text-gray-400">V</span> {formatNumber(token.volume)}
@@ -328,7 +328,7 @@ export default function AxiomTokenCard({
 
             {/* Migration Progress Hover Popup */}
             {/* @ts-ignore - Content type mismatch */}
-            <HoverCardContent className="w-64 bg-[#0F1219] border-[#2C3340] text-gray-200">
+            <HoverCardContent className="w-64 bg-black border-white/10 text-gray-200">
                 <div className="space-y-2">
                     <h4 className="text-sm font-semibold flex items-center gap-2">
                         <Rocket className="w-4 h-4 text-cyan-500" /> Migration Progress

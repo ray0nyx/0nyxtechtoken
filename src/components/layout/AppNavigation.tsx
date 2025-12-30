@@ -20,7 +20,7 @@ import {
     Zap as Coins,
     Zap as Activity,
     BarChart2,
-    Wifi,
+    RefreshCcw,
     Search as AlignJustify, // Extra safety
     Search as LayoutGrid, // Extra safety
     Search as Book, // Extra safety
@@ -57,6 +57,15 @@ import { useToast } from '@/components/ui/use-toast';
 import { DepositModal } from '@/components/wallet/DepositModal';
 import { WithdrawModal } from '@/components/wallet/WithdrawModal';
 import { fetchSolanaWalletBalance } from '@/lib/wallet-balance-service';
+import { getCurrentUser } from '@/lib/auth-utils';
+
+interface Notification {
+    id: string;
+    title: string;
+    message: string;
+    timestamp: string;
+    type?: string;
+}
 
 export function AppNavigation() {
     const navigate = useNavigate();
@@ -73,6 +82,15 @@ export function AppNavigation() {
     const { toast } = useToast();
     const [solBalance, setSolBalance] = useState<number>(0);
     const [turnkeyAddress, setTurnkeyAddress] = useState<string | null>(null);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+
+    const handleClearNotifications = () => {
+        setNotifications([]);
+        toast({
+            title: "Notifications Cleared",
+            description: "All notifications have been removed.",
+        });
+    };
 
     useEffect(() => {
         const fetchUserProfile = async () => {
@@ -316,9 +334,9 @@ export function AppNavigation() {
                         <img
                             src="/images/ot white.svg"
                             alt="0nyxTech Logo"
-                            className="h-32 w-auto absolute left-0 top-1/2 -translate-y-1/2 z-10"
+                            className="h-16 w-auto absolute left-0 top-1/2 -translate-y-1/2 z-10"
                         />
-                        <div className="w-64"></div>
+                        <div className="w-32"></div>
                     </Link>
 
                     {/* Desktop Navigation */}
@@ -328,7 +346,7 @@ export function AppNavigation() {
                                 key={item.name}
                                 to={item.href}
                                 className={cn(
-                                    "px-2 py-2 text-xs font-medium rounded-md transition-colors hover:text-white",
+                                    "px-2 py-2 text-sm font-medium rounded-md transition-colors hover:text-white",
                                     location.pathname === item.href || location.pathname.startsWith(item.href)
                                         ? "text-white"
                                         : "text-gray-400"
@@ -341,7 +359,7 @@ export function AppNavigation() {
                         {/* More / Validation Dropdown for remaining items to save space */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button className="flex items-center gap-1 px-2 py-2 text-xs font-medium text-gray-400 hover:text-white rounded-md transition-colors">
+                                <button className="flex items-center gap-1 px-2 py-2 text-sm font-medium text-gray-400 hover:text-white rounded-md transition-colors">
                                     More <ChevronDown className="h-4 w-4" />
                                 </button>
                             </DropdownMenuTrigger>
@@ -385,9 +403,9 @@ export function AppNavigation() {
                             <Button
                                 size="sm"
                                 onClick={() => setShowBrokerSyncModal(true)}
-                                className="hidden sm:flex items-center gap-2 bg-none bg-black border border-white/20 text-white hover:bg-white/10 rounded-full px-4 font-medium"
+                                className="hidden sm:flex items-center gap-2 bg-[#1a1a1e] text-[#C0C0C0] hover:bg-purple-600 hover:text-white rounded-full px-4 font-medium transition-colors border-none"
                             >
-                                <Wifi className="h-4 w-4" />
+                                <RefreshCcw className="h-4 w-4" />
                                 <span className="hidden lg:inline">Sync Trades</span>
                             </Button>
                         ) : (
@@ -400,16 +418,16 @@ export function AppNavigation() {
                                         variant: "destructive"
                                     });
                                 }}
-                                className="hidden sm:flex items-center gap-2 bg-none bg-black border border-white/20 text-white hover:bg-white/10 rounded-full px-4 font-medium"
+                                className="hidden sm:flex items-center gap-2 bg-[#1a1a1e] text-[#C0C0C0] hover:bg-purple-600 hover:text-white rounded-full px-4 font-medium transition-colors border-none"
                             >
-                                <Wifi className="h-4 w-4" />
+                                <RefreshCcw className="h-4 w-4" />
                                 <span className="hidden lg:inline">Sync Trades</span>
                             </Button>
                         )}
                         {/* Add Trade Button (Primary Action) */}
                         <Button
                             size="sm"
-                            className="bg-none bg-black border border-white/20 text-white hover:bg-white/10 rounded-full px-4 font-medium hidden sm:flex"
+                            className="bg-[#1a1a1e] text-[#C0C0C0] hover:bg-purple-600 hover:text-white rounded-full px-4 font-medium hidden sm:flex transition-colors border-none"
                             onClick={() => navigate('/app/trades/add')}
                         >
                             <Plus className="h-4 w-4 mr-1" /> Add Trade
@@ -419,10 +437,10 @@ export function AppNavigation() {
                         {turnkeyAddress && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-white/5 transition-colors cursor-pointer text-sm">
-                                        <span className="text-purple-400 font-bold">SOL</span>
-                                        <span className="font-medium text-white">{solBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 })}</span>
-                                        <ChevronDown className="h-3 w-3 text-gray-400 ml-1" />
+                                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1a1a1e] hover:bg-purple-600 transition-colors cursor-pointer text-sm group">
+                                        <img src="/images/solana.svg" alt="SOL" className="w-4 h-4" />
+                                        <span className="font-medium text-[#C0C0C0] group-hover:text-white">{solBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 })}</span>
+                                        <ChevronDown className="h-3 w-3 text-gray-400 ml-1 group-hover:text-white" />
                                     </div>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="bg-[#18181b] border-white/10 text-white min-w-[140px]">
@@ -453,32 +471,36 @@ export function AppNavigation() {
                                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                     </svg>
-                                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                                    {notifications.length > 0 && (
+                                        <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                                    )}
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-80 bg-[#18181b] border-white/10 text-gray-300" align="end">
                                 <DropdownMenuLabel className="text-white">Notifications</DropdownMenuLabel>
                                 <DropdownMenuSeparator className="bg-white/10" />
                                 <div className="max-h-[400px] overflow-y-auto">
-                                    <DropdownMenuItem className="flex flex-col items-start gap-1 p-4 cursor-pointer hover:bg-white/5 focus:bg-white/5">
-                                        <div className="font-medium text-white">New wallet connected</div>
-                                        <div className="text-xs text-gray-400">Phantom wallet successfully connected</div>
-                                        <div className="text-xs text-gray-500 mt-1">2 minutes ago</div>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="flex flex-col items-start gap-1 p-4 cursor-pointer hover:bg-white/5 focus:bg-white/5">
-                                        <div className="font-medium text-white">Price Alert</div>
-                                        <div className="text-xs text-gray-400">SOL reached $100 target</div>
-                                        <div className="text-xs text-gray-500 mt-1">1 hour ago</div>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="flex flex-col items-start gap-1 p-4 cursor-pointer hover:bg-white/5 focus:bg-white/5">
-                                        <div className="font-medium text-white">Wallet Activity</div>
-                                        <div className="text-xs text-gray-400">Received 0.5 SOL</div>
-                                        <div className="text-xs text-gray-500 mt-1">3 hours ago</div>
-                                    </DropdownMenuItem>
+                                    {notifications.length > 0 ? (
+                                        notifications.map((notification) => (
+                                            <DropdownMenuItem key={notification.id} className="flex flex-col items-start gap-1 p-4 cursor-pointer hover:bg-white/5 focus:bg-white/5">
+                                                <div className="font-medium text-white">{notification.title}</div>
+                                                <div className="text-xs text-gray-400">{notification.message}</div>
+                                                <div className="text-xs text-gray-500 mt-1">{notification.timestamp}</div>
+                                            </DropdownMenuItem>
+                                        ))
+                                    ) : (
+                                        <div className="p-8 text-center text-sm text-gray-500">
+                                            No recent notifications
+                                        </div>
+                                    )}
                                 </div>
                                 <DropdownMenuSeparator className="bg-white/10" />
-                                <DropdownMenuItem className="text-center text-blue-400 hover:text-blue-300 cursor-pointer hover:bg-white/5 focus:bg-white/5">
-                                    View all notifications
+                                <DropdownMenuItem
+                                    onClick={handleClearNotifications}
+                                    className="text-center text-blue-400 hover:text-blue-300 cursor-pointer hover:bg-white/5 focus:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={notifications.length === 0}
+                                >
+                                    Clear Notifications
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>

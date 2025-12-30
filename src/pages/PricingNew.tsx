@@ -261,7 +261,7 @@ export default function Pricing() {
                     <p className="text-gray-600 mt-1">{plan.description}</p>
                     <div className="flex items-baseline gap-1 mt-4">
                       <span className={`text-3xl font-bold ${plan.name === 'Yearly' ? 'text-purple-500' :
-                          plan.name === 'Pro' ? 'text-blue-500' : 'text-purple-500'
+                        plan.name === 'Pro' ? 'text-blue-500' : 'text-purple-500'
                         }`}>
                         {plan.price}
                       </span>
@@ -272,7 +272,7 @@ export default function Pricing() {
                       {plan.features.map((feature) => (
                         <li key={feature} className="flex items-center gap-2">
                           <Check className={`h-4 w-4 ${plan.name === 'Yearly' ? 'text-purple-500' :
-                              plan.name === 'Pro' ? 'text-blue-500' : 'text-purple-500'
+                            plan.name === 'Pro' ? 'text-blue-500' : 'text-purple-500'
                             }`} />
                           <span className="text-gray-700">{feature}</span>
                         </li>
@@ -281,10 +281,10 @@ export default function Pricing() {
 
                     <button
                       className={`w-full mt-6 px-4 py-2 rounded ${plan.name === 'Yearly'
-                          ? 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg shadow-purple-500/20' :
-                          plan.name === 'Pro'
-                            ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-lg shadow-blue-500/20'
-                            : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg shadow-purple-500/20'
+                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg shadow-purple-500/20' :
+                        plan.name === 'Pro'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-lg shadow-blue-500/20'
+                          : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg shadow-purple-500/20'
                         } ${(!!isLoading || subscriptionLoading || plan.comingSoon) ? 'opacity-70 cursor-not-allowed' : ''}`}
                       onClick={() => {
                         if (plan.comingSoon) {
@@ -325,7 +325,7 @@ export default function Pricing() {
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="flex items-center gap-6">
               <a
-                href="https://x.com/WagyuTech"
+                href="https://x.com/0nyxTech"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-600 hover:text-purple-500 transition-colors duration-300"
@@ -338,7 +338,20 @@ export default function Pricing() {
                 />
               </a>
               <a
-                href="https://www.instagram.com/wagyutech.app/"
+                href="https://discord.gg/xq5XFHBZ8j"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-600 hover:text-purple-500 transition-colors duration-300"
+                aria-label="Discord"
+              >
+                <img
+                  src="/icons/discord.svg"
+                  alt="Discord"
+                  className="h-5 w-5 opacity-80 hover:opacity-100 transition-opacity"
+                />
+              </a>
+              <a
+                href="https://www.instagram.com/0nyxtech.xyz/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-600 hover:text-purple-500 transition-colors duration-300"

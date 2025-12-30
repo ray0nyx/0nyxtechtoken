@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import html2canvas from 'html2canvas';
+import { Web3Background } from '@/components/ui/Web3Background';
 
 interface SharePnLImageProps {
   dailyPnL: number;
@@ -111,26 +112,30 @@ export function SharePnLImage({ dailyPnL, buttonClassName }: SharePnLImageProps)
         <div className="flex justify-center py-4">
           <div
             ref={imageRef}
-            className="w-[400px] h-[400px] bg-background flex flex-col items-center justify-center p-8 border rounded-md"
+            className="w-[400px] h-[400px] bg-[#0a0a0f] flex flex-col items-center justify-center p-8 border border-white/10 rounded-xl relative overflow-hidden shadow-2xl"
           >
-            <div className="text-center mb-4">
-              <p className="text-cyan-300 text-lg font-bold">
+            <Web3Background
+              className="absolute inset-0 w-full h-full pointer-events-none z-0"
+              logoOpacity={0.15}
+            />
+
+            <div className="text-center mb-4 relative z-10 pnl-font">
+              <p className="text-slate-300 text-lg font-bold drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
                 {formattedDate}
               </p>
-              <h2 className="text-xl font-bold text-cyan-300">Daily P&L</h2>
+              <h2 className="text-xl font-bold text-slate-300 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">Daily P&L</h2>
             </div>
 
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center relative z-10">
               <p
-                className={`text-5xl font-bold ${hasNoTrades ? 'text-muted-foreground' : isProfitable ? 'text-green-500' : 'text-red-500'}`}
-                style={{ fontFamily: 'monospace' }}
+                className={`text-5xl font-bold pnl-font ${hasNoTrades ? 'text-slate-500' : isProfitable ? 'text-green-500' : 'text-red-500'} drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]`}
               >
                 {hasNoTrades ? '$0.00' : `${isProfitable ? '+' : '-'}${formattedPnL}`}
               </p>
             </div>
 
-            <div className="text-center mt-4">
-              <p className="text-xs text-muted-foreground">
+            <div className="text-center mt-4 relative z-10">
+              <p className="text-xs text-slate-500 font-medium">
                 Shared via OnyxTech
               </p>
             </div>

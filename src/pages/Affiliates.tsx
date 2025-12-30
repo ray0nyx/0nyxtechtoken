@@ -404,7 +404,7 @@ export default function Affiliates() {
 
             <div className="flex flex-wrap items-center justify-center gap-8">
               <a
-                href="https://x.com/WagyuTech"
+                href="https://x.com/0nyxTech"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-white transition-colors duration-300"
@@ -417,7 +417,20 @@ export default function Affiliates() {
                 />
               </a>
               <a
-                href="https://www.instagram.com/wagyutech.app/"
+                href="https://discord.gg/xq5XFHBZ8j"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white transition-colors duration-300"
+                aria-label="Discord"
+              >
+                <img
+                  src="/icons/discord.svg"
+                  alt="Discord"
+                  className="h-5 w-5 opacity-60 hover:opacity-100 transition-opacity invert"
+                />
+              </a>
+              <a
+                href="https://www.instagram.com/0nyxtech.xyz/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-white transition-colors duration-300"

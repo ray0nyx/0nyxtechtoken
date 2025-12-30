@@ -5,8 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTheme } from '@/components/ThemeProvider';
 import {
-  Wifi,
-  WifiOff,
+  RefreshCcw,
   CheckCircle,
   ExternalLink,
   Loader2,
@@ -197,16 +196,8 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'available':
-        return <Wifi className="h-4 w-4 text-emerald-400" />;
-      case 'coming_soon':
-        return <WifiOff className="h-4 w-4 text-gray-400 dark:text-slate-500" />;
-      case 'beta':
-        return <AlertCircle className="h-4 w-4 text-amber-400" />;
-      default:
-        return <WifiOff className="h-4 w-4 text-gray-400 dark:text-slate-500" />;
-    }
+    // Removed status icons from cards
+    return null;
   };
 
   const getStatusBadge = (status: string) => {
@@ -229,11 +220,8 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
           className="max-w-4xl max-h-[80vh] overflow-hidden border-white/10 bg-black"
         >
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <Wifi className="w-6 h-6 text-emerald-400" />
-              </div>
-              Connect Your Broker
+            <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+              Sync Trades
             </DialogTitle>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               Choose a broker to automatically sync your trades in real-time
@@ -266,22 +254,13 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
               <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-black to-transparent z-10 pointer-events-none"></div>
               <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-black to-transparent z-10 pointer-events-none"></div>
 
-              {/* Scroll hint */}
-              {filteredBrokers.length > 6 && (
-                <div className="absolute top-2 right-2 z-20">
-                  <div className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full">
-                    Scroll to see more
-                  </div>
-                </div>
-              )}
-
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4 pt-2">
                 {filteredBrokers.map((broker) => (
                   <Card
                     key={broker.id}
                     className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 bg-neutral-900 border-white/10 backdrop-blur-sm ${broker.status === 'available'
-                        ? 'hover:border-emerald-500/50 hover:shadow-emerald-500/20'
-                        : 'opacity-60 cursor-not-allowed'
+                      ? 'hover:border-emerald-500/50 hover:shadow-emerald-500/20'
+                      : 'opacity-60 cursor-not-allowed'
                       }`}
                     onClick={() => handleBrokerClick(broker)}
                   >
@@ -320,7 +299,7 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
                           <div className="flex items-center justify-between pt-2">
                             <Button
                               size="sm"
-                              className="flex-1 mr-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white hover:scale-105 transition-all duration-300 shadow-lg shadow-emerald-500/20"
+                              className="flex-1 mr-2 bg-neutral-400 hover:bg-neutral-500 text-black hover:scale-105 transition-all duration-300 shadow-lg shadow-neutral-500/20"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleBrokerClick(broker);
@@ -328,9 +307,7 @@ export function BrokerSyncModal({ isOpen, onClose, onBrokerSelected }: BrokerSyn
                             >
                               {isConnecting && selectedBroker?.id === broker.id ? (
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              ) : (
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                              )}
+                              ) : null}
                               Connect
                             </Button>
                             <Button

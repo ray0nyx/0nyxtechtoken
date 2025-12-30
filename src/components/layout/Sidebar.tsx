@@ -124,7 +124,7 @@ const cryptoMenuItems = [
     path: '/crypto/surge',
   },
   {
-    title: 'DEX Screener',
+    title: 'Sol Navigator',
     icon: Search,
     path: '/crypto/sol-navigator',
   },
@@ -132,11 +132,6 @@ const cryptoMenuItems = [
     title: 'Tokens',
     icon: TrendingDown,
     path: '/crypto/tokens',
-  },
-  {
-    title: 'Explore',
-    icon: Zap,
-    path: '/crypto/explore',
   },
 ];
 

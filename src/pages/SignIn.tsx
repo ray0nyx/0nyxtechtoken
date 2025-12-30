@@ -385,7 +385,20 @@ export default function SignIn() {
                 />
               </a>
               <a
-                href="https://www.instagram.com/0nyxtech/"
+                href="https://discord.gg/xq5XFHBZ8j"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-slate-300 transition-colors duration-300"
+                aria-label="Discord"
+              >
+                <img
+                  src="/icons/discord.svg"
+                  alt="Discord"
+                  className="h-5 w-5 opacity-60 hover:opacity-100 transition-opacity invert"
+                />
+              </a>
+              <a
+                href="https://www.instagram.com/0nyxtech.xyz/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-slate-300 transition-colors duration-300"

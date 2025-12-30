@@ -872,8 +872,11 @@ export default function Index() {
               </div>
 
               <div className="flex flex-wrap items-center justify-center gap-8">
-                <a href="https://x.com/WagyuTech" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
+                <a href="https://x.com/0nyxTech" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
                   <img src="/images/x-logo.png" alt="X" className="h-5 w-5 opacity-60 hover:opacity-100 invert" />
+                </a>
+                <a href="https://discord.gg/xq5XFHBZ8j" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
+                  <img src="/icons/discord.svg" alt="Discord" className="h-5 w-5 opacity-60 hover:opacity-100 invert" />
                 </a>
                 <a href="https://www.instagram.com/0nyxtech.xyz/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
                   <img src="/images/instagram-logo.png" alt="Instagram" className="h-5 w-5 opacity-60 hover:opacity-100 invert" />

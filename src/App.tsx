@@ -75,7 +75,6 @@ const CopyTradingPage = lazy(() => import('@/pages/crypto/CopyTradingPage'));
 const OnChainAnalysisPage = lazy(() => import('@/pages/crypto/OnChainAnalysis'));
 const TokensPage = lazy(() => import('@/pages/crypto/Tokens'));
 const Surge = lazy(() => import('@/pages/crypto/AxiomSurgePage'));
-const Explore = lazy(() => import('@/pages/crypto/Explore'));
 const SolNavigator = lazy(() => import('@/pages/crypto/SolNavigator'));
 const EnhancedChartDemo = lazy(() => import('@/pages/test/EnhancedChartDemo'));
 const InstitutionalDashboard = lazy(() => import('@/pages/institutional/InstitutionalDashboard'));
@@ -247,7 +246,6 @@ function App() {
                   <Route path="on-chain" element={<Suspense fallback={<PageLoader />}><OnChainAnalysisPage /></Suspense>} />
                   <Route path="surge" element={<Suspense fallback={<PageLoader />}><Surge /></Suspense>} />
                   <Route path="tokens" element={<Suspense fallback={<PageLoader />}><TokensPage /></Suspense>} />
-                  <Route path="explore" element={<Suspense fallback={<PageLoader />}><Explore /></Suspense>} />
                   <Route path="sol-navigator" element={<Suspense fallback={<PageLoader />}><SolNavigator /></Suspense>} />
                   <Route path="settings" element={<Suspense fallback={<PageLoader />}><Settings /></Suspense>} />
                 </Route>

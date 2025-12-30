@@ -137,6 +137,21 @@
 }
 
 /* Tiptap editor custom styles */
+.pnl-font {
+  font-family: 'Electrolize', sans-serif !important;
+}
+
+/* Hide spin buttons for inputs */
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.no-spinner {
+  -moz-appearance: textfield;
+}
+
 .tiptap-editor-container {
   position: relative;
   width: 100%;

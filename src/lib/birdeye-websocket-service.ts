@@ -48,6 +48,28 @@ export interface BirdeyeTokenOverview {
   logoURI?: string;
 }
 
+// Token security data from Birdeye
+export interface TokenSecurityData {
+  ownerAddress?: string;      // Deployer/creator address
+  creatorAddress?: string;    // Alternative creator field
+  top10HolderPercent: number; // % held by top 10
+  lpBurned?: number;          // % of LP burned (0-100)
+  isToken2022?: boolean;
+  freezeable?: boolean;
+  mintable?: boolean;
+  transferFeeEnable?: boolean;
+  transferFeeData?: { transferFeeBasisPoints?: number };
+}
+
+// Token holder data
+export interface TokenHolderData {
+  address: string;
+  amount: number;
+  decimals: number;
+  owner: string;
+  uiAmount: number;
+}
+
 const BIRDEYE_WS_URL = 'wss://public-api.birdeye.so/socket/solana';
 const BIRDEYE_API_BASE = 'https://public-api.birdeye.so';
 const API_URL = import.meta.env.VITE_WAGYU_API_URL || 'http://localhost:8001';
@@ -179,6 +201,85 @@ export async function fetchOHLCV(
     return [];
   } catch (error) {
     console.error('Failed to fetch OHLCV:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch token security data from Birdeye
+ */
+export async function fetchTokenSecurity(tokenAddress: string): Promise<TokenSecurityData | null> {
+  try {
+    const url = `${API_URL}/api/birdeye/token_security?address=${tokenAddress}`;
+    const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+
+    if (!response.ok) throw new Error(`Birdeye API error: ${response.status}`);
+
+    const data = await response.json();
+    if (data.success && data.data) {
+      return {
+        ownerAddress: data.data.ownerAddress || data.data.creatorAddress || '',
+        creatorAddress: data.data.creatorAddress || data.data.ownerAddress || '',
+        top10HolderPercent: data.data.top10HolderPercent || 0,
+        lpBurned: data.data.lpBurnedPercent || 0,
+        isToken2022: data.data.isToken2022 || false,
+        freezeable: data.data.freezeable || false,
+        mintable: data.data.mintable || false,
+        transferFeeEnable: data.data.transferFeeEnable || false,
+        transferFeeData: data.data.transferFeeData || undefined,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Failed to fetch token security:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch top holders from Birdeye
+ */
+export async function fetchTopHolders(tokenAddress: string, limit: number = 10): Promise<TokenHolderData[]> {
+  try {
+    const url = `${API_URL}/api/birdeye/token_holder?address=${tokenAddress}&limit=${limit}`;
+    const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+
+    if (!response.ok) throw new Error(`Birdeye API error: ${response.status}`);
+
+    const data = await response.json();
+    if (data.success && data.data && data.data.items) {
+      return data.data.items.map((item: any) => ({
+        address: item.address || '',
+        amount: item.amount || 0,
+        decimals: item.decimals || 9,
+        owner: item.owner || '',
+        uiAmount: item.uiAmount || 0,
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error('Failed to fetch top holders:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch top traders from Birdeye
+ */
+export async function fetchTopTraders(tokenAddress: string, limit: number = 20): Promise<any[]> {
+  try {
+    const url = `${API_URL}/api/birdeye/token_trader?address=${tokenAddress}&limit=${limit}`;
+    const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+
+    if (!response.ok) throw new Error(`Birdeye API error: ${response.status}`);
+
+    const data = await response.json();
+    if (data.success && data.data && data.data.items) {
+      return data.data.items;
+    }
+    return [];
+  } catch (error) {
+    console.error('Failed to fetch top traders:', error);
     return [];
   }
 }

@@ -748,9 +748,9 @@ export default function Trades() {
                     </CardTitle>
                   </div>
                   <span
-                    className={`text-sm font-bold px-4 py-2 rounded-full ${trade.pnl >= 0
-                      ? "bg-gray-500/20 text-gray-400 border border-gray-500/30"
-                      : "bg-gray-300/20 text-gray-300 border border-gray-300/30"
+                    className={`text-sm font-bold px-4 py-2 rounded-full pnl-font ${trade.pnl >= 0
+                      ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                      : "bg-red-500/20 text-red-300 border border-red-500/30"
                       }`}
                   >
                     {formatCurrency(trade.pnl)}

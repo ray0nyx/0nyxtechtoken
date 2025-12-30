@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Search, Zap, BarChart2 } from 'lucide-react';
+import { AlertTriangle, Search, Zap, BarChart2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import TradingViewLightweightChart, { type OrderLine } from '@/components/crypto/TradingViewLightweightChart';
@@ -58,9 +58,21 @@ import TradingAgreementModal from '@/components/crypto/TradingAgreementModal';
 import { useTurnkeyWallet } from '@/lib/wallet-abstraction/TurnkeyWalletContext';
 import { quoteAndSwap } from '@/lib/jupiter-sdk-service';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import TokenAlertModal from '@/components/crypto/ui/TokenAlertModal';
+import DiscordWebhookModal from '@/components/crypto/ui/DiscordWebhookModal';
+import { getSolPrice, fetchWalletTrades } from '@/lib/helius-service';
+import type { TradingStats } from '@/components/crypto/TradingPanel';
+import { useAlertMonitor } from '@/hooks/useAlertMonitor';
 
 // SOL mint address constant
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
+
+interface UserTokenStats {
+  boughtSol: number;
+  soldSol: number;
+  boughtTokens: number;
+  soldTokens: number;
+}
 
 interface TokenInfo {
   name: string;
@@ -75,6 +87,8 @@ interface TokenInfo {
   supply?: string;
   age?: string;
   holders?: number;
+  globalFeesPaid?: string;
+  bondingCurveProgress?: number; // 0-100 percentage
 }
 
 // Helper function to format market cap
@@ -140,6 +154,10 @@ export default function CoinsPage() {
   const [hasAgreedToTrading, setHasAgreedToTrading] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<TradingOrder | null>(null);
 
+  // Alert modals state
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [showDiscordModal, setShowDiscordModal] = useState(false);
+
   // Real-time price state
   const [realTimePrice, setRealTimePrice] = useState<number | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | null>(null);
@@ -188,6 +206,8 @@ export default function CoinsPage() {
     supply: '0',
     age: '',
     holders: 0,
+    globalFeesPaid: '$0',
+    bondingCurveProgress: 0,
   });
 
   // Order book
@@ -199,6 +219,24 @@ export default function CoinsPage() {
 
   // Active orders for chart visualization (limit, stop loss, take profit)
   const [activeOrders, setActiveOrders] = useState<OrderLine[]>([]);
+  const [previewOrderLine, setPreviewOrderLine] = useState<OrderLine | null>(null);
+
+  // Real-time user stats for the selected token
+  const [userTokenStats, setUserTokenStats] = useState<UserTokenStats>({
+    boughtSol: 0,
+    soldSol: 0,
+    boughtTokens: 0,
+    soldTokens: 0
+  });
+  const [solPrice, setSolPrice] = useState<number>(200); // Default fallback sol price
+
+  // Alert monitoring with Discord notifications
+  useAlertMonitor({
+    tokenMint: selectedTokenAddress || '',
+    tokenSymbol: tokenInfo.symbol,
+    currentMarketCap: tokenInfo.marketCapRaw,
+    isMigrating: false, // TODO: Detect migration from token data
+  });
 
   // Calculate current OHLC from chart data - scaled to market cap if in that mode
   const currentOHLC = useMemo(() => {
@@ -316,7 +354,7 @@ export default function CoinsPage() {
       if (chartCandles.length === 0) {
         try {
           console.log('📉 Birdeye returned no data, trying dex-screener backend...');
-          const ohlcv = await fetchOHLCVData(selectedPair, selectedTimeframe, 200);
+          const ohlcv = await fetchOHLCVData(selectedPair, selectedTimeframe as any, 200);
           console.log('📉 DexScreener backend returned:', ohlcv?.length || 0, 'candles');
 
           if (ohlcv && ohlcv.length > 0) {
@@ -539,12 +577,9 @@ export default function CoinsPage() {
         type: trade.side,
         usd: trade.volumeUsd,
         baseAmount: trade.volume,
-        quoteAmount: trade.volumeUsd,
         price: trade.priceUsd || trade.price,
         maker: trade.owner?.slice(0, 8) + '...' || 'Unknown',
-        txHash: trade.txHash || '',
         baseSymbol,
-        quoteSymbol: 'USD',
       };
       setTransactions(prev => [newTransaction, ...prev].slice(0, 100));
     });
@@ -560,6 +595,54 @@ export default function CoinsPage() {
 
     // Also try the fallback WebSocket
     const ws = createPriceWebSocket(selectedTokenAddress);
+
+    // Fetch SOL price and historical trades for stats
+    const hydrateStats = async () => {
+      try {
+        const price = await getSolPrice();
+        setSolPrice(price);
+
+        if (publicKey) {
+          const trades = await fetchWalletTrades(publicKey.toString(), 100);
+          const relevantTrades = trades.filter(t => t.tokenAddress.toLowerCase() === selectedTokenAddress.toLowerCase());
+
+          let boughtSol = 0;
+          let soldSol = 0;
+          let boughtTokens = 0;
+          let soldTokens = 0;
+
+          relevantTrades.forEach(t => {
+            if (t.type === 'buy') {
+              boughtSol += t.solAmount;
+              boughtTokens += t.tokenAmount;
+            } else {
+              soldSol += t.solAmount;
+              soldTokens += t.tokenAmount;
+            }
+          });
+
+          // Also check localStorage for any session-only trades not yet on-chain
+          try {
+            const saved = localStorage.getItem(`onyx_user_stats_${selectedTokenAddress}`);
+            if (saved) {
+              const localStats = JSON.parse(saved);
+              // Simple merging strategy: max of Helius or Local for bought/sold
+              // This is a bit naive but handles both on-chain and locally tracked
+              boughtSol = Math.max(boughtSol, localStats.boughtSol);
+              soldSol = Math.max(soldSol, localStats.soldSol);
+              boughtTokens = Math.max(boughtTokens, localStats.boughtTokens);
+              soldTokens = Math.max(soldTokens, localStats.soldTokens);
+            }
+          } catch (e) { }
+
+          setUserTokenStats({ boughtSol, soldSol, boughtTokens, soldTokens });
+        }
+      } catch (e) {
+        console.error('Failed to hydrate trading stats:', e);
+      }
+    };
+
+    hydrateStats();
 
     ws.onPrice((update: WsPriceUpdate) => {
       const price = update.priceUsd || update.price;
@@ -585,7 +668,26 @@ export default function CoinsPage() {
       aggregatorRef.current = null;
       birdeyeWsRef.current = null;
     };
-  }, [selectedTokenAddress, selectedTimeframe]);
+  }, [selectedTokenAddress, selectedTimeframe, publicKey, solPrice]);
+
+  // Derived real-time trading stats
+  const tradingStats = useMemo<TradingStats>(() => {
+    const holdingTokens = Math.max(0, userTokenStats.boughtTokens - userTokenStats.soldTokens);
+    const holdingSolValue = solPrice > 0 ? (holdingTokens * (realTimePrice || tokenInfo.price)) / solPrice : 0;
+
+    // Total SOL value if we sold everything now + SOL we already received from selling
+    const totalValueNow = userTokenStats.soldSol + holdingSolValue;
+    const pnlSol = totalValueNow - userTokenStats.boughtSol;
+    const pnlPercent = userTokenStats.boughtSol > 0 ? (pnlSol / userTokenStats.boughtSol) * 100 : 0;
+
+    return {
+      bought: userTokenStats.boughtSol,
+      sold: userTokenStats.soldSol,
+      holding: holdingSolValue,
+      pnl: pnlSol,
+      pnlPercent: pnlPercent
+    };
+  }, [userTokenStats, realTimePrice, tokenInfo.price, solPrice]);
 
   // Dedicated price polling interval for continuous chart updates
   useEffect(() => {
@@ -642,17 +744,34 @@ export default function CoinsPage() {
       }
     };
 
-    // Initial poll
-    pollPrice();
-
-    // Poll every 3 seconds for near real-time updates
+    // Poll every 3 seconds for near real-time price updates
     const intervalId = setInterval(pollPrice, 3000);
-    console.log('⏰ Price polling started, interval ID:', intervalId);
+
+    // Also poll for token overview (holders, etc.) every 10 seconds
+    const pollTokenOverview = async () => {
+      if (!isActive || !selectedTokenAddress) return;
+      try {
+        const data = await fetchTokenOverview(selectedTokenAddress);
+        if (data && isActive) {
+          setTokenInfo(prev => ({
+            ...prev,
+            holders: (data as any).holder || (data as any).holders || (data as any).uniqueWallet24h || prev.holders,
+            supply: data.supply ? data.supply.toLocaleString() : prev.supply,
+          }));
+        }
+      } catch (e) {
+        console.warn('Overview poll failed:', e);
+      }
+    };
+
+    pollTokenOverview();
+    const overviewIntervalId = setInterval(pollTokenOverview, 10000);
 
     return () => {
-      console.log('⏰ Stopping price polling');
+      console.log('⏰ Stopping polling');
       isActive = false;
       clearInterval(intervalId);
+      clearInterval(overviewIntervalId);
     };
   }, [selectedTokenAddress]);
 
@@ -983,11 +1102,136 @@ export default function CoinsPage() {
         );
 
         if (result.success && result.txSignature) {
+          // Update user token stats
+          const solAmount = typeof order.amount === 'string' ? parseFloat(order.amount) : order.amount;
+
+          if (order.side === 'buy') {
+            // Approximate tokens bought from quote
+            let estimatedTokens = 0;
+            const quoteResponse = (result.swapResponse as any)?.quoteResponse;
+            if (quoteResponse) {
+              estimatedTokens = parseFloat(quoteResponse.outAmount) / 1e9; // Simplified
+            } else if (realTimePrice > 0) {
+              estimatedTokens = (solAmount * solPrice) / realTimePrice;
+            }
+
+            setUserTokenStats(prev => {
+              const updated = {
+                ...prev,
+                boughtSol: prev.boughtSol + solAmount,
+                boughtTokens: prev.boughtTokens + estimatedTokens
+              };
+              // Persist locally
+              localStorage.setItem(`onyx_user_stats_${selectedTokenAddress}`, JSON.stringify(updated));
+              return updated;
+            });
+          } else {
+            // Simplified sell tracking
+            const currentHoldingSol = tradingStats.holding || 0;
+            const sellRatio = solAmount / (currentHoldingSol || 1);
+            const tokensSold = userTokenStats.boughtTokens * Math.min(1, sellRatio);
+
+            setUserTokenStats(prev => {
+              const updated = {
+                ...prev,
+                soldSol: prev.soldSol + solAmount,
+                soldTokens: prev.soldTokens + tokensSold
+              };
+              // Persist locally
+              localStorage.setItem(`onyx_user_stats_${selectedTokenAddress}`, JSON.stringify(updated));
+              return updated;
+            });
+          }
+
           toast({
             title: 'Market Order Executed!',
             description: `${order.side.toUpperCase()} ${order.amount} SOL. TX: ${result.txSignature.slice(0, 8)}...`,
           });
           console.log('Trade executed:', result.txSignature);
+        } else if (order.advancedStrategy) {
+          // Handle Advanced Strategy (Multiple TP/SL)
+
+          // 1. Calculate Entry Price
+          let entryPrice = realTimePrice || 0;
+          if (order.orderType === 'limit' && order.price) {
+            // If it's a Limit order, order.price is now the "Market Cap" input
+            // Convert Market Cap to Price: Price = TargetMC / Supply
+            // Supply = CurrentMC / CurrentPrice
+            const currentMc = tokenInfo.marketCapRaw || 0;
+            const currentPrice = realTimePrice || 1;
+            const supply = currentMc > 0 ? currentMc / currentPrice : 0;
+
+            if (supply > 0) {
+              entryPrice = order.price / supply;
+
+              // Add Limit Order Line (Entry)
+              const newOrderLine: OrderLine = {
+                id: orderId,
+                type: 'limit',
+                price: entryPrice,
+                side: order.side,
+                amount: order.amount,
+                draggable: true,
+              };
+              setActiveOrders(prev => [...prev, newOrderLine]);
+
+              toast({
+                title: 'Limit Order Created',
+                description: `${order.side.toUpperCase()} at $${entryPrice.toFixed(8)} (MC: $${formatMarketCap(order.price)})`,
+              });
+            } else {
+              // Fallback if supply calc fails (unlikely if data loaded)
+              entryPrice = order.price; // Assume raw price if calc fails
+            }
+          }
+
+          // 2. Add Take Profit Lines
+          if (order.tpOrders) {
+            const newTpLines: OrderLine[] = order.tpOrders.map((tp, index) => {
+              // Long: Entry + % | Short: Entry - %
+              const priceChange = entryPrice * (tp.percent / 100);
+              const targetPrice = order.side === 'buy'
+                ? entryPrice + priceChange
+                : entryPrice - priceChange;
+
+              return {
+                id: `${orderId}_tp_${index}`,
+                type: 'takeProfit',
+                price: targetPrice,
+                side: order.side === 'buy' ? 'sell' : 'buy',
+                amount: tp.amount, // This is % of position usually, but OrderLine expects amount. converting logic might be needed or display as is.
+                draggable: true,
+              };
+            });
+            setActiveOrders(prev => [...prev, ...newTpLines]);
+          }
+
+          // 3. Add Stop Loss Lines
+          if (order.slOrders) {
+            const newSlLines: OrderLine[] = order.slOrders.map((sl, index) => {
+              // Long: Entry - % | Short: Entry + %
+              const priceChange = entryPrice * (sl.percent / 100);
+              const targetPrice = order.side === 'buy'
+                ? entryPrice - priceChange
+                : entryPrice + priceChange;
+
+              return {
+                id: `${orderId}_sl_${index}`,
+                type: 'stopLoss',
+                price: targetPrice,
+                side: order.side === 'buy' ? 'sell' : 'buy',
+                amount: sl.amount,
+                draggable: true,
+              };
+            });
+            setActiveOrders(prev => [...prev, ...newSlLines]);
+          }
+
+          toast({
+            title: 'Advanced Strategy Active',
+            description: `Monitoring ${order.tpOrders?.length || 0} TPs and ${order.slOrders?.length || 0} SLs`,
+          });
+
         } else {
           throw new Error(result.error || 'Failed to execute swap');
         }
@@ -1000,6 +1244,34 @@ export default function CoinsPage() {
       });
     }
   };
+
+  // Handle limit order preview (Market Cap input)
+  const handleLimitOrderPreview = useCallback((mc: string | undefined) => {
+    if (!mc || isNaN(parseFloat(mc)) || parseFloat(mc) <= 0) {
+      setPreviewOrderLine(null);
+      return;
+    }
+
+    const targetMc = parseFloat(mc);
+    const currentMc = tokenInfo.marketCapRaw || 0;
+    const currentPrice = realTimePrice || 0;
+    const supply = currentMc > 0 ? currentMc / currentPrice : 0;
+
+    if (supply > 0) {
+      const targetPrice = targetMc / supply;
+      setPreviewOrderLine({
+        id: 'preview_limit',
+        type: 'limit',
+        price: targetPrice,
+        side: 'buy', // Default to buy for preview, or sync with side if needed
+        amount: 0,
+        draggable: false,
+        isPreview: true,
+      });
+    } else {
+      setPreviewOrderLine(null);
+    }
+  }, [tokenInfo.marketCapRaw, realTimePrice]);
 
   // Handle order drag (update price)
   const handleOrderDrag = useCallback((orderId: string, newPrice: number) => {
@@ -1054,12 +1326,9 @@ export default function CoinsPage() {
       type: order.side,
       usd: order.amount * triggeredPrice,
       baseAmount: order.amount,
-      quoteAmount: order.amount * triggeredPrice,
       price: triggeredPrice,
       maker: connected && publicKey ? publicKey.toString().slice(0, 8) : 'You',
-      txHash: '',
       baseSymbol,
-      quoteSymbol: 'USD',
     };
     setTransactions(prev => [newTransaction, ...prev].slice(0, 100));
 
@@ -1157,87 +1426,97 @@ export default function CoinsPage() {
         {/* Left Column: Chart & Asset Info */}
         <div className="lg:col-span-9 xl:col-span-10 flex flex-col gap-0">
 
-          {/* Asset Control Bar */}
-          <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4">
-            <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto no-scrollbar">
-              <button onClick={handleRefresh} className="p-2 hover:bg-neutral-800 rounded-full text-neutral-500 hover:text-gray-300 transition-colors">
-                <Zap className="w-4 h-4" />
-              </button>
-              <button onClick={() => toast({ title: 'Alert settings' })} className="p-2 hover:bg-neutral-800 rounded-full text-neutral-500 hover:text-gray-300 transition-colors">
-                <BarChart2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+
 
           {/* Asset Header Info */}
-          <div className="flex flex-wrap justify-between items-start gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center text-gray-300 text-lg font-normal shadow-sm border border-neutral-700 overflow-hidden">
-                {tokenInfo.logo ? (
-                  <img src={tokenInfo.logo} alt={tokenInfo.symbol} className="w-full h-full object-cover" />
-                ) : (
-                  tokenInfo.symbol?.charAt(0) || 'T'
-                )}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-semibold text-gray-100 tracking-tight">{tokenInfo.name || tokenInfo.symbol}</h1>
-                  <span className="text-sm text-neutral-500 font-normal">{tokenInfo.symbol}</span>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pl-6">
+            <div className="flex items-center gap-6">
+              {/* Logo & Name */}
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center text-gray-300 text-sm font-normal shadow-sm border border-neutral-700 overflow-hidden">
+                  {tokenInfo.logo ? (
+                    <img src={tokenInfo.logo} alt={tokenInfo.symbol} className="w-full h-full object-cover" />
+                  ) : (
+                    tokenInfo.symbol?.charAt(0) || 'T'
+                  )}
                 </div>
-                <div className="text-xs text-neutral-500 mt-0.5">{tokenInfo.age || 'New'}</div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h1 className="text-sm font-semibold text-gray-100 tracking-tight">{tokenInfo.name || tokenInfo.symbol}</h1>
+                    <span className="text-xs text-neutral-500 font-normal">{tokenInfo.symbol}</span>
+                    {/* Copy Token Address Button */}
+                    <button
+                      onClick={() => {
+                        if (selectedPair) {
+                          navigator.clipboard.writeText(selectedPair);
+                          toast({
+                            title: "Copied!",
+                            description: "Token address copied to clipboard",
+                          });
+                        }
+                      }}
+                      className="p-0.5 hover:bg-neutral-700 rounded transition-colors group"
+                      title="Copy token address"
+                    >
+                      <svg className="w-3.5 h-3.5 text-neutral-500 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Market Cap Display - Smaller */}
+              <div className="hidden sm:block">
+                <div className="text-sm font-bold text-gray-100 tracking-tight">{tokenInfo.marketCap}</div>
               </div>
             </div>
-            <div className="flex items-center gap-1">
+
+            {/* Stats Row */}
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-8">
+                <div>
+                  <div className="text-[10px] uppercase font-semibold text-neutral-600 mb-0.5 tracking-wide">Price</div>
+                  <div className="text-xs font-semibold text-gray-100 tracking-tight">
+                    ${tokenInfo.price >= 1 ? tokenInfo.price.toFixed(2) : tokenInfo.price.toFixed(6)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase font-semibold text-neutral-600 mb-0.5 tracking-wide">Liquidity</div>
+                  <div className="text-xs font-medium text-gray-100 font-mono tracking-tight">{tokenInfo.liquidity}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase font-semibold text-neutral-600 mb-0.5 tracking-wide">Supply</div>
+                  <div className="text-xs font-medium text-gray-100 font-mono tracking-tight">
+                    {tokenInfo.supply || '0'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase font-semibold text-neutral-600 mb-0.5 tracking-wide">Fees Paid</div>
+                  <div className="text-xs font-medium text-gray-100 font-mono tracking-tight">
+                    {tokenInfo.globalFeesPaid || '$0'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase font-semibold text-neutral-600 mb-0.5 tracking-wide">B.Curve</div>
+                  <div className="text-xs font-medium text-emerald-400 font-mono tracking-tight">
+                    {tokenInfo.bondingCurveProgress || 0}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Alarm Icon */}
               <button
-                onClick={() => setIsFavorite(!isFavorite)}
-                className={cn(
-                  "p-2 hover:bg-neutral-800 rounded-full transition-colors",
-                  isFavorite ? "text-yellow-400" : "text-neutral-500 hover:text-gray-300"
-                )}
+                onClick={() => setShowAlertModal(true)}
+                className="p-1.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg transition-colors relative group"
+                title="Set Alerts"
               >
-                <svg className="w-5 h-5 stroke-[1.5]" fill={isFavorite ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                <svg className="w-4 h-4 text-neutral-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
+                <Plus className="absolute -top-1 -right-1 w-2.5 h-2.5 text-emerald-400 bg-neutral-900 rounded-full" />
               </button>
             </div>
-          </div>
-
-          {/* Stats & Quick Buy */}
-          <div className="space-y-6">
-            {/* Stats Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
-              <div>
-                <div className="text-[10px] uppercase font-semibold text-neutral-600 mb-1 tracking-wide">Price</div>
-                <div className="text-2xl font-semibold text-gray-100 tracking-tight">
-                  ${tokenInfo.price >= 1 ? tokenInfo.price.toFixed(2) : tokenInfo.price.toFixed(6)}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase font-semibold text-neutral-600 mb-1 tracking-wide">24H</div>
-                <div className={cn(
-                  "text-sm font-medium font-mono tracking-tight",
-                  tokenInfo.change24h >= 0 ? "text-neutral-400" : "text-neutral-500"
-                )}>
-                  {tokenInfo.change24h >= 0 ? '+' : ''}{tokenInfo.change24h?.toFixed(4) || '0.0000'}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase font-semibold text-neutral-600 mb-1 tracking-wide">Liq</div>
-                <div className="text-sm font-medium text-gray-100 font-mono tracking-tight">{tokenInfo.liquidity}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase font-semibold text-neutral-600 mb-1 tracking-wide">MCap</div>
-                <div className="text-sm font-medium text-gray-100 font-mono tracking-tight">{tokenInfo.marketCap}</div>
-              </div>
-            </div>
-
-            {/* Quick Buttons */}
-            <QuickBuyButtons
-              onBuy={handleQuickBuy}
-              onSell={(amount) => toast({ title: `Sell ${amount} SOL` })}
-              disabled={!connected}
-              theme={isDark ? 'dark' : 'light'}
-            />
           </div>
 
           {/* Chart Container */}
@@ -1245,42 +1524,7 @@ export default function CoinsPage() {
             ref={chartContainerRef}
             className="p-5 bg-[#0a0a0a] flex flex-col min-h-[500px] relative"
           >
-            {/* Chart Header */}
-            <div className="flex flex-wrap justify-between items-center mb-4 gap-4 z-10 relative">
-              <ChartToolbar
-                pair={selectedPair}
-                exchange="Pump AMM"
-                selectedTimeframe={selectedTimeframe}
-                onTimeframeChange={setSelectedTimeframe}
-                chartType={chartType}
-                onChartTypeChange={setChartType}
-                currencyMode={currencyMode}
-                onCurrencyModeChange={setCurrencyMode}
-                displayMode={chartDisplayMode}
-                onDisplayModeChange={setChartDisplayMode}
-                showBubbles={showBubbles}
-                onToggleBubbles={() => setShowBubbles(!showBubbles)}
-                quoteSymbol={quoteSymbol}
-                isFullscreen={isFullscreen}
-                onFullscreenClick={handleFullscreenClick}
-                theme={isDark ? 'dark' : 'light'}
-              />
-              <OHLCDisplay
-                pair={selectedPair}
-                exchange="Pump AMM"
-                timeframe={selectedTimeframe.label}
-                source="wagyu.trade"
-                open={currentOHLC.open}
-                high={currentOHLC.high}
-                low={currentOHLC.low}
-                close={currentOHLC.close}
-                volume={currentOHLC.volume}
-                changePercent={currentOHLC.changePercent}
-                displayMode={chartDisplayMode}
-                isLive={!loading}
-                theme={isDark ? 'dark' : 'light'}
-              />
-            </div>
+            {/* Chart Header - Removed ChartToolbar and OHLCDisplay per user request */}
 
             {/* Chart Visualization */}
             <div className="relative flex-1 w-full h-full">
@@ -1315,7 +1559,7 @@ export default function CoinsPage() {
                   displayMode={chartDisplayMode}
                   marketCap={tokenInfo.marketCap}
                   tokenPrice={tokenInfo.price}
-                  orders={activeOrders}
+                  orders={previewOrderLine ? [...activeOrders, previewOrderLine] : activeOrders}
                   onOrderDrag={handleOrderDrag}
                   onOrderCancel={handleOrderCancel}
                   onPriceUpdate={(price) => {
@@ -1336,11 +1580,15 @@ export default function CoinsPage() {
           <BottomTabs
             transactions={transactions}
             holdersCount={tokenInfo.holders || 0}
-            devTokensCount={0}
             theme={isDark ? 'dark' : 'light'}
             pairSymbol={selectedPair}
             tokenMint={tokenInfo.pairAddress || selectedTokenAddress}
             onRefresh={handleRefresh}
+            orders={activeOrders.filter(o => !o.isPreview)}
+            onCancelOrder={handleOrderCancel}
+            tokenSymbol={tokenInfo.symbol}
+            tokenLogo={tokenInfo.logo}
+            currentMC={tokenInfo.marketCapRaw}
           />
         </div>
 
@@ -1350,13 +1598,34 @@ export default function CoinsPage() {
             <TradingPanel
               pair={selectedPair}
               tokenSymbol={tokenInfo.symbol}
+              tokenAddress={selectedTokenAddress}
               currentPrice={tokenInfo.price}
+              tradingStats={tradingStats}
               onOrderSubmit={handleOrderSubmit}
+              onLimitOrderChange={handleLimitOrderPreview}
               theme={isDark ? 'dark' : 'light'}
             />
           </div>
         </div>
       </main>
+
+      {/* Token Alert Modal */}
+      <TokenAlertModal
+        isOpen={showAlertModal}
+        onClose={() => setShowAlertModal(false)}
+        tokenSymbol={tokenInfo.symbol}
+        tokenMint={selectedPair}
+        onOpenDiscord={() => {
+          setShowAlertModal(false);
+          setShowDiscordModal(true);
+        }}
+      />
+
+      {/* Discord Webhook Modal */}
+      <DiscordWebhookModal
+        isOpen={showDiscordModal}
+        onClose={() => setShowDiscordModal(false)}
+      />
     </div>
   );
 }

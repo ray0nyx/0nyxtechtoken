@@ -1,7 +1,7 @@
 /**
  * CryptoNavTabs - Navigation tabs bar for crypto pages
  * 
- * Displays tabs: Coins | Surge | DEX Screener | Pump Live
+ * Displays tabs: Tokens | Surge | Sol Navigator
  * Highlights the active tab based on current route
  */
 
@@ -20,7 +20,6 @@ const TABS: Tab[] = [
     { label: 'Tokens', path: '/crypto/tokens' },
     { label: 'Surge', path: '/crypto/surge' },
     { label: 'Sol Navigator', path: '/crypto/sol-navigator' },
-    { label: 'Explore', path: '/crypto/explore' },
 ];
 
 export default function CryptoNavTabs() {

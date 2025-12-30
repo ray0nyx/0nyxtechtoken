@@ -28,7 +28,7 @@ export default function MetricCard({
 }: MetricCardProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  
+
   const isPositive = change !== undefined ? change >= 0 : trend === 'up';
   const isNegative = change !== undefined ? change < 0 : trend === 'down';
 
@@ -59,8 +59,8 @@ export default function MetricCard({
     <div
       className={cn(
         'rounded-xl border',
-        isDark 
-          ? 'bg-[#1a1f2e] border-[#1f2937]' 
+        isDark
+          ? 'bg-[#1a1f2e] border-[#1f2937]'
           : 'bg-white border-gray-200',
         sizes.container,
         className
@@ -80,7 +80,7 @@ export default function MetricCard({
       <div className="flex items-end gap-2">
         <span
           className={cn(
-            'font-bold',
+            'font-bold pnl-font',
             sizes.value,
             isDark ? 'text-white' : 'text-gray-900',
             valueClassName
@@ -92,7 +92,7 @@ export default function MetricCard({
         {(change !== undefined || changeLabel) && (
           <div
             className={cn(
-              'flex items-center gap-1 px-1.5 py-0.5 rounded',
+              'flex items-center gap-1 px-1.5 py-0.5 rounded pnl-font',
               sizes.change,
               isPositive && 'text-[#10b981] bg-[#10b981]/10',
               isNegative && 'text-[#ef4444] bg-[#ef4444]/10',

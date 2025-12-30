@@ -201,12 +201,7 @@ export function DepositModal({ isOpen, onOpenChange, trigger }: DepositModalProp
                             <div className="flex gap-3">
                                 <div className="flex-1 bg-[#27272a] rounded-lg p-3 border border-white/5 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#9945FF] to-[#14F195] flex items-center justify-center">
-                                            {/* Simple Solana Icon */}
-                                            <svg width="12" height="12" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M4.77661 22.8447L21.229 27.2915L27.2215 22.8447H4.77661ZM4.77661 9.15534H27.2215L21.229 4.70857L4.77661 9.15534ZM27.2215 16L10.7691 11.5532L4.77661 16H27.2215Z" fill="white" />
-                                            </svg>
-                                        </div>
+                                        <img src="/images/solana.svg" alt="Solana" className="w-5 h-5 rounded-full" />
                                         <span className="font-medium text-sm">Solana</span>
                                     </div>
                                 </div>

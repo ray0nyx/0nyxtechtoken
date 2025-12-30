@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   TrendingUp,
   TrendingDown,
   Zap,
@@ -94,7 +94,7 @@ export default function CryptoAnalytics() {
   const [cryptoStats, setCryptoStats] = useState<AggregatedCryptoStats | null>(null);
   const [animateCards, setAnimateCards] = useState(false);
   const [showWalletManager, setShowWalletManager] = useState(false);
-  
+
   // New state for enhanced features
   const [timePeriod, setTimePeriod] = useState<'24h' | '7d' | '30d' | '90d' | '1y' | 'all'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -111,12 +111,12 @@ export default function CryptoAnalytics() {
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     const walletParam = searchParams.get('wallet');
-    
+
     // Set active tab from query parameter if valid
     if (tabParam && ['overview', 'wallet-tracking', 'bitcoin-analysis', 'solana-analytics', 'solana-onchain', 'copy-trading'].includes(tabParam)) {
       setActiveTab(tabParam as TabType);
     }
-    
+
     // Set selected wallet from query parameter
     if (walletParam) {
       setSelectedWallet(walletParam);
@@ -131,7 +131,7 @@ export default function CryptoAnalytics() {
     const fetchData = async () => {
       if (!isMounted) return;
       setIsLoading(true);
-      
+
       // Set a timeout to prevent infinite loading (30 seconds)
       timeoutId = setTimeout(() => {
         if (isMounted) {
@@ -161,14 +161,14 @@ export default function CryptoAnalytics() {
 
         // Fetch aggregated data from all crypto sources with timeout
         const fetchPromise = fetchAggregatedCryptoData(user.id);
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Fetch timeout')), 25000)
         );
 
         const aggregatedData = await Promise.race([fetchPromise, timeoutPromise]) as AggregatedCryptoStats;
-        
+
         if (timeoutId) clearTimeout(timeoutId);
-        
+
         if (isMounted) {
           setCryptoStats(aggregatedData);
         }
@@ -277,7 +277,7 @@ export default function CryptoAnalytics() {
   // Filter and sort trades
   const filteredAndSortedTrades = useMemo(() => {
     if (!cryptoStats) return [];
-    
+
     let filtered = [...cryptoStats.recentTrades];
 
     // Apply filters
@@ -348,7 +348,7 @@ export default function CryptoAnalytics() {
 
   const exportToCSV = () => {
     if (!filteredAndSortedTrades.length) return;
-    
+
     const headers = ['Date', 'Source', 'Symbol/Pair', 'Side', 'Amount In', 'Amount Out', 'P&L'];
     const rows = filteredAndSortedTrades.map(trade => [
       new Date(trade.timestamp).toLocaleString(),
@@ -389,7 +389,7 @@ export default function CryptoAnalytics() {
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
-    
+
     if (diffHours < 1) return 'Just now';
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
@@ -406,9 +406,9 @@ export default function CryptoAnalytics() {
   ];
 
   // Empty state component
-  const EmptyState = ({ title, description, actionLabel, onAction }: { 
-    title: string; 
-    description: string; 
+  const EmptyState = ({ title, description, actionLabel, onAction }: {
+    title: string;
+    description: string;
     actionLabel: string;
     onAction: () => void;
   }) => (
@@ -442,11 +442,10 @@ export default function CryptoAnalytics() {
                       <button
                         key={period}
                         onClick={() => setTimePeriod(period)}
-                        className={`px-2 py-1 text-xs rounded transition-colors ${
-                          timePeriod === period
+                        className={`px-2 py-1 text-xs rounded transition-colors ${timePeriod === period
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
-                        }`}
+                          }`}
                       >
                         {period.toUpperCase()}
                       </button>
@@ -458,11 +457,10 @@ export default function CryptoAnalytics() {
                       <button
                         key={period}
                         onClick={() => setTimePeriod(period)}
-                        className={`px-2 py-1 text-xs rounded transition-colors whitespace-nowrap ${
-                          timePeriod === period
+                        className={`px-2 py-1 text-xs rounded transition-colors whitespace-nowrap ${timePeriod === period
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
-                        }`}
+                          }`}
                       >
                         {period.toUpperCase()}
                       </button>
@@ -490,7 +488,7 @@ export default function CryptoAnalytics() {
                   </div>
                 </>
               )}
-              <Button 
+              <Button
                 onClick={() => setShowWalletManager(true)}
                 variant="outline"
                 size="sm"
@@ -507,7 +505,7 @@ export default function CryptoAnalytics() {
         </div>
 
         {/* Wallet Manager Modal */}
-        <WalletManager 
+        <WalletManager
           isOpen={showWalletManager}
           onClose={() => setShowWalletManager(false)}
           onWalletsUpdated={handleWalletsUpdated}
@@ -522,13 +520,12 @@ export default function CryptoAnalytics() {
                 key={tab.id}
                 onClick={() => !isLocked && setActiveTab(tab.id as TabType)}
                 disabled={isLocked}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                  activeTab === tab.id
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${activeTab === tab.id
                     ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                     : isLocked
-                    ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
-                }`}
+                      ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
+                  }`}
               >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
@@ -564,8 +561,8 @@ export default function CryptoAnalytics() {
                       <Plus className="w-4 h-4 mr-2" />
                       Add Wallet
                     </Button>
-                    <Button 
-                      onClick={() => setActiveTab('solana-analytics')} 
+                    <Button
+                      onClick={() => setActiveTab('solana-analytics')}
                       variant="outline"
                       className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
                     >
@@ -597,17 +594,17 @@ export default function CryptoAnalytics() {
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
                           <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 mb-0.5 truncate">Total P&L</p>
-                          <p className={`text-sm md:text-base font-semibold truncate ${cryptoStats.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          <p className={`text-sm md:text-base font-semibold truncate pnl-font ${cryptoStats.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                             {cryptoStats.totalPnL >= 0 ? '+' : ''}{formatCompactNumber(cryptoStats.totalPnL)}
                           </p>
                         </div>
                         {calculatedMetrics?.sparklineData && calculatedMetrics.sparklineData.length > 0 && (
                           <div className="ml-2 hidden sm:block">
-                            <MiniSparkline 
-                              data={calculatedMetrics.sparklineData} 
-                              color={cryptoStats.totalPnL >= 0 ? '#10b981' : '#ef4444'} 
-                              height={20} 
-                              width={40} 
+                            <MiniSparkline
+                              data={calculatedMetrics.sparklineData}
+                              color={cryptoStats.totalPnL >= 0 ? '#10b981' : '#ef4444'}
+                              height={20}
+                              width={40}
                             />
                           </div>
                         )}
@@ -771,7 +768,7 @@ export default function CryptoAnalytics() {
                       const date = new Date(trade.timestamp).toISOString().split('T')[0];
                       tradesByDate.set(date, (tradesByDate.get(date) || 0) + 1);
                     });
-                    
+
                     // Generate last 30 days data
                     const tradeFrequencyData = [];
                     for (let i = 29; i >= 0; i--) {
@@ -796,19 +793,19 @@ export default function CryptoAnalytics() {
                           <ResponsiveContainer width="100%" height={200}>
                             <BarChart data={tradeFrequencyData}>
                               <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
-                              <XAxis 
-                                dataKey="date" 
+                              <XAxis
+                                dataKey="date"
                                 tick={{ fill: theme === 'dark' ? '#9ca3af' : '#6b7280', fontSize: 10 }}
                                 tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                 stroke={theme === 'dark' ? '#6b7280' : '#9ca3af'}
                               />
-                              <YAxis 
+                              <YAxis
                                 tick={{ fill: theme === 'dark' ? '#9ca3af' : '#6b7280', fontSize: 10 }}
                                 stroke={theme === 'dark' ? '#6b7280' : '#9ca3af'}
                               />
-                              <Tooltip 
-                                contentStyle={{ 
-                                  backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)', 
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                                   border: theme === 'dark' ? '1px solid rgb(51, 65, 85)' : '1px solid rgb(229, 231, 235)',
                                   borderRadius: '8px',
                                   color: theme === 'dark' ? 'rgb(255, 255, 255)' : 'rgb(17, 24, 39)'
@@ -849,18 +846,18 @@ export default function CryptoAnalytics() {
                               { name: 'Neutral', value: neutral, color: '#6b7280' }
                             ]}>
                               <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
-                              <XAxis 
-                                dataKey="name" 
+                              <XAxis
+                                dataKey="name"
                                 tick={{ fill: theme === 'dark' ? '#9ca3af' : '#6b7280', fontSize: 10 }}
                                 stroke={theme === 'dark' ? '#6b7280' : '#9ca3af'}
                               />
-                              <YAxis 
+                              <YAxis
                                 tick={{ fill: theme === 'dark' ? '#9ca3af' : '#6b7280', fontSize: 10 }}
                                 stroke={theme === 'dark' ? '#6b7280' : '#9ca3af'}
                               />
-                              <Tooltip 
-                                contentStyle={{ 
-                                  backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)', 
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                                   border: theme === 'dark' ? '1px solid rgb(51, 65, 85)' : '1px solid rgb(229, 231, 235)',
                                   borderRadius: '8px',
                                   color: theme === 'dark' ? 'rgb(255, 255, 255)' : 'rgb(17, 24, 39)'
@@ -889,7 +886,7 @@ export default function CryptoAnalytics() {
                   {cryptoStats && (cryptoStats.pnlHistory.length > 0 || cryptoStats.equityCurve.length > 0) && (
                     <Card className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-all lg:col-span-1">
                       <CardContent className="p-3 md:p-4">
-                        <PerformanceChart 
+                        <PerformanceChart
                           pnlHistory={cryptoStats.pnlHistory}
                           equityCurve={cryptoStats.equityCurve}
                           timePeriod={timePeriod}
@@ -998,9 +995,9 @@ export default function CryptoAnalytics() {
                               filteredAndSortedTrades.slice(0, 20).map((trade, index) => {
                                 const isDex = trade.source === 'dex';
                                 const isPositive = (trade.pnl || 0) >= 0;
-                                
+
                                 return (
-                                  <tr 
+                                  <tr
                                     key={trade.id}
                                     className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                                   >
@@ -1008,9 +1005,8 @@ export default function CryptoAnalytics() {
                                       {formatTime(trade.timestamp)}
                                     </td>
                                     <td className="py-2 px-2">
-                                      <Badge variant="outline" className={`text-[10px] ${
-                                        isDex ? 'border-emerald-500/30 text-emerald-400' : 'border-blue-500/30 text-blue-400'
-                                      }`}>
+                                      <Badge variant="outline" className={`text-[10px] ${isDex ? 'border-emerald-500/30 text-emerald-400' : 'border-blue-500/30 text-blue-400'
+                                        }`}>
                                         {trade.sourceName}
                                       </Badge>
                                     </td>
@@ -1024,9 +1020,8 @@ export default function CryptoAnalytics() {
                                           <>
                                             <span className="text-xs font-medium text-gray-900 dark:text-white">{trade.symbol}</span>
                                             {trade.side && (
-                                              <Badge variant="outline" className={`text-[10px] w-fit mt-0.5 ${
-                                                trade.side === 'buy' ? 'border-emerald-500/30 text-emerald-400' : 'border-red-500/30 text-red-400'
-                                              }`}>
+                                              <Badge variant="outline" className={`text-[10px] w-fit mt-0.5 ${trade.side === 'buy' ? 'border-emerald-500/30 text-emerald-400' : 'border-red-500/30 text-red-400'
+                                                }`}>
                                                 {trade.side.toUpperCase()}
                                               </Badge>
                                             )}
@@ -1035,7 +1030,7 @@ export default function CryptoAnalytics() {
                                       </div>
                                     </td>
                                     <td className="py-2 px-2 text-right">
-                                      <span className={`font-semibold text-xs ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                                      <span className={`font-semibold text-xs pnl-font ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                                         {trade.pnl !== undefined ? (
                                           `${isPositive ? '+' : ''}${formatCompactNumber(trade.pnl)}`
                                         ) : (
@@ -1139,7 +1134,7 @@ export default function CryptoAnalytics() {
 
             {/* Quick Access Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-              <Card 
+              <Card
                 className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md hover:border-purple-500/30 cursor-pointer transition-all"
                 onClick={() => subscriptionTier === 'elite' && setActiveTab('wallet-tracking')}
               >
@@ -1161,7 +1156,7 @@ export default function CryptoAnalytics() {
                 </CardContent>
               </Card>
 
-              <Card 
+              <Card
                 className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md hover:border-amber-500/30 cursor-pointer transition-all"
                 onClick={() => subscriptionTier === 'elite' && setActiveTab('bitcoin-analysis')}
               >
@@ -1183,7 +1178,7 @@ export default function CryptoAnalytics() {
                 </CardContent>
               </Card>
 
-              <Card 
+              <Card
                 className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md hover:border-emerald-500/30 cursor-pointer transition-all"
                 onClick={() => subscriptionTier === 'elite' && setActiveTab('solana-analytics')}
               >
@@ -1209,13 +1204,13 @@ export default function CryptoAnalytics() {
         )}
 
         {activeTab === 'wallet-tracking' && <WalletCopyTrading />}
-        
+
         {activeTab === 'copy-trading' && <CopyTradingDashboard selectedWallet={selectedWallet} />}
-        
+
         {activeTab === 'bitcoin-analysis' && <BitcoinOnChainAnalysis />}
-        
+
         {activeTab === 'solana-analytics' && <SolanaDexAnalytics />}
-        
+
         {activeTab === 'solana-onchain' && <SolanaOnChainAnalysis />}
       </div>
     </div>

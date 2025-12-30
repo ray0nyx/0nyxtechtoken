@@ -2549,6 +2549,11 @@ async def birdeye_proxy(path: str, request: Request):
             tx_type = params.get("tx_type", "swap")
             data = await aggregator.get_token_transactions(address, limit, tx_type)
             return data
+
+        elif "token_security" in path and address:
+            # Token security data (creator, top10 holders, LP burned, etc.)
+            data = await aggregator.get_token_security(address)
+            return data
             
         # 2. Fallback to direct proxy for everything else
         base_url = "https://public-api.birdeye.so/defi"

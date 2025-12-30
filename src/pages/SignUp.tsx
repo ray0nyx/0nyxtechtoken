@@ -309,6 +309,45 @@ export default function SignUp() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="flex items-center gap-6">
+              <a
+                href="https://x.com/0nyxTech"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-slate-300 transition-colors duration-300"
+                aria-label="X (Twitter)"
+              >
+                <img
+                  src="/images/x-logo.png"
+                  alt="X (Twitter)"
+                  className="h-5 w-5 opacity-60 hover:opacity-100 transition-opacity invert"
+                />
+              </a>
+              <a
+                href="https://discord.gg/xq5XFHBZ8j"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-slate-300 transition-colors duration-300"
+                aria-label="Discord"
+              >
+                <img
+                  src="/icons/discord.svg"
+                  alt="Discord"
+                  className="h-5 w-5 opacity-60 hover:opacity-100 transition-opacity invert"
+                />
+              </a>
+              <a
+                href="https://www.instagram.com/0nyxtech.xyz/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-slate-300 transition-colors duration-300"
+                aria-label="Instagram"
+              >
+                <img
+                  src="/images/instagram-logo.png"
+                  alt="Instagram"
+                  className="h-5 w-5 opacity-60 hover:opacity-100 transition-opacity invert"
+                />
+              </a>
               <a href="/affiliates" className="text-slate-400 hover:text-slate-300 transition-colors duration-300">Become An Affiliate</a>
               <a href="/terms" className="text-gray-400 hover:text-slate-300 transition-colors duration-300">Terms</a>
               <a href="/privacy" className="text-gray-400 hover:text-slate-300 transition-colors duration-300">Privacy</a>

@@ -723,6 +723,38 @@ class DataAggregator:
                 return await self._fetch_birdeye_direct(path)
         return await self._fetch_birdeye_direct(path)
 
+    async def get_token_security(self, address: str) -> Dict[str, Any]:
+        """Fetch token security data from Birdeye (creator, top10, LP burned, etc.)"""
+        if not self.session:
+            async with self:
+                return await self._fetch_birdeye_security(address)
+        return await self._fetch_birdeye_security(address)
+
+    async def _fetch_birdeye_security(self, address: str) -> Dict[str, Any]:
+        """Internal helper for fetching token security data"""
+        if not BIRDEYE_API_KEY or not self.session:
+            return {"success": False, "message": "Birdeye API key not configured or session not initialized"}
+        
+        url = f"https://public-api.birdeye.so/defi/token_security?address={address}"
+        headers = {
+            "X-API-KEY": BIRDEYE_API_KEY,
+            "Accept": "application/json",
+            "x-chain": "solana"
+        }
+        
+        try:
+            async with self.session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    return data
+                else:
+                    # Fallback response with defaults
+                    logger.warning(f"Birdeye token_security returned {resp.status}")
+                    return {"success": False, "data": None}
+        except Exception as e:
+            logger.error(f"Birdeye token_security fetch error: {e}")
+            return {"success": False, "message": str(e)}
+
     async def _fetch_birdeye_direct(self, path: str) -> Dict[str, Any]:
         """Internal helper for direct Birdeye API calls via proxy logic"""
         if not BIRDEYE_API_KEY or not self.session:

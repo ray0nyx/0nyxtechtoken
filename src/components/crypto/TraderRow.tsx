@@ -51,11 +51,11 @@ export const TraderRow: React.FC<TraderRowProps> = ({
             {/* Trader Info */}
             <div className="col-span-2 flex items-center gap-3">
                 <div className="relative">
-                    <div className={`w - 10 h - 10 rounded - full flex items - center justify - center text - white font - bold text - sm shadow - md ${index === 0 ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600' :
-                            index === 1 ? 'bg-gradient-to-br from-slate-300 via-slate-400 to-slate-500' :
-                                index === 2 ? 'bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800' :
-                                    'bg-gradient-to-br from-slate-700 to-slate-900 border border-slate-700'
-                        } `}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md ${index === 0 ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600' :
+                        index === 1 ? 'bg-gradient-to-br from-slate-300 via-slate-400 to-slate-500' :
+                            index === 2 ? 'bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800' :
+                                'bg-gradient-to-br from-slate-700 to-slate-900 border border-slate-700'
+                        }`}>
                         {index + 1}
                     </div>
                     {trader.is_verified && (
@@ -70,7 +70,7 @@ export const TraderRow: React.FC<TraderRowProps> = ({
                         )}>
                             {trader.label || shortenAddress(trader.wallet_address)}
                         </span>
-                        <span className={`text - xs px - 1.5 py - 0.5 rounded ${badge.color} `}>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${badge.color}`}>
                             {badge.label}
                         </span>
                     </div>
@@ -99,7 +99,7 @@ export const TraderRow: React.FC<TraderRowProps> = ({
                 {isAnalyzing ? (
                     <span className="text-xs text-blue-400">Analyzing...</span>
                 ) : (
-                    <span className={`font - semibold ${trader.roi >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'} `}>
+                    <span className={cn("font-semibold pnl-font", trader.roi >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]')}>
                         {trader.roi >= 0 ? '+' : ''}{trader.roi?.toFixed(1)}%
                     </span>
                 )}
@@ -107,12 +107,12 @@ export const TraderRow: React.FC<TraderRowProps> = ({
 
             {/* Win Rate */}
             <div className="hidden lg:block text-right">
-                <span className={isDark ? "text-white" : "text-gray-900"}>{trader.win_rate?.toFixed(1)}%</span>
+                <span className={cn("pnl-font", isDark ? "text-white" : "text-gray-900")}>{trader.win_rate?.toFixed(1)}%</span>
             </div>
 
             {/* P&L 30d */}
             <div className="hidden lg:block text-right">
-                <span className={`font - semibold ${trader.pnl_30d >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'} `}>
+                <span className={cn("font-semibold pnl-font", trader.pnl_30d >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]')}>
                     {formatCurrency(trader.pnl_30d || 0)}
                 </span>
             </div>
@@ -185,7 +185,7 @@ export const TraderRow: React.FC<TraderRowProps> = ({
 
             {/* Mobile: Additional Info */}
             < div className="col-span-2 lg:hidden flex items-center justify-between text-sm" >
-                <div className="flex gap-4">
+                <div className="flex gap-4 pnl-font">
                     <span className={`${trader.roi >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
                         ROI: {trader.roi >= 0 ? '+' : ''}{trader.roi?.toFixed(1)}%
                     </span>

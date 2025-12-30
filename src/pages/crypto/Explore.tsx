@@ -109,12 +109,12 @@ export default function Explore() {
     };
 
     return (
-        <div className="h-full flex flex-col bg-[#060a10]">
+        <div className="h-full flex flex-col bg-black">
             {/* Top Navigation Tabs - Coins / Surge / DEX Screener / Pump Live */}
             <CryptoNavTabs />
 
             {/* Secondary Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-[#1e2530] bg-[#0a0e14]">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-[#1e2530] bg-black">
                 <div className="flex items-center gap-3">
                     <Zap className="w-5 h-5 text-purple-400" />
                     <h1 className="text-lg font-bold text-white">Pulse</h1>
@@ -184,7 +184,7 @@ function PulseColumn({
     };
 
     return (
-        <div className="flex-1 flex flex-col rounded-lg bg-[#0a0e14] border border-[#1e2530] overflow-hidden">
+        <div className="flex-1 flex flex-col rounded-lg bg-black border border-[#1e2530] overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-[#1e2530]">
                 <div className="flex items-center gap-2">

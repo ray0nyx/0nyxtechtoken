@@ -224,30 +224,13 @@ export default function AxiomSurgePage() {
     };
 
     return (
-        <div className="h-full flex flex-col bg-[#060a10]">
+        <div className="h-full flex flex-col bg-black">
             <CryptoNavTabs />
 
             {/* Controls Row */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-[#1e2530] bg-[#0a0e14]">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-[#1e2530] bg-black">
                 <div className="flex items-center gap-4">
                     {/* WebSocket Status */}
-                    <div className={cn(
-                        "flex items-center gap-2 px-3 py-1.5 rounded-full border",
-                        wsConnected
-                            ? "bg-green-900/20 border-green-900/50 text-green-400"
-                            : wsConnecting
-                                ? "bg-yellow-900/20 border-yellow-900/50 text-yellow-400"
-                                : "bg-red-900/20 border-red-900/50 text-red-400"
-                    )}>
-                        {wsConnected ? (
-                            <Wifi className="w-3 h-3" />
-                        ) : (
-                            <WifiOff className="w-3 h-3" />
-                        )}
-                        <span className="text-xs">
-                            {wsConnected ? 'Live' : wsConnecting ? 'Connecting...' : 'Disconnected'}
-                        </span>
-                    </div>
 
                     {/* Market Cap Slider Control */}
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0d1117] border border-[#1e2530]">
@@ -269,25 +252,12 @@ export default function AxiomSurgePage() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={handleRefresh}
-                        className="p-2 text-gray-400 hover:text-white"
-                    >
-                        <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                    </button>
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0d1117] border border-[#1e2530] rounded">
-                        <Zap className="w-3 h-3 text-cyan-400" />
-                        <span className="text-gray-400 text-xs">Helius Stream</span>
-                    </div>
-                </div>
             </div>
 
             {/* Main Content - Two Columns */}
             <div className="flex-1 flex gap-2 p-2 overflow-hidden">
                 <TokenColumn
                     title="Early Alpha Pairs"
-                    subtitle={wsConnected ? "Real-time from Helius WebSocket" : "Pump.fun newest releases"}
                     tokens={earlyTokens}
                     loading={loading && earlyTokens.length === 0}
                     onTokenClick={handleTokenClick}
@@ -297,7 +267,6 @@ export default function AxiomSurgePage() {
 
                 <TokenColumn
                     title="Live Momentum"
-                    subtitle="Migrating to Raydium soon"
                     tokens={surgingTokens}
                     loading={loading && surgingTokens.length === 0}
                     onTokenClick={handleTokenClick}
@@ -330,31 +299,21 @@ function TokenColumn({
     const count = tokens.length;
 
     return (
-        <div className="flex-1 flex flex-col rounded-xl bg-[#0a0e14] border border-[#1e2530] overflow-hidden">
+        <div className="flex-1 flex flex-col rounded-xl bg-black border border-[#1e2530] overflow-hidden">
             {/* Header */}
-            <div className="px-4 py-3 border-b border-[#1e2530] bg-[#0d1117]">
+            <div className="px-4 py-3 border-b border-[#1e2530] bg-black">
                 <div className="flex items-center justify-between">
                     <div>
                         <div className="flex items-center gap-2">
                             <h3 className="text-white font-bold">{title}</h3>
-                            {isLive && (
-                                <span className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] bg-green-900/30 text-green-400 rounded-full border border-green-900/50">
-                                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                                    LIVE
-                                </span>
-                            )}
-                            <span className="px-1.5 py-0.5 text-[10px] bg-cyan-900/30 text-cyan-400 rounded-full border border-cyan-900/50">
-                                {count}
-                            </span>
                         </div>
-                        {subtitle && <p className="text-gray-500 text-xs mt-0.5">{subtitle}</p>}
                     </div>
                     {/* Header Controls/Stats could be here */}
                 </div>
             </div>
 
             {/* Token list */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-[#060a10]">
+            <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-black">
                 {loading ? (
                     Array.from({ length: 6 }).map((_, i) => (
                         <div key={i} className="h-40 bg-[#0d1117] rounded-xl animate-pulse border border-[#1e2530]" />
