@@ -169,6 +169,13 @@ class AlchemySolanaStream:
             # Extract token info from logs
             token = await self._extract_token_from_logs(signature, logs)
             if token:
+                # Enrich with metadata in background
+                try:
+                    from services.token_metadata import enrich_token_metadata
+                    token = await enrich_token_metadata(token)
+                except Exception as e:
+                    logger.warning(f"Alchemy metadata enrichment failed: {e}")
+                
                 # Add to recent tokens
                 recent_tokens.appendleft(token)
                 logger.info(f"New Pump.fun token detected: {token.get('mint', '')[:16]}...")

@@ -5,6 +5,7 @@ import CoinCard, { type CoinCardData } from './CoinCard';
 
 interface SurgeColumnProps {
   title: string;
+  subtitle?: string;
   coins: CoinCardData[];
   loading?: boolean;
   onCoinClick?: (coin: CoinCardData) => void;
@@ -17,6 +18,7 @@ interface SurgeColumnProps {
 
 export default function SurgeColumn({
   title,
+  subtitle,
   coins,
   loading = false,
   onCoinClick,
@@ -39,6 +41,7 @@ export default function SurgeColumn({
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toFixed(0);
   };
+
 
   return (
     <div className={cn(
@@ -99,14 +102,14 @@ export default function SurgeColumn({
         </div>
 
         {/* Subtitle */}
-        <p className={cn(
-          "text-[10px] mt-2",
-          isDark ? "text-gray-600" : "text-gray-400"
-        )}>
-          {title === 'Early'
-            ? 'Newly released Pump.fun tokens'
-            : 'Tokens migrating to Raydium'}
-        </p>
+        {subtitle && (
+          <p className={cn(
+            "text-[10px] mt-2",
+            isDark ? "text-gray-500" : "text-gray-400"
+          )}>
+            {subtitle}
+          </p>
+        )}
       </div>
 
       {/* Scroll to top button */}

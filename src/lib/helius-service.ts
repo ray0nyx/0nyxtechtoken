@@ -37,7 +37,7 @@ export interface ParsedSwapTransaction {
   txHash: string;
 }
 
-const HELIUS_API_KEY = import.meta.env.VITE_HELIUS_API_KEY || '';
+const HELIUS_API_KEY = import.meta.env.VITE_HELIUS_API_KEY || '730189a2-3b6f-40d9-be94-4061b26fe2ae';
 const HELIUS_BASE_URL = 'https://api.helius.xyz/v0';
 const SOL_MINT = '11111111111111111111111111111111';
 const WSOL_MINT = 'So11111111111111111111111111111111111111112';

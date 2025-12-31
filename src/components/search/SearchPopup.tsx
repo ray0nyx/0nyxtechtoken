@@ -1,116 +1,207 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { Search, Clock, TrendingUp, BarChart2, Zap, ArrowUpRight, DollarSign } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
-import { fetchNewPumpFunCoins, fetchPumpFunCoinDetails, type PumpFunCoin } from '@/lib/pump-fun-service';
+import { Search, Trash2, Loader2 } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis } from 'recharts';
+import { fetchNewPumpFunCoins, fetchPumpFunCoinDetails } from '@/lib/pump-fun-service';
 import { fetchTokenPrice } from '@/lib/wallet-balance-service';
 import { Connection } from '@solana/web3.js';
+import { proxyImageUrl } from '@/lib/ipfs-utils';
+import { cn } from '@/lib/utils';
 
-// Mock Data for Market Overview Chart
-const MARKET_DATA = [
-    { time: '10:00', value: 120 },
-    { time: '11:00', value: 132 },
-    { time: '12:00', value: 125 },
-    { time: '13:00', value: 145 },
-    { time: '14:00', value: 130 },
-    { time: '15:00', value: 125.76 },
-];
+const SEARCH_HISTORY_KEY = 'token_search_history';
+const MAX_HISTORY_ITEMS = 20;
 
-const DOMINANCE_DATA = [
-    { name: 'SOL', value: 45, color: '#10b981' }, // emerald-500
-    { name: 'ETH', value: 20, color: '#374151' }, // gray-700
-    { name: 'BTC', value: 25, color: '#1f2937' }, // gray-800
-];
+interface SearchHistoryItem {
+    id: string;
+    name: string;
+    symbol: string;
+    image?: string;
+    mc?: string;
+    timestamp: number;
+}
 
-const RECENT_ACTIVITY = [
-    { name: 'Seals Garludt', value: 'SOL $125.6' },
-    { name: 'Feysent Syel...', value: '$146.7' },
-    { name: 'Desloors Merincs', value: '$147.7' },
-    { name: 'Tals Mle Vide', value: 'SOL $8.48.19' },
-    { name: 'Staitard Marime', value: '$122.8' },
-    { name: 'Mokte Einpild...', value: 'SOL $78.1' },
-    { name: 'SPSC Shils Tarler', value: '$176.7' },
-    { name: 'Lpsoiros Dect:...', value: '$120.8' },
-];
+interface PriceDataPoint {
+    time: string;
+    value: number;
+}
+
+// Helper functions for search history
+const getSearchHistory = (): SearchHistoryItem[] => {
+    try {
+        const history = localStorage.getItem(SEARCH_HISTORY_KEY);
+        return history ? JSON.parse(history) : [];
+    } catch {
+        return [];
+    }
+};
+
+const saveSearchHistory = (history: SearchHistoryItem[]) => {
+    try {
+        localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+    } catch {
+        console.error('Failed to save search history');
+    }
+};
+
+const addToSearchHistory = (token: { id: string; name: string; symbol: string; image?: string; mc?: string }) => {
+    const history = getSearchHistory();
+    // Remove existing entry if present
+    const filteredHistory = history.filter(item => item.id !== token.id);
+    // Add new entry at the beginning
+    const newHistory = [
+        { ...token, timestamp: Date.now() },
+        ...filteredHistory
+    ].slice(0, MAX_HISTORY_ITEMS);
+    saveSearchHistory(newHistory);
+    return newHistory;
+};
+
+const removeFromSearchHistory = (tokenId: string) => {
+    const history = getSearchHistory();
+    const newHistory = history.filter(item => item.id !== tokenId);
+    saveSearchHistory(newHistory);
+    return newHistory;
+};
+
+const clearSearchHistory = () => {
+    localStorage.removeItem(SEARCH_HISTORY_KEY);
+    return [];
+};
 
 export function SearchPopup({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchResults, setSearchResults] = useState<any[]>([]);
-    const [allTokens, setAllTokens] = useState<any[]>([]); // Store all fetched tokens for local filtering
+    const [allTokens, setAllTokens] = useState<any[]>([]);
+    const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
     const [loading, setLoading] = useState(false);
+    const [searchLoading, setSearchLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [marketStats, setMarketStats] = useState({ price: 0, change: 0, tps: 0 });
+    const [priceHistory, setPriceHistory] = useState<PriceDataPoint[]>([]);
+    const priceIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const navigate = useNavigate();
 
+    // Fetch real-time SOL price and TPS
+    const fetchSolanaData = async () => {
+        try {
+            const priceData = await fetchTokenPrice('solana');
+
+            // Fetch TPS
+            let tps = 0;
+            try {
+                const connection = new Connection(import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
+                const samples = await connection.getRecentPerformanceSamples(1);
+                if (samples.length > 0) {
+                    tps = Math.round(samples[0].numTransactions / samples[0].samplePeriodSecs);
+                }
+            } catch (e) {
+                console.error("Failed to fetch TPS", e);
+                tps = 2500; // Fallback
+            }
+
+            setMarketStats({
+                price: priceData.price,
+                change: priceData.change24h,
+                tps
+            });
+        } catch (e) {
+            console.error("Failed to fetch SOL data", e);
+        }
+    };
+
+    // Fetch 24hr historical price data from CoinGecko
+    const fetch24hrHistory = async () => {
+        try {
+            const response = await fetch(
+                'https://api.coingecko.com/api/v3/coins/solana/market_chart?vs_currency=usd&days=1'
+            );
+            if (response.ok) {
+                const data = await response.json();
+                // data.prices is an array of [timestamp, price]
+                const formattedData: PriceDataPoint[] = data.prices.map((item: [number, number]) => {
+                    const date = new Date(item[0]);
+                    const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    return { time: timeStr, value: item[1] };
+                });
+                // Sample to ~24 data points for cleaner chart
+                const step = Math.max(1, Math.floor(formattedData.length / 24));
+                const sampledData = formattedData.filter((_, i) => i % step === 0);
+                setPriceHistory(sampledData);
+            }
+        } catch (e) {
+            console.error("Failed to fetch 24hr history", e);
+        }
+    };
+
+    // Load search history and start price updates when popup opens
     useEffect(() => {
         if (isOpen) {
-            const loadData = async () => {
+            setSearchHistory(getSearchHistory());
+
+            // Fetch 24hr historical data first
+            fetch24hrHistory();
+
+            // Initial fetch for current price/TPS
+            fetchSolanaData();
+
+            // Set up interval for real-time price updates (every 30 seconds)
+            priceIntervalRef.current = setInterval(fetchSolanaData, 30000);
+
+            // Fetch tokens for search
+            const loadTokens = async () => {
                 setLoading(true);
                 try {
-                    // Fetch real market data
-                    const priceData = await fetchTokenPrice('solana');
-
-                    // Fetch TPS
-                    let tps = 0;
-                    try {
-                        const connection = new Connection(import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
-                        const samples = await connection.getRecentPerformanceSamples(1);
-                        if (samples.length > 0) {
-                            tps = Math.round(samples[0].numTransactions / samples[0].samplePeriodSecs);
-                        }
-                    } catch (e) {
-                        console.error("Failed to fetch TPS", e);
-                        tps = 2500; // Fallback
-                    }
-
-                    setMarketStats({
-                        price: priceData.price,
-                        change: priceData.change24h,
-                        tps
-                    });
-
-                    // Fetch Tokens
-                    const coins = await fetchNewPumpFunCoins(20);
+                    const coins = await fetchNewPumpFunCoins(50);
                     const formatted = coins.map(coin => ({
                         id: coin.mint,
                         name: coin.name,
                         symbol: coin.symbol,
-                        age: '1m',
                         mc: coin.usd_market_cap ? `$${(coin.usd_market_cap / 1000).toFixed(1)}K` : 'N/A',
-                        vol: '$12K',
-                        liq: '$500',
                         image: coin.image_uri
                     }));
                     setAllTokens(formatted);
-                    setSearchResults(formatted);
                 } catch (e) {
                     console.error("Failed to fetch tokens", e);
                 } finally {
                     setLoading(false);
                 }
             };
-            loadData();
+            loadTokens();
+        } else {
+            // Clear interval when popup closes
+            if (priceIntervalRef.current) {
+                clearInterval(priceIntervalRef.current);
+                priceIntervalRef.current = null;
+            }
+            // Reset search
+            setSearchQuery('');
+            setSearchResults([]);
         }
+
+        return () => {
+            if (priceIntervalRef.current) {
+                clearInterval(priceIntervalRef.current);
+            }
+        };
     }, [isOpen]);
 
-    // Handle Search
+    // Handle Search with debounce
     useEffect(() => {
         const handleSearch = async () => {
             if (!searchQuery.trim()) {
-                setSearchResults(allTokens);
+                setSearchResults([]);
                 return;
             }
 
-            setLoading(true);
-            const query = searchQuery.toLowerCase();
+            setSearchLoading(true);
+            const query = searchQuery.toLowerCase().trim();
 
-            // Check if it's an address (simple length check for now)
-            if (query.length > 30) {
+            // Check if it's a Solana address (base58, typically 32-44 chars)
+            if (query.length >= 32 && query.length <= 44) {
                 try {
                     const details = await fetchPumpFunCoinDetails(searchQuery);
                     if (details) {
@@ -118,10 +209,7 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
                             id: details.mint,
                             name: details.name,
                             symbol: details.symbol,
-                            age: '1m',
                             mc: details.usd_market_cap ? `$${(details.usd_market_cap / 1000).toFixed(1)}K` : 'N/A',
-                            vol: 'N/A',
-                            liq: 'N/A',
                             image: details.image_uri
                         }];
                         setSearchResults(formatted);
@@ -139,205 +227,251 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
                 );
                 setSearchResults(filtered);
             }
-            setLoading(false);
+            setSearchLoading(false);
         };
 
         const timeoutId = setTimeout(handleSearch, 300);
         return () => clearTimeout(timeoutId);
     }, [searchQuery, allTokens]);
 
+    // Handle token selection - single click navigates
+    const handleTokenSelect = (token: any) => {
+        const newHistory = addToSearchHistory(token);
+        setSearchHistory(newHistory);
+        setIsOpen(false);
+        navigate(`/crypto/tokens?address=${token.id}`);
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 {children}
             </DialogTrigger>
-            <DialogContent className="max-w-[1000px] w-[95vw] bg-[#050505] border-none text-gray-200 p-0 overflow-hidden rounded-2xl shadow-2xl">
+            <DialogContent className="max-w-[1000px] w-[95vw] bg-[#111111] border-none text-gray-200 p-0 overflow-hidden rounded-2xl shadow-2xl">
 
                 {/* Header Section */}
-                <div className="p-6 border-b border-white/5 space-y-4 bg-[#050505]">
-                    <div className="flex items-center justify-end gap-2 text-gray-400 mr-8">
-                        <span className="text-xs mr-2">Sort by</span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-white hover:bg-white/10"><Clock className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-white hover:bg-white/10"><TrendingUp className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-white hover:bg-white/10"><BarChart2 className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-white hover:bg-white/10"><Zap className="h-4 w-4" /></Button>
-                    </div>
-
-                    <div className="flex items-center gap-3">
+                <div className="p-6 border-b border-white/5 bg-[#111111]">
+                    <div className="flex items-center gap-3 mr-8">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
                             <Input
-                                placeholder="Search Solana tokens (name or address)..."
+                                placeholder="Search tokens by name or contract address..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-10 h-10 bg-[#25262b] border-none text-white placeholder:text-gray-500 rounded-lg focus-visible:ring-1 focus-visible:ring-gray-700"
+                                autoFocus
                             />
+                            {searchLoading && (
+                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 animate-spin" />
+                            )}
                         </div>
-                        <div className="flex items-center gap-1 bg-[#25262b] rounded-lg p-1">
-                            <Button size="sm" variant="secondary" className="h-8 bg-gray-600/50 hover:bg-gray-600 text-white text-xs gap-1">
-                                <TrendingUp className="h-3 w-3" /> Trending
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-8 text-gray-400 hover:text-white text-xs">New</Button>
-                            <Button size="sm" variant="ghost" className="h-8 text-gray-400 hover:text-white text-xs">Whale Watch</Button>
-                        </div>
-                        <Button size="icon" variant="ghost" className="h-10 w-10 text-gray-400 bg-[#25262b] rounded-lg hover:text-white hover:bg-white/10">
-                            All
-                        </Button>
                     </div>
-
-                    <ScrollArea className="w-full whitespace-nowrap">
-                        <div className="flex w-max space-x-2 pb-2">
-                            <Badge variant="outline" className="bg-[#25262b] border-none text-gray-400 hover:text-white cursor-pointer px-3 py-1 bg-gradient-to-r from-gray-800 to-gray-800 hover:from-gray-700 hover:to-gray-700 transition-all">
-                                <span className="mr-1">◎</span> SOL
-                            </Badge>
-                            <Badge variant="outline" className="bg-[#25262b] border-none text-gray-400 hover:text-white cursor-pointer px-3 py-1">USDC</Badge>
-                            <Badge variant="outline" className="bg-[#25262b] border-none text-gray-400 hover:text-white cursor-pointer px-3 py-1 flex items-center gap-1"><DollarSign className="h-3 w-3" /> USDC</Badge>
-                            <Badge variant="outline" className="bg-[#25262b] border-none text-gray-400 hover:text-white cursor-pointer px-3 py-1">USDT</Badge>
-                            <Badge variant="outline" className="bg-[#25262b] border-none text-gray-400 hover:text-white cursor-pointer px-3 py-1">USDT</Badge>
-                        </div>
-                    </ScrollArea>
                 </div>
 
                 {/* Body Section */}
-                <div className="flex h-[600px]">
-                    {/* Left: Search Results */}
-                    <div className="flex-[2] border-r border-white/5 p-4 bg-[#050505]">
-                        <h3 className="text-lg font-medium text-gray-200 mb-4 px-2">Top Search Results</h3>
-                        <ScrollArea className="h-[540px]">
-                            <div className="space-y-1">
-                                {loading && <div className="text-gray-500 text-center py-4">Loading tokens...</div>}
-                                {!loading && searchResults.length === 0 && <div className="text-gray-500 text-center py-4">No tokens found.</div>}
-                                {searchResults.map((token) => (
-                                    <div
-                                        key={token.id}
-                                        className="group flex items-center justify-between p-3 rounded-xl hover:bg-[#25262b] transition-colors cursor-pointer"
-                                        onDoubleClick={() => {
-                                            setIsOpen(false);
-                                            navigate(`/crypto/tokens?address=${token.id}`);
-                                        }}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <img
-                                                src={token.image}
-                                                alt={token.name}
-                                                className="w-10 h-10 rounded-lg bg-gray-800 object-cover"
-                                                onError={(e) => {
-                                                    e.currentTarget.src = 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'; // Fallback to SOL logo or generic
-                                                    e.currentTarget.onerror = null; // Prevent infinite loop
-                                                }}
-                                            />
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium text-gray-200">{token.name}</span>
-                                                    <span className="text-gray-500 text-xs bg-gray-800/50 px-1 rounded">❐</span>
+                <div className="flex h-[500px]">
+                    {/* Left Panel: Search Results or History */}
+                    <div className="flex-[2] border-r border-white/5 p-4 bg-[#111111]">
+                        {/* Show search results when searching, otherwise show history */}
+                        {searchQuery.trim() ? (
+                            <>
+                                <h3 className="text-lg font-medium text-gray-200 mb-4 px-2">Search Results</h3>
+                                <ScrollArea className="h-[420px]">
+                                    <div className="space-y-1">
+                                        {searchLoading && (
+                                            <div className="text-gray-500 text-center py-8">
+                                                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                                                <p>Searching...</p>
+                                            </div>
+                                        )}
+                                        {!searchLoading && searchResults.length === 0 && (
+                                            <div className="text-gray-500 text-center py-8">
+                                                <p>No tokens found</p>
+                                                <p className="text-xs mt-1">Try a different name or contract address</p>
+                                            </div>
+                                        )}
+                                        {!searchLoading && searchResults.map((token) => (
+                                            <div
+                                                key={token.id}
+                                                className="flex items-center justify-between p-3 rounded-xl hover:bg-[#25262b] transition-colors cursor-pointer"
+                                                onClick={() => handleTokenSelect(token)}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    {token.image ? (
+                                                        <img
+                                                            src={proxyImageUrl(token.image)}
+                                                            alt={token.name}
+                                                            className="w-10 h-10 rounded-lg bg-gray-800 object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div
+                                                            className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg"
+                                                            style={{ display: 'flex' }}
+                                                        >
+                                                            {(token.symbol || token.name || '?').charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-medium text-gray-200">{token.name}</span>
+                                                            <span className="text-gray-500 text-xs">{token.symbol}</span>
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 mt-0.5">
+                                                            {token.mc && <span>MC: {token.mc}</span>}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
-                                                    <span className="text-emerald-400">{token.age}</span>
-                                                    <span>□□</span>
-                                                    <span>🌐</span>
-                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-6 text-sm">
-                                            <div className="flex flex-col items-end">
-                                                <span className="text-gray-500 text-xs uppercase">MC</span>
-                                                <span className="font-bold text-gray-200">{token.mc}</span>
-                                            </div>
-                                            <div className="flex flex-col items-end w-16">
-                                                <span className="text-gray-500 text-xs uppercase">V</span>
-                                                <span className="font-bold text-gray-200">{token.vol}</span>
-                                            </div>
-                                            <div className="flex flex-col items-end w-16">
-                                                <span className="text-gray-500 text-xs uppercase">L</span>
-                                                <span className="font-bold text-gray-200">{token.liq}</span>
-                                            </div>
-                                            <Button size="icon" className="h-8 w-8 rounded-full bg-[#2d5f58] hover:bg-[#3d7f78] text-emerald-300 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                                                <Zap className="h-4 w-4" fill="currentColor" />
-                                            </Button>
-                                        </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
+                                </ScrollArea>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex items-center justify-between mb-4 px-2">
+                                    <h3 className="text-lg font-medium text-gray-200">Search History</h3>
+                                    {searchHistory.length > 0 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-gray-500 hover:text-red-400 text-xs"
+                                            onClick={() => setSearchHistory(clearSearchHistory())}
+                                        >
+                                            Clear All
+                                        </Button>
+                                    )}
+                                </div>
+                                <ScrollArea className="h-[420px]">
+                                    <div className="space-y-1">
+                                        {searchHistory.length === 0 && (
+                                            <div className="text-gray-500 text-center py-8">
+                                                <p className="mb-2">No search history yet</p>
+                                                <p className="text-xs">Tokens you view will appear here</p>
+                                            </div>
+                                        )}
+                                        {searchHistory.map((token) => (
+                                            <div
+                                                key={token.id}
+                                                className="group flex items-center justify-between p-3 rounded-xl hover:bg-[#25262b] transition-colors cursor-pointer"
+                                                onClick={() => handleTokenSelect(token)}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    {token.image ? (
+                                                        <img
+                                                            src={proxyImageUrl(token.image)}
+                                                            alt={token.name}
+                                                            className="w-10 h-10 rounded-lg bg-gray-800 object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div
+                                                            className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg"
+                                                            style={{ display: 'flex' }}
+                                                        >
+                                                            {(token.symbol || token.name || '?').charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-medium text-gray-200">{token.name}</span>
+                                                            <span className="text-gray-500 text-xs">{token.symbol}</span>
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 mt-0.5">
+                                                            {token.mc && <span>MC: {token.mc}</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const newHistory = removeFromSearchHistory(token.id);
+                                                            setSearchHistory(newHistory);
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </>
+                        )}
                     </div>
 
-                    {/* Right: Market Overview */}
-                    <div className="flex-1 p-4 bg-[#050505] flex flex-col gap-6">
-                        {/* Area Chart Section */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-md font-medium text-gray-300">Market Overview</h3>
-                            </div>
-                            <div className="h-[120px] w-full relative">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={MARKET_DATA}>
-                                        <defs>
-                                            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <Tooltip content={<></>} />
-                                        <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                                <div className="absolute top-2 right-0 text-right">
-                                    <div className="text-xs text-gray-500">SOL Price</div>
-                                    <div className="text-xs text-emerald-400 font-bold">${marketStats.price.toFixed(2)}</div>
-                                    <div className={marketStats.change >= 0 ? "text-xs text-emerald-400" : "text-xs text-red-400"}>
+                    {/* Right Panel: Market Overview */}
+                    <div className="flex-1 p-6 bg-[#111111]">
+                        <h3 className="text-lg font-medium text-gray-200 mb-4">Market Overview</h3>
+
+                        {/* SOL Price Card */}
+                        <div className="bg-[#0a0a0a] rounded-xl p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <img
+                                        src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png"
+                                        alt="SOL"
+                                        className="w-8 h-8 rounded-full"
+                                    />
+                                    <div>
+                                        <span className="text-white font-medium">Solana</span>
+                                        <span className="text-gray-500 text-xs ml-2">SOL</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-xl font-bold text-white">
+                                        ${marketStats.price.toFixed(2)}
+                                    </div>
+                                    <div className={`text-sm font-medium ${marketStats.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                         {marketStats.change >= 0 ? '+' : ''}{marketStats.change.toFixed(2)}%
                                     </div>
-                                    <div className="text-xs text-gray-500 mt-1">TPS: {marketStats.tps}</div>
                                 </div>
-                                <div className="mt-2 text-sm font-medium text-gray-200">SOL Price: ${marketStats.price.toFixed(2)}</div>
                             </div>
-                        </div>
 
-                        {/* Domincance Donut */}
-                        <div className="flex items-center gap-4">
-                            <div className="relative h-20 w-20">
+                            {/* Price Chart */}
+                            <div className="h-[150px] w-full mt-4">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={DOMINANCE_DATA}
-                                            innerRadius={25}
-                                            outerRadius={38}
-                                            paddingAngle={0}
+                                    <AreaChart data={priceHistory.length > 0 ? priceHistory : [{ time: '', value: marketStats.price || 100 }]}>
+                                        <defs>
+                                            <linearGradient id="solPriceGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={marketStats.change >= 0 ? "#10b981" : "#ef4444"} stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor={marketStats.change >= 0 ? "#10b981" : "#ef4444"} stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <XAxis
+                                            dataKey="time"
+                                            stroke="#4b5563"
+                                            fontSize={10}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            interval="preserveStartEnd"
+                                            tick={{ fill: '#6b7280' }}
+                                        />
+                                        <YAxis
+                                            hide={true}
+                                            domain={['dataMin - 1', 'dataMax + 1']}
+                                        />
+                                        <Area
+                                            type="monotone"
                                             dataKey="value"
-                                        >
-                                            {DOMINANCE_DATA.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                        </Pie>
-                                    </PieChart>
+                                            stroke={marketStats.change >= 0 ? "#10b981" : "#ef4444"}
+                                            strokeWidth={2}
+                                            fillOpacity={1}
+                                            fill="url(#solPriceGradient)"
+                                        />
+                                    </AreaChart>
                                 </ResponsiveContainer>
-                                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-200">
-                                    45%
-                                </div>
-                            </div>
-                            <div className="text-xs space-y-1">
-                                <div className="text-gray-400">Dominance:</div>
-                                <div className="flex gap-2 text-gray-300">
-                                    <span>ETH: 20%</span>
-                                    <span className="text-emerald-400">20%</span>
-                                </div>
-                                <div className="text-emerald-400 ml-8">25%</div>
                             </div>
                         </div>
 
-                        {/* Recent Activity List */}
-                        <div className="flex-1 overflow-hidden flex flex-col">
-                            <h3 className="text-sm font-medium text-gray-300 mb-3">Recent Activity</h3>
-                            <ScrollArea className="flex-1 -mr-2 pr-2">
-                                <div className="space-y-3">
-                                    {RECENT_ACTIVITY.map((item, i) => (
-                                        <div key={i} className="flex justify-between items-center text-xs">
-                                            <span className="text-gray-400">{item.name}</span>
-                                            <span className="text-gray-300 font-mono">{item.value}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
+                        {/* Network Stats */}
+                        <div className="mt-4 bg-[#0a0a0a] rounded-xl p-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-400 text-sm">Network TPS</span>
+                                <span className="text-white font-medium">{marketStats.tps.toLocaleString()}</span>
+                            </div>
                         </div>
                     </div>
                 </div>

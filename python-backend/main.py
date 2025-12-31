@@ -358,6 +358,160 @@ async def websocket_pump_tokens(websocket: WebSocket):
             pass
 
 
+@app.websocket("/ws/trending-tokens")
+async def websocket_trending_tokens(websocket: WebSocket):
+    """
+    Real-time trending tokens WebSocket endpoint.
+    Periodically fetches and broadcasts trending tokens with high market cap.
+    """
+    await websocket.accept()
+    
+    import aiohttp
+    import ssl
+    
+    # Send initial status
+    await websocket.send_json({
+        "type": "connected",
+        "message": "Connected to trending tokens stream"
+    })
+    
+    async def fetch_trending():
+        """Fetch trending tokens from DexScreener or Pump.fun"""
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        
+        try:
+            # Try Pump.fun first
+            url = "https://frontend-api.pump.fun/coins"
+            params = {
+                "offset": 0,
+                "limit": 30,
+                "sort": "usd_market_cap",
+                "order": "DESC",
+                "includeNsfw": "false"
+            }
+            
+            timeout = aiohttp.ClientTimeout(total=10)
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
+            
+            async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+                async with session.get(url, params=params, headers={
+                    "User-Agent": "Mozilla/5.0",
+                    "Accept": "application/json"
+                }) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if isinstance(data, list):
+                            return data
+                        return []
+                    elif resp.status in (530, 503):
+                        # Cloudflare blocked, try DexScreener
+                        logger.debug("Pump.fun blocked, trying DexScreener")
+                    else:
+                        logger.debug(f"Pump.fun returned {resp.status}")
+        except Exception as e:
+            logger.warning(f"Failed to fetch trending from Pump.fun: {e}")
+        
+        # Fallback to DexScreener
+        try:
+            url = "https://api.dexscreener.com/latest/dex/tokens/solana"
+            params = {"sort": "mc", "order": "desc", "limit": 30}
+            
+            async with aiohttp.ClientSession(timeout=timeout, connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
+                async with session.get(url, params=params) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        # Transform DexScreener format to match our format
+                        tokens = []
+                        for pair in data.get("pairs", []) or []:
+                            if not pair:
+                                continue
+                            base = pair.get("baseToken") or {}
+                            info = pair.get("info") or {}
+                            volume = pair.get("volume") or {}
+                            liquidity = pair.get("liquidity") or {}
+                            price_change = pair.get("priceChange") or {}
+                            
+                            tokens.append({
+                                "mint": base.get("address", ""),
+                                "symbol": base.get("symbol", ""),
+                                "name": base.get("name", ""),
+                                "image_uri": info.get("imageUrl"),
+                                "usd_market_cap": pair.get("fdv") or 0,
+                                "market_cap": pair.get("fdv") or 0,
+                                "volume_24h": volume.get("h24") or 0,
+                                "liquidity": liquidity.get("usd") or 0,
+                                "price_change_24h": price_change.get("h24") or 0,
+                                "complete": True,
+                                "created_timestamp": int(datetime.utcnow().timestamp() * 1000),
+                                "source": "dexscreener"
+                            })
+                            
+                            if len(tokens) >= 30:
+                                break
+                        return tokens
+
+        except Exception as e:
+            logger.warning(f"Failed to fetch trending from DexScreener: {e}")
+        
+        return []
+    
+    try:
+        # Fetch and send initial trending tokens
+        trending = await fetch_trending()
+        if trending:
+            logger.info(f"Sending {len(trending)} initial trending tokens")
+            await websocket.send_json({
+                "type": "initial_tokens",
+                "tokens": trending,
+                "count": len(trending)
+            })
+        
+        # Create task to receive messages from client
+        async def receive_messages():
+            try:
+                while True:
+                    data = await websocket.receive_json()
+                    if data.get("type") == "ping":
+                        await websocket.send_json({"type": "pong"})
+                    elif data.get("type") == "refresh":
+                        # Manual refresh request
+                        tokens = await fetch_trending()
+                        await websocket.send_json({
+                            "type": "trending_update",
+                            "tokens": tokens,
+                            "count": len(tokens)
+                        })
+            except WebSocketDisconnect:
+                pass
+        
+        receive_task = asyncio.create_task(receive_messages())
+        
+        # Periodically refresh trending tokens (every 30 seconds)
+        try:
+            while True:
+                await asyncio.sleep(30)  # Refresh every 30 seconds
+                tokens = await fetch_trending()
+                if tokens:
+                    await websocket.send_json({
+                        "type": "trending_update",
+                        "tokens": tokens,
+                        "count": len(tokens)
+                    })
+        finally:
+            receive_task.cancel()
+            
+    except WebSocketDisconnect:
+        logger.info("Client disconnected from trending-tokens WebSocket")
+    except Exception as e:
+        logger.error(f"Trending WebSocket error: {e}")
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except:
+            pass
+
+
 # ============ Trading WebSocket Endpoint ============
 
 @app.websocket("/ws/trading")
@@ -575,6 +729,53 @@ async def birdeye_proxy_deprecated(path: str, request: Request):
                 )
     except Exception as e:
         logger.error(f"Birdeye proxy error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Proxy error: {str(e)}")
+
+# Image Proxy to solve CORS issues with IPFS/Pump.fun images
+import base64
+@app.get("/api/proxy/image")
+async def proxy_image(url: str):
+    """
+    Proxy image requests to avoid CORS issues.
+    The URL should be passed as a query parameter.
+    """
+    if not url:
+        raise HTTPException(status_code=400, detail="Missing URL parameter")
+    
+    # Simple whitelist or validation could be added here
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "image/*, */*"
+    }
+    
+    try:
+        import ssl
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
+            async with session.get(url, headers=headers) as resp:
+                if resp.status != 200:
+                    error_detail = await resp.text()
+                    logger.warning(f"Image proxy failed for {url}: status {resp.status}, detail: {error_detail[:100]}")
+                    raise HTTPException(status_code=resp.status, detail=f"Failed to fetch image: {resp.status}")
+                
+                content = await resp.read()
+                content_type = resp.headers.get("Content-Type", "image/png")
+                
+                return Response(
+                    content=content,
+                    status_code=200,
+                    media_type=content_type,
+                    headers={
+                        "Cache-Control": "public, max-age=86400",
+                        "Access-Control-Allow-Origin": "*"
+                    }
+                )
+    except Exception as e:
+        logger.error(f"Image proxy error for {url}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Proxy error: {str(e)}")
 
 # Strategy execution endpoints
@@ -2385,6 +2586,13 @@ async def get_pump_fun_coins(
                                 f"{not_graduated_count} not graduated, {graduated_count} graduated"
                             )
                             
+                            # Enrich tokens with metadata (resolve image_uri if it points to JSON)
+                            try:
+                                from services.token_metadata import batch_enrich_tokens
+                                coins = await batch_enrich_tokens(coins)
+                            except Exception as e:
+                                logger.warning(f"Failed to batch enrich tokens: {e}")
+                            
                             return {
                                 "coins": coins,
                                 "count": len(coins),
@@ -2499,6 +2707,12 @@ async def get_pump_fun_coin_details(mint: str):
             async with session.get(url, headers=headers) as resp:
                 if resp.status == 200:
                     data = await resp.json()
+                    # Enrich metadata
+                    try:
+                        from services.token_metadata import enrich_token_metadata
+                        data = await enrich_token_metadata(data)
+                    except Exception as e:
+                        logger.warning(f"Failed to enrich coin details: {e}")
                     return data
                 elif resp.status == 404:
                     return JSONResponse(status_code=404, content={"error": "Coin not found"})

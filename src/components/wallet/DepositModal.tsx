@@ -47,7 +47,50 @@ export function DepositModal({ isOpen, onOpenChange, trigger }: DepositModalProp
             const isWalletUser = authUser.isWalletUser;
             console.log('DepositModal: Fetching wallet for user:', userId, 'isWalletUser:', isWalletUser);
 
-            // Check for existing Turnkey wallet
+            // First check localStorage for main wallet address
+            const savedMainWallet = localStorage.getItem('main_wallet_address');
+
+            // Fetch all tracked wallets to validate main wallet exists
+            let trackedWallets: string[] = [];
+
+            if (isWalletUser) {
+                // Use wallet API for SIWS users
+                const { getWalletsViaAPI } = await import('@/lib/wallet-api');
+                const result = await getWalletsViaAPI(userId);
+                if (result.wallets && result.wallets.length > 0) {
+                    trackedWallets = result.wallets.map((w: any) => w.wallet_address);
+                }
+            } else {
+                // Use direct Supabase for regular users
+                const { data: existingWallets } = await supabase
+                    .from('wallet_tracking')
+                    .select('wallet_address')
+                    .eq('user_id', userId);
+
+                if (existingWallets && existingWallets.length > 0) {
+                    trackedWallets = existingWallets.map(w => w.wallet_address);
+                }
+            }
+
+            // Check if saved main wallet still exists in tracked wallets
+            if (savedMainWallet && trackedWallets.includes(savedMainWallet)) {
+                console.log('DepositModal: Using main wallet from localStorage:', savedMainWallet);
+                setWalletAddress(savedMainWallet);
+                setLoading(false);
+                return;
+            }
+
+            // If main wallet doesn't exist, pick first tracked wallet as new main
+            if (trackedWallets.length > 0) {
+                const newMainWallet = trackedWallets[0];
+                console.log('DepositModal: Setting new main wallet:', newMainWallet);
+                localStorage.setItem('main_wallet_address', newMainWallet);
+                setWalletAddress(newMainWallet);
+                setLoading(false);
+                return;
+            }
+
+            // Fallback: Check for existing Turnkey wallet
             let existingWalletAddress: string | null = null;
 
             if (isWalletUser) {
@@ -73,6 +116,7 @@ export function DepositModal({ isOpen, onOpenChange, trigger }: DepositModalProp
 
             if (existingWalletAddress) {
                 console.log('DepositModal: Found existing Turnkey wallet:', existingWalletAddress);
+                localStorage.setItem('main_wallet_address', existingWalletAddress);
                 setWalletAddress(existingWalletAddress);
                 setLoading(false);
                 return;

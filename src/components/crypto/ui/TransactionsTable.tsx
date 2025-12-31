@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ExternalLink, Download, Search, X } from 'lucide-react';
+import { ChevronDown, ExternalLink, Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -162,7 +162,9 @@ export default function TransactionsTable({
                           addressFilter === tx.maker ? "text-cyan-400" : "text-neutral-600 hover:text-neutral-400"
                         )}
                       >
-                        <Search className="w-3 h-3" />
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                        </svg>
                       </button>
                       <button
                         onClick={() => window.open(getSolscanAccountUrl(tx.maker), '_blank')}

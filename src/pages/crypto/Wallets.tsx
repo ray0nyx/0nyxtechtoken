@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, TrendingDown, ChevronDown, Wallet as WalletIcon, Edit, Check, Trash2, X } from 'lucide-react';
+import { TrendingUp, TrendingDown, ChevronDown, Wallet as WalletIcon, Edit, Check, Trash2, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -27,6 +27,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Copy } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth-utils';
+import { syncAllTrackedWallets, getSyncStatus } from '@/lib/services/walletTradeSyncService';
 
 interface WalletItem {
   id: string;
@@ -59,6 +60,7 @@ function WalletsContent() {
   const [editingWalletAddress, setEditingWalletAddress] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState('');
   const [mainWalletAddress, setMainWalletAddress] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<{ totalSolanaTrades: number; lastSyncAt: string | null } | null>(null);
 
   // Load main wallet from localStorage on mount
   useEffect(() => {
@@ -68,15 +70,24 @@ function WalletsContent() {
     }
   }, []);
 
-  // Handler to set a wallet as the main wallet
-  const handleSetMainWallet = (walletAddress: string) => {
-    localStorage.setItem('main_wallet_address', walletAddress);
-    setMainWalletAddress(walletAddress);
-    toast({
-      title: 'Main Wallet Set',
-      description: 'This wallet will be used for deposits and copy trading.',
-    });
-  };
+
+  // Auto-sync wallet trades on mount and when user changes
+  useEffect(() => {
+    const autoSyncTrades = async () => {
+      if (user?.id) {
+        try {
+          // Sync trades silently in the background
+          await syncAllTrackedWallets(user.id);
+          // Update sync status
+          const status = await getSyncStatus(user.id);
+          setSyncStatus(status);
+        } catch (error) {
+          console.error('Auto-sync trades failed:', error);
+        }
+      }
+    };
+    autoSyncTrades();
+  }, [user?.id]);
 
   // Handler to rename a wallet and save to Supabase
   const handleRenameWallet = async (walletAddress: string, newLabel: string) => {
@@ -120,6 +131,16 @@ function WalletsContent() {
   // Handler to delete a wallet from tracking
   const handleDeleteWallet = async (walletAddress: string) => {
     if (!user?.id) return;
+
+    // Prevent deletion of main wallet
+    if (walletAddress === mainWalletAddress) {
+      toast({
+        title: 'Cannot Delete Main Wallet',
+        description: 'You cannot delete your main wallet. Please set another wallet as main first.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -520,6 +541,7 @@ function WalletsContent() {
           </div>
 
           <div className="flex items-center gap-3">
+
             <Select value={timePeriod} onValueChange={(v: any) => setTimePeriod(v)}>
               <SelectTrigger className={cn(
                 "w-[140px]",
@@ -678,58 +700,53 @@ function WalletsContent() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
+                        {/* Main wallet indicator */}
+                        {mainWalletAddress === wallet.address && (
+                          <div className="w-4 h-4 rounded-full bg-yellow-400 flex items-center justify-center">
+                            <Check className="w-3 h-3 text-black" />
+                          </div>
+                        )}
                         <p className={cn(
                           "font-medium",
                           isDark ? "text-white" : "text-gray-900"
                         )}>
                           {wallet.label}
                         </p>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingWalletAddress(wallet.address);
-                            setEditingLabel(wallet.label);
-                          }}
-                          className={cn(
-                            "opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity",
-                            isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"
-                          )}
-                        >
-                          <Edit className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteWallet(wallet.address);
-                          }}
-                          className={cn(
-                            "opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity",
-                            isDark ? "text-gray-400 hover:text-red-400" : "text-gray-500 hover:text-red-500"
-                          )}
-                          title={(publicKey && wallet.address === publicKey.toBase58()) ? 'Unlink wallet' : 'Delete wallet'}
-                        >
-                          {(publicKey && wallet.address === publicKey.toBase58()) ? (
-                            <X className="w-3 h-3" />
-                          ) : (
-                            <Trash2 className="w-3 h-3" />
-                          )}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSetMainWallet(wallet.address);
-                          }}
-                          className={cn(
-                            "transition-opacity",
-                            mainWalletAddress === wallet.address
-                              ? "opacity-100 text-yellow-400"
-                              : "opacity-0 group-hover:opacity-100 hover:opacity-100",
-                            isDark ? "text-gray-400 hover:text-yellow-400" : "text-gray-500 hover:text-yellow-500"
-                          )}
-                          title="Set as main wallet"
-                        >
-                          <Check className={cn("w-3 h-3", mainWalletAddress === wallet.address ? "opacity-100" : "opacity-0")} />
-                        </button>
+                        {/* Only show edit/delete buttons for non-main wallets */}
+                        {mainWalletAddress !== wallet.address && (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingWalletAddress(wallet.address);
+                                setEditingLabel(wallet.label);
+                              }}
+                              className={cn(
+                                "opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity",
+                                isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"
+                              )}
+                            >
+                              <Edit className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteWallet(wallet.address);
+                              }}
+                              className={cn(
+                                "opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity",
+                                isDark ? "text-gray-400 hover:text-red-400" : "text-gray-500 hover:text-red-500"
+                              )}
+                              title={(publicKey && wallet.address === publicKey.toBase58()) ? 'Unlink wallet' : 'Delete wallet'}
+                            >
+                              {(publicKey && wallet.address === publicKey.toBase58()) ? (
+                                <X className="w-3 h-3" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                     <p className={cn(

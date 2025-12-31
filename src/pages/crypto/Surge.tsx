@@ -6,11 +6,12 @@ import { useTheme } from '@/components/ThemeProvider';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RefreshCw, Zap, TrendingUp, Settings, BarChart2 } from 'lucide-react';
+import { RefreshCw, Zap, TrendingUp, Settings, BarChart2, Wifi, WifiOff } from 'lucide-react';
 import SurgeColumn from '@/components/crypto/ui/SurgeColumn';
 import { type CoinCardData } from '@/components/crypto/ui/CoinCard';
 import { fetchNewTokens, fetchSurgingTokens } from '@/lib/dex-screener-service';
-import { fetchNewPumpFunCoins, type PumpFunCoin } from '@/lib/pump-fun-service';
+import { fetchNewPumpFunCoins, fetchTrendingPumpFunCoins, type PumpFunCoin } from '@/lib/pump-fun-service';
+import { useBackendTokenStream } from '@/lib/useBackendTokenStream';
 import CryptoNavTabs from '@/components/crypto/ui/CryptoNavTabs';
 type CurrencyMode = 'usd' | 'sol';
 
@@ -31,6 +32,19 @@ export default function SurgePage() {
     });
     const [minMarketCap, setMinMarketCap] = useState<string>('0');
     const [autoRefresh, setAutoRefresh] = useState(true);
+
+    // Real-time WebSocket stream for new tokens
+    const {
+        tokens: streamTokens,
+        connected: streamConnected,
+        connecting: streamConnecting
+    } = useBackendTokenStream({
+        autoConnect: true,
+        maxTokens: 30,
+        onTokenCreated: (token) => {
+            console.log('New token from stream:', token.symbol || token.mint?.slice(0, 8));
+        },
+    });
 
     // Calculate age string from timestamp
     const calculateAge = useCallback((timestamp: number | undefined): string => {
@@ -255,11 +269,11 @@ export default function SurgePage() {
 
             console.log(`Filtered to ${newPumpFunTokens.length} new Pump.fun tokens (from ${pumpFunCoins.length} total)`);
 
-            // Fetch migrating tokens (graduating to Raydium) for "Surging" section
-            const migratingTokensData = await fetchMigratingTokens(20);
-            console.log(`Fetched ${migratingTokensData.length} migrating tokens`);
+            // Fetch trending tokens (by market cap) for Live Momentum section
+            const trendingCoins = await fetchTrendingPumpFunCoins(30);
+            console.log(`Fetched ${trendingCoins.length} trending Pump.fun coins`);
 
-            // Also fetch surging tokens from DexScreener as fallback
+            // Also fetch surging tokens from DexScreener as fallback/supplement
             const surgingTokensData = await fetchSurgingTokens(10);
             console.log(`Fetched ${surgingTokensData.length} surging tokens from DexScreener`);
 
@@ -269,43 +283,13 @@ export default function SurgePage() {
             // Transform Pump.fun coins for Early section
             const filteredEarly = newPumpFunTokens.map(transformPumpFunCoin);
 
-            // Transform migrating tokens
-            const transformedMigrating = migratingTokensData.map((token: any) => {
-                // Transform migrating token to CoinCardData format
-                const graduationTime = token.graduation_timestamp || 0;
-                return {
-                    symbol: token.token_symbol || 'UNKNOWN',
-                    name: token.token_name || token.token_symbol || '',
-                    address: token.token_address || '',
-                    pairAddress: token.raydium_pool_address || '',
-                    logoUrl: token.logo_url || '',
-                    price: 0, // Would need to calculate from market cap
-                    priceUsd: 0,
-                    marketCap: token.market_cap_usd || 0,
-                    change24h: 0,
-                    volume24h: 0,
-                    liquidity: token.liquidity_usd || 0,
-                    holders: 0,
-                    txns: 0,
-                    age: graduationTime > 0 ? calculateAge(graduationTime) : 'N/A',
-                    ath: 0,
-                    athMultiple: 0,
-                    dexId: token.graduation_status === 'graduated' ? 'raydium' : 'pump.fun',
-                    socialLinks: {},
-                    isPaid: false,
-                    isGraduated: token.graduation_status === 'graduated',
-                    raydiumPool: token.raydium_pool_address,
-                };
-            }).filter(t => t.marketCap >= minMc)
-                .sort((a, b) => {
-                    // Sort by graduation status (graduated first), then by market cap
-                    if (a.isGraduated !== b.isGraduated) {
-                        return a.isGraduated ? -1 : 1;
-                    }
-                    return b.marketCap - a.marketCap;
-                });
+            // Transform trending tokens for Live Momentum (high market cap = usually more holders)
+            const transformedTrending = trendingCoins
+                .map(transformPumpFunCoin)
+                .filter(coin => coin.marketCap >= minMc)
+                .sort((a, b) => b.marketCap - a.marketCap); // Sort by market cap (highest first)
 
-            // Transform surging tokens
+            // Transform surging tokens from DexScreener
             const transformedSurging = surgingTokensData
                 .filter((t: any) => {
                     const mc = t.marketCap || t.fdv || (t as any).usd_market_cap || (t as any).market_cap || 0;
@@ -313,14 +297,22 @@ export default function SurgePage() {
                 })
                 .map(transformToCoinCard);
 
-            // Combine migrating tokens with surging tokens
-            const allSurging = [...transformedMigrating, ...transformedSurging]
+            // Combine trending and surging tokens for Live Momentum
+            // Deduplicate by address
+            const seenAddresses = new Set<string>();
+            const allMomentum = [...transformedTrending, ...transformedSurging]
+                .filter(coin => {
+                    if (seenAddresses.has(coin.address)) return false;
+                    seenAddresses.add(coin.address);
+                    return true;
+                })
                 .slice(0, 20); // Limit to 20
 
-            console.log(`Setting ${filteredEarly.length} early coins and ${allSurging.length} surging coins`);
+            console.log(`Setting ${filteredEarly.length} early coins and ${allMomentum.length} momentum coins`);
 
             setEarlyCoins(filteredEarly);
-            setSurgingCoins(allSurging);
+            setSurgingCoins(allMomentum);
+
         } catch (error) {
             console.error('Error fetching surge data:', error);
             toast({
@@ -358,6 +350,31 @@ export default function SurgePage() {
         localStorage.setItem('surge_currency_mode', currencyMode);
     }, [currencyMode]);
 
+    // Merge WebSocket stream tokens with fetched tokens for Early Alpha
+    const mergedEarlyCoins = useMemo(() => {
+        // Transform stream tokens to CoinCardData format
+        const streamCoinCards = streamTokens.map(transformPumpFunCoin);
+
+        // Combine: stream tokens first (newest), then fetched tokens
+        const allCoins = [...streamCoinCards, ...earlyCoins];
+
+        // Deduplicate by address
+        const seenAddresses = new Set<string>();
+        const deduped = allCoins.filter(coin => {
+            if (seenAddresses.has(coin.address)) return false;
+            seenAddresses.add(coin.address);
+            return true;
+        });
+
+        // Filter by market cap
+        const minMc = parseInt(minMarketCap) || 0;
+        const filtered = deduped.filter(coin => coin.marketCap >= minMc);
+
+        // Limit to 20 tokens
+        return filtered.slice(0, 20);
+    }, [streamTokens, earlyCoins, transformPumpFunCoin, minMarketCap]);
+
+
     // Handle coin click - navigate to Coins
     const handleCoinClick = (coin: CoinCardData) => {
         const symbol = coin.symbol.includes('/') ? coin.symbol : `${coin.symbol}/USD`;
@@ -382,11 +399,12 @@ export default function SurgePage() {
 
             {/* Main Content - Dual Column Layout */}
             <div className="flex-1 flex gap-4 p-4 overflow-hidden">
-                {/* Early Column - Newly Released Pump.fun Tokens */}
+                {/* Early Alpha Pairs - Real-time new Pump.fun Tokens */}
                 <SurgeColumn
-                    title="Early"
-                    coins={earlyCoins}
-                    loading={loading}
+                    title="Early Alpha Pairs"
+                    subtitle={streamConnected ? '🟢 Live' : streamConnecting ? '🟡 Connecting' : '⚫ Offline'}
+                    coins={mergedEarlyCoins}
+                    loading={loading && streamTokens.length === 0}
                     onCoinClick={handleCoinClick}
                     onBuyClick={handleBuyClick}
                     onRefresh={() => fetchData(false)}
@@ -395,9 +413,9 @@ export default function SurgePage() {
                     className="flex-1 min-w-0"
                 />
 
-                {/* Surging Column - Migrating to Raydium */}
+                {/* Live Momentum - Trending tokens with high market cap */}
                 <SurgeColumn
-                    title="Surging"
+                    title="Live Momentum"
                     coins={surgingCoins}
                     loading={loading}
                     onCoinClick={handleCoinClick}

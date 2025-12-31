@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, RefreshCw, Wallet } from 'lucide-react';
 import { SharePnLImage } from '@/components/trades/SharePnLImage';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import { useUser } from '@/lib/UserContext';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { TopstepXUploadForm } from '@/components/trades/TopstepXUploadForm';
 import { formatCurrency } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 
 interface Trade {
   id: string;
@@ -85,6 +86,7 @@ export default function Trades() {
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [selectedTrades, setSelectedTrades] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
+  const [brokerFilter, setBrokerFilter] = useState<'all' | 'futures' | 'solana'>('all');
 
   useEffect(() => {
     fetchTrades();
@@ -450,6 +452,14 @@ export default function Trades() {
     setSelectedTrades(newSelectedTrades);
   };
 
+  // Filter trades based on broker filter
+  const filteredTrades = trades.filter(trade => {
+    if (brokerFilter === 'all') return true;
+    if (brokerFilter === 'solana') return trade.platform === 'solana' || (trade as any).broker === 'solana';
+    if (brokerFilter === 'futures') return trade.platform !== 'solana' && (trade as any).broker !== 'solana';
+    return true;
+  });
+
   const deleteSelectedTrades = async () => {
     try {
       setIsDeleting(true);
@@ -577,7 +587,45 @@ export default function Trades() {
 
   return (
     <div className="w-full max-w-none py-6 md:py-8 space-y-6 md:space-y-8 px-2">
-      <div className="flex flex-col md:flex-row md:justify-end md:items-center gap-6">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6">
+        {/* Broker Filter Tabs */}
+        <div className="flex items-center gap-2 bg-neutral-900 rounded-lg p-1">
+          <button
+            onClick={() => setBrokerFilter('all')}
+            className={cn(
+              "px-4 py-2 rounded-md text-sm font-medium transition-colors",
+              brokerFilter === 'all'
+                ? "bg-neutral-700 text-white"
+                : "text-gray-400 hover:text-white"
+            )}
+          >
+            All Trades
+          </button>
+          <button
+            onClick={() => setBrokerFilter('futures')}
+            className={cn(
+              "px-4 py-2 rounded-md text-sm font-medium transition-colors",
+              brokerFilter === 'futures'
+                ? "bg-neutral-700 text-white"
+                : "text-gray-400 hover:text-white"
+            )}
+          >
+            Futures
+          </button>
+          <button
+            onClick={() => setBrokerFilter('solana')}
+            className={cn(
+              "px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2",
+              brokerFilter === 'solana'
+                ? "bg-purple-600 text-white"
+                : "text-gray-400 hover:text-white"
+            )}
+          >
+            <Wallet className="w-4 h-4" />
+            Solana
+          </button>
+        </div>
+
         <div className="flex flex-wrap gap-3 items-center">
           <SharePnLImage dailyPnL={lastTrade?.pnl || 0} buttonClassName="bg-none bg-neutral-800 hover:bg-neutral-700 text-gray-300 border border-neutral-700" />
           <Button
@@ -688,7 +736,7 @@ export default function Trades() {
             <p className="text-gray-500 dark:text-slate-500 text-sm mt-1">Please wait while we fetch your trading data</p>
           </div>
         </div>
-      ) : trades.length === 0 ? (
+      ) : filteredTrades.length === 0 ? (
         <Card
           className="border-dashed border-neutral-800 shadow-lg hover:shadow-xl transition-all duration-300"
           style={{
@@ -698,24 +746,46 @@ export default function Trades() {
         >
           <CardContent className="flex flex-col items-center justify-center px-2 sm:px-4 py-12 md:py-16">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-500/20 to-gray-300/20 flex items-center justify-center mb-6 border border-gray-500/30">
-              <Plus className="h-10 w-10 text-gray-400" />
+              {brokerFilter === 'solana' ? (
+                <Wallet className="h-10 w-10 text-purple-400" />
+              ) : (
+                <Plus className="h-10 w-10 text-gray-400" />
+              )}
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No trades recorded yet</h3>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              {brokerFilter === 'solana'
+                ? 'No Solana trades found'
+                : brokerFilter === 'futures'
+                  ? 'No futures trades found'
+                  : 'No trades recorded yet'}
+            </h3>
             <p className="mb-8 text-center text-gray-600 dark:text-slate-400 px-4 max-w-md">
-              Start building your trading history by adding your first trade. Track your performance and analyze your strategies.
+              {brokerFilter === 'solana'
+                ? 'Solana wallet trades sync automatically. Go to the Wallets page to add wallets.'
+                : 'Start building your trading history by adding your first trade. Track your performance and analyze your strategies.'}
             </p>
-            <Button
-              onClick={() => navigate('/app/trades/add')}
-              className="flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg min-h-[44px] md:min-h-0 bg-none bg-neutral-800 hover:bg-neutral-700 text-gray-300 border border-neutral-700"
-            >
-              <Plus className="h-4 w-4" />
-              Add Your First Trade
-            </Button>
+            {brokerFilter === 'solana' ? (
+              <Button
+                onClick={() => navigate('/app/crypto/wallets')}
+                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                <Wallet className="h-4 w-4" />
+                Go to Wallets
+              </Button>
+            ) : (
+              <Button
+                onClick={() => navigate('/app/trades/add')}
+                className="flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg min-h-[44px] md:min-h-0 bg-none bg-neutral-800 hover:bg-neutral-700 text-gray-300 border border-neutral-700"
+              >
+                <Plus className="h-4 w-4" />
+                Add Your First Trade
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 md:gap-6">
-          {trades.map((trade, index) => (
+          {filteredTrades.map((trade, index) => (
             <Card
               key={trade.id.toString()}
               className={`border overflow-hidden transition-all duration-300 hover:shadow-xl ${selectedTrades.has(trade.id)

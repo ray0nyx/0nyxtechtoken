@@ -2,6 +2,7 @@
  * Pump.fun API Service
  * Fetches real-time data about newly created Solana meme coins
  */
+import { proxyImageUrl } from './ipfs-utils';
 
 export interface PumpFunCoin {
   mint: string;
@@ -100,7 +101,10 @@ export async function fetchNewPumpFunCoins(limit: number = 50): Promise<PumpFunC
           })));
         }
 
-        return data.coins;
+        return data.coins.map((coin: PumpFunCoin) => ({
+          ...coin,
+          image_uri: proxyImageUrl(coin.image_uri)
+        }));
       }
 
       console.warn('Backend returned unexpected format:', data);
@@ -150,12 +154,18 @@ export async function fetchKingOfTheHill(): Promise<PumpFunCoin[]> {
     }
 
     if (data.coins && Array.isArray(data.coins)) {
-      return data.coins;
+      return data.coins.map((coin: PumpFunCoin) => ({
+        ...coin,
+        image_uri: proxyImageUrl(coin.image_uri)
+      }));
     }
 
     // Single coin response
     if (data.mint) {
-      return [data];
+      return [{
+        ...data,
+        image_uri: proxyImageUrl(data.image_uri)
+      }];
     }
 
     return [];
@@ -176,7 +186,11 @@ export async function fetchPumpFunCoinDetails(mint: string): Promise<PumpFunCoin
     try {
       const response = await fetch(`${apiUrl}/api/pump-fun/coins/${mint}`);
       if (response.ok) {
-        return await response.json();
+        const coin = await response.json();
+        return {
+          ...coin,
+          image_uri: proxyImageUrl(coin.image_uri)
+        };
       }
     } catch (e) {
       // Ignore and try fallback
@@ -259,7 +273,10 @@ export async function fetchTrendingPumpFunCoins(limit: number = 50): Promise<Pum
 
       // Backend returns { coins: [...], count: ... }
       if (data.coins && Array.isArray(data.coins)) {
-        return data.coins;
+        return data.coins.map((coin: PumpFunCoin) => ({
+          ...coin,
+          image_uri: proxyImageUrl(coin.image_uri)
+        }));
       }
 
       return [];

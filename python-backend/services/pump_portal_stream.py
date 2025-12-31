@@ -129,16 +129,37 @@ class PumpPortalStreamer:
         if not data:
             return None
             
-        # PumpPortal token format
+        # PumpPortal token format - try multiple field names
         mint = data.get("mint") or data.get("token") or data.get("address")
         if not mint:
             return None
+        
+        # Extract image from multiple possible fields
+        image_uri = (
+            data.get("image") or 
+            data.get("image_uri") or 
+            data.get("imageUri") or
+            data.get("logo") or
+            data.get("logoUri") or
+            ""
+        )
+        
+        # Extract name/symbol with fallbacks
+        name = data.get("name") or ""
+        symbol = data.get("symbol") or ""
+        
+        # Log what we received from PumpPortal for debugging
+        if name or image_uri:
+            logger.debug(f"PumpPortal received: {symbol or 'UNKNOWN'} - name={name[:20] if name else 'None'}, image={image_uri[:30] if image_uri else 'None'}")
+        else:
+            logger.debug(f"PumpPortal received minimal data for {mint[:8]}...")
             
         return {
             "mint": mint,
-            "name": data.get("name", ""),
-            "symbol": data.get("symbol", ""),
-            "image_uri": data.get("uri") or data.get("image") or data.get("image_uri"),
+            "name": name,
+            "symbol": symbol,
+            "image_uri": image_uri,
+            "uri": data.get("uri") or data.get("metadataUri") or data.get("metadata_uri"),
             "twitter": data.get("twitter"),
             "telegram": data.get("telegram"),
             "website": data.get("website"),

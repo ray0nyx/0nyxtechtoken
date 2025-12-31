@@ -1,6 +1,7 @@
 import { createClient } from './supabase/client';
 import { marketDataService } from './services/marketDataService';
 import { getMoralisPairData, getMoralisTokenPrice, type MoralisPairData } from './moralis-service';
+import { proxyImageUrl } from './ipfs-utils';
 
 // Cache for API responses to reduce rate limiting
 const dataCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
@@ -397,12 +398,12 @@ async function fetchFromBackend(symbol: string): Promise<DexPairData | null> {
       const latest = ohlcvData[0];
       return {
         symbol,
-        price: parseFloat(latest.close) || 0,
+        price: latest.close || 0,
         change24h: 0, // Would need historical data to calculate
-        volume24h: parseFloat(latest.volume) || 0,
+        volume24h: latest.volume || 0,
         liquidity: 0,
         marketCap: 0,
-        priceUsd: parseFloat(latest.close) || 0,
+        priceUsd: latest.close || 0,
       };
     }
     return null;
@@ -1311,7 +1312,7 @@ export async function searchTokens(query: string): Promise<DexSearchResult[]> {
             website: pair.info?.websiteUrl,
             twitter: pair.info?.twitterUrl,
             telegram: pair.info?.telegramUrl,
-            logoURI: pair.baseToken?.logoURI,
+            logoURI: proxyImageUrl(pair.baseToken?.logoURI),
           },
           quoteToken: {
             address: pair.quoteToken?.address || '',
@@ -1389,7 +1390,7 @@ export async function fetchNewTokens(limit: number = 20): Promise<DexSearchResul
                 );
                 if (profile) {
                   pair.info = pair.info || {};
-                  pair.info.imageUrl = profile.icon || pair.info?.imageUrl;
+                  pair.info.imageUrl = proxyImageUrl(profile.icon || pair.info?.imageUrl);
                 }
                 return pair;
               });
@@ -1451,7 +1452,7 @@ function transformPumpFunToSearchResult(coin: any): DexSearchResult {
       website: coin.website,
       twitter: coin.twitter,
       telegram: coin.telegram,
-      logoURI: coin.image_uri,
+      logoURI: proxyImageUrl(coin.image_uri),
     },
     quoteToken: {
       address: 'So11111111111111111111111111111111111111112',
@@ -1521,7 +1522,7 @@ function transformTokenToSearchResult(token: any): DexSearchResult {
       website: token.website,
       twitter: token.twitter,
       telegram: token.telegram,
-      logoURI: token.logo_uri,
+      logoURI: proxyImageUrl(token.logo_uri),
     },
     quoteToken: {
       address: '',
@@ -1537,7 +1538,6 @@ function transformTokenToSearchResult(token: any): DexSearchResult {
     marketCap: token.market_cap || token.fdv || 0,
     pairCreatedAt: token.pair_created_at,
     holders: token.holders,
-    txns: token.txns_24h,
   };
 }
 
@@ -1558,7 +1558,7 @@ function transformPairToSearchResult(pair: any): DexSearchResult {
       website: pair.info?.websiteUrl,
       twitter: pair.info?.twitterUrl,
       telegram: pair.info?.telegramUrl,
-      logoURI: pair.info?.imageUrl || pair.baseToken?.logoURI,
+      logoURI: proxyImageUrl(pair.info?.imageUrl || pair.baseToken?.logoURI),
     },
     quoteToken: {
       address: pair.quoteToken?.address || '',

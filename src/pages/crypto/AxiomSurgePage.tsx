@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useRef } from 'react';
 import CryptoNavTabs from '@/components/crypto/ui/CryptoNavTabs';
 import {
     RefreshCw,
@@ -19,8 +20,9 @@ import {
     WifiOff
 } from 'lucide-react';
 import AxiomTokenCard, { type AxiomTokenData } from '@/components/crypto/ui/AxiomTokenCard';
-import { fetchNewPumpFunCoins, fetchTrendingPumpFunCoins, type PumpFunCoin } from '@/lib/pump-fun-service';
+import { fetchNewPumpFunCoins, type PumpFunCoin } from '@/lib/pump-fun-service';
 import { usePumpStream } from '@/lib/helius/usePumpStream';
+import { useTrendingTokenStream } from '@/lib/useTrendingTokenStream';
 import { type TokenEvent } from '@/lib/helius/DataParser';
 
 type TabType = 'coins' | 'surge' | 'dex' | 'pump';
@@ -35,10 +37,67 @@ export default function AxiomSurgePage() {
         console.log('🚀 AxiomSurgePage MOUNTED');
         return () => console.log('👋 AxiomSurgePage UNMOUNTED');
     }, []);
-    const [minMC, setMinMC] = useState(0);
+
+    // Load minMC from localStorage on init
+    const [minMC, setMinMC] = useState<number>(() => {
+        const saved = localStorage.getItem('onyx_surge_min_mc');
+        return saved ? parseInt(saved, 10) : 0;
+    });
+
+    // Persist minMC whenever it changes
+    useEffect(() => {
+        localStorage.setItem('onyx_surge_min_mc', minMC.toString());
+    }, [minMC]);
+
+    const pillRef = useRef<HTMLDivElement>(null);
+
+    const handlePillClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!pillRef.current) return;
+        const rect = pillRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, x / rect.width));
+        // Scale to 100k, round to nearest 1k
+        const newVal = Math.round((percentage * 100000) / 1000) * 1000;
+        setMinMC(newVal);
+    };
+
+    // Locked/Unlocked state for sticky filtering
+    const [unlockedMints, setUnlockedMints] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        const toUnlock = new Set<string>();
+        let foundNew = false;
+
+        // Scan master lists and unlock anything that meets current filter
+        earlyTokens.forEach(t => {
+            if (!unlockedMints.has(t.mint) && (t.marketCap || 0) >= minMC) {
+                toUnlock.add(t.mint);
+                foundNew = true;
+            }
+        });
+
+        surgingTokens.forEach(t => {
+            if (!unlockedMints.has(t.mint) && (t.marketCap || 0) >= minMC) {
+                toUnlock.add(t.mint);
+                foundNew = true;
+            }
+        });
+
+        if (foundNew) {
+            setUnlockedMints(prev => {
+                const next = new Set(prev);
+                toUnlock.forEach(m => next.add(m));
+                return next;
+            });
+        }
+    }, [earlyTokens, surgingTokens, minMC]);
+
+    // Filter tokens by market cap automatically - Sticky behavior
+    const filteredEarly = earlyTokens.filter(t => unlockedMints.has(t.mint));
+    const filteredSurging = surgingTokens.filter(t => unlockedMints.has(t.mint));
     const [autoRefresh, setAutoRefresh] = useState(true);
 
-    // Use Helius WebSocket for real-time pump.fun token streaming
+    // Use Helius WebSocket for real-time pump.fun token streaming (Early Alpha Pairs)
     const {
         tokens: streamTokens,
         connected: wsConnected,
@@ -55,6 +114,19 @@ export default function AxiomSurgePage() {
             console.log('Helius stream:', isConnected ? 'connected' : 'disconnected');
         },
     });
+
+    // Use trending tokens WebSocket for Live Momentum
+    const {
+        tokens: trendingStreamTokens,
+        connected: trendingConnected,
+        connecting: trendingConnecting,
+    } = useTrendingTokenStream({
+        autoConnect: true,
+        onConnectionChange: (isConnected) => {
+            console.log('Trending stream:', isConnected ? 'connected' : 'disconnected');
+        },
+    });
+
 
     // Calculate age from timestamp
     const calculateAge = useCallback((timestamp: number | undefined): string => {
@@ -174,21 +246,60 @@ export default function AxiomSurgePage() {
         }
     }, [streamTokens, transformStreamToken]);
 
-    // Fetch trending/surging data from backend
+    // Transform trending stream tokens for Live Momentum (using WebSocket data)
+    // Falls back to API fetch if WebSocket is not connected or has no tokens
+    useEffect(() => {
+        const loadTrendingTokens = async () => {
+            // First check if we have WebSocket data
+            if (trendingStreamTokens.length > 0) {
+                console.log(`Live Momentum: Received ${trendingStreamTokens.length} trending tokens from WebSocket`);
+
+                const momentumTokens = trendingStreamTokens
+                    .map(transformToken)
+                    .filter(t => t.marketCap > 0)
+                    .sort((a, b) => b.marketCap - a.marketCap);
+
+                console.log(`Live Momentum: ${momentumTokens.length} tokens after transform, top MC: ${momentumTokens[0]?.marketCap}`);
+                setSurgingTokens(momentumTokens.slice(0, 30));
+                return;
+            }
+
+            // Fallback: If no WebSocket data after 2 seconds, fetch from API
+            if (!trendingConnected) {
+                console.log('Live Momentum: WebSocket not connected, fetching from API...');
+                try {
+                    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+                    const response = await fetch(
+                        `${apiUrl}/api/pump-fun/coins?offset=0&limit=30&sort=usd_market_cap&order=DESC&include_nsfw=false&_t=${Date.now()}`
+                    );
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.coins && Array.isArray(data.coins)) {
+                            console.log(`Live Momentum: Fetched ${data.coins.length} tokens from API fallback`);
+
+                            const momentumTokens = data.coins
+                                .map(transformToken)
+                                .filter((t: AxiomTokenData) => t.marketCap > 0)
+                                .sort((a: AxiomTokenData, b: AxiomTokenData) => b.marketCap - a.marketCap);
+
+                            console.log(`Live Momentum: ${momentumTokens.length} tokens after transform, top MC: ${momentumTokens[0]?.marketCap}`);
+                            setSurgingTokens(momentumTokens.slice(0, 30));
+                        }
+                    }
+                } catch (e) {
+                    console.error('Live Momentum: Failed to fetch from API', e);
+                }
+            }
+        };
+
+        loadTrendingTokens();
+    }, [trendingStreamTokens, trendingConnected, transformToken]);
+
+    // Fetch early tokens from API as backup (in case WebSocket is slow to start)
     useEffect(() => {
         const loadData = async () => {
             try {
-                // 1. Fetch Trending/Surging (Live Momentum)
-                const trendingData = await fetchTrendingPumpFunCoins(20);
-                // Filter for "Momentum" - high progress (>80%) or high vol
-                const momentumTokens = trendingData
-                    .map(transformToken)
-                    .filter(t => (t.progress && t.progress > 80) || t.marketCap > 50000)
-                    .sort((a, b) => (b.progress || 0) - (a.progress || 0)); // Sort by closeness to migration
-
-                setSurgingTokens(momentumTokens.slice(0, 50));
-
-                // 2. Also fetch new from API as backup (in case WebSocket is slow to start)
                 const newCoins = await fetchNewPumpFunCoins(50);
                 const earlyData = newCoins
                     .map(transformToken)
@@ -204,13 +315,14 @@ export default function AxiomSurgePage() {
                 setLoading(false);
 
             } catch (e) {
-                console.error("Failed to load surge data", e);
+                console.error("Failed to load early tokens", e);
                 setLoading(false);
             }
         };
 
         loadData();
     }, [refreshKey, transformToken]);
+
 
     // Handle token click
     const handleTokenClick = (token: AxiomTokenData) => {
@@ -230,25 +342,45 @@ export default function AxiomSurgePage() {
             {/* Controls Row */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-[#1e2530] bg-black">
                 <div className="flex items-center gap-4">
-                    {/* WebSocket Status */}
+                    {/* Market Cap Filter Control - Image Style */}
+                    <div className="flex items-center gap-2">
+                        {/* Minus Button */}
+                        <button
+                            onClick={() => setMinMC(Math.max(0, minMC - 5000))}
+                            className="w-7 h-7 flex items-center justify-center rounded-full bg-[#1e2530] text-gray-400 hover:text-white transition-colors"
+                        >
+                            <span className="text-lg font-light leading-none">−</span>
+                        </button>
 
-                    {/* Market Cap Slider Control */}
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0d1117] border border-[#1e2530]">
-                        <button onClick={() => setMinMC(Math.max(0, minMC - 10000))} className="text-gray-500 hover:text-white">−</button>
-                        <input
-                            type="range"
-                            min="0"
-                            max="1000000"
-                            step="10000"
-                            value={minMC}
-                            onChange={(e) => setMinMC(parseInt(e.target.value))}
-                            className="w-24 h-1 accent-cyan-500"
-                        />
-                        <span className="text-white text-sm font-medium min-w-[50px] text-center">
-                            {minMC >= 1000000 ? `${(minMC / 1000000).toFixed(0)}M` :
-                                minMC >= 1000 ? `${(minMC / 1000).toFixed(0)}K` : '0'}
-                        </span>
-                        <button onClick={() => setMinMC(minMC + 10000)} className="text-gray-500 hover:text-white">+</button>
+                        {/* Pill Slider */}
+                        <div
+                            ref={pillRef}
+                            onClick={handlePillClick}
+                            className="relative w-32 h-7 rounded-full bg-[#0d1117] border border-[#1e2530] cursor-pointer overflow-hidden group shadow-inner"
+                        >
+                            {/* Silver Fill */}
+                            <div
+                                className="absolute left-0 top-0 h-full bg-[#c0c0c0] transition-all duration-300 ease-out"
+                                style={{ width: `${(minMC / 100000) * 100}%` }}
+                            />
+                            {/* Text Content */}
+                            <div className="absolute inset-0 flex items-center justify-center z-10 select-none">
+                                <span className={cn(
+                                    "text-[10px] font-black tracking-widest uppercase",
+                                    minMC / 100000 > 0.45 ? "text-black" : "text-white"
+                                )}>
+                                    {minMC >= 1000 ? `${(minMC / 1000).toFixed(0)}K` : '0'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Plus Button */}
+                        <button
+                            onClick={() => setMinMC(Math.min(100000, minMC + 5000))}
+                            className="w-7 h-7 flex items-center justify-center rounded-full bg-[#1e2530] text-gray-400 hover:text-white transition-colors"
+                        >
+                            <span className="text-lg font-light leading-none">+</span>
+                        </button>
                     </div>
                 </div>
 
@@ -258,7 +390,7 @@ export default function AxiomSurgePage() {
             <div className="flex-1 flex gap-2 p-2 overflow-hidden">
                 <TokenColumn
                     title="Early Alpha Pairs"
-                    tokens={earlyTokens}
+                    tokens={filteredEarly}
                     loading={loading && earlyTokens.length === 0}
                     onTokenClick={handleTokenClick}
                     onBuyClick={handleBuyClick}
@@ -267,7 +399,7 @@ export default function AxiomSurgePage() {
 
                 <TokenColumn
                     title="Live Momentum"
-                    tokens={surgingTokens}
+                    tokens={filteredSurging}
                     loading={loading && surgingTokens.length === 0}
                     onTokenClick={handleTokenClick}
                     onBuyClick={handleBuyClick}

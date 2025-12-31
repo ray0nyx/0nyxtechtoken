@@ -33,12 +33,11 @@ import LiveTradesModal from '@/components/crypto/LiveTradesModal';
 import { TraderRow } from '@/components/crypto/TraderRow';
 import { createClient } from '@/lib/supabase/client';
 import { fetchSolanaWalletBalance } from '@/lib/wallet-balance-service';
+import { fetchWalletPnL } from '@/lib/solana-tracker-service';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/lib/crypto-aggregation-service';
 import { useTheme } from '@/components/ThemeProvider';
 import { cn } from '@/lib/utils';
-import { useConnection } from '@solana/wallet-adapter-react';
-import { analyzeTraderPerformance, updateTraderLeaderboard } from '@/lib/trader-performance-tracker';
 
 interface LeaderboardTrader {
   id: string;
@@ -48,7 +47,7 @@ interface LeaderboardTrader {
   win_rate: number;
   total_trades: number;
   max_drawdown: number;
-  sharpe_ratio: number | null;
+  netSol: number; // Total SOL spent/earned (replaces sharpe_ratio)
   assets_under_copy: number;
   follower_count: number;
   risk_score: number;
@@ -70,13 +69,11 @@ export default function CopyTradingPage() {
   const { toast } = useToast();
   const { theme } = useTheme();
   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  const { connection } = useConnection();
 
   const [traders, setTraders] = useState<LeaderboardTrader[]>([]);
-  const [analyzingWallets, setAnalyzingWallets] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'roi' | 'total_pnl' | 'win_rate' | 'sharpe_ratio' | 'follower_count'>('roi');
+  const [sortBy, setSortBy] = useState<'roi' | 'total_pnl' | 'win_rate' | 'netSol' | 'follower_count'>('roi');
   const [filterBlockchain, setFilterBlockchain] = useState<'all' | 'sol' | 'btc'>('all');
 
   // Filters
@@ -226,7 +223,7 @@ export default function CopyTradingPage() {
           win_rate: stats?.win_rate || 0,
           total_trades: stats?.total_trades || 0,
           max_drawdown: stats?.max_drawdown || 0,
-          sharpe_ratio: stats?.sharpe_ratio || null,
+          netSol: stats?.net_sol || 0, // Total SOL spent/earned
           assets_under_copy: stats?.assets_under_copy || 0,
           follower_count: stats?.follower_count || 0,
           risk_score: stats?.risk_score || 50,
@@ -239,63 +236,71 @@ export default function CopyTradingPage() {
         };
       });
 
-      // Fetch live balances for all traders
+      // Fetch live balances and PnL data for all traders
       try {
         const enrichedTraders = await Promise.all(mergedTraders.map(async (trader) => {
           try {
+            // Fetch balance from Alchemy
             const balanceData = await fetchSolanaWalletBalance(trader.wallet_address);
+
+            // Fetch PnL data from Solana Tracker API
+            const pnlData = await fetchWalletPnL(trader.wallet_address);
+
+            const solPrice = 200; // TODO: Get real SOL price
+
+            // Debug logging to trace values
+            if (pnlData) {
+              console.log(`[CopyTrading] ${trader.wallet_address.slice(0, 8)}... API Response:`, {
+                realized: pnlData.summary.realized,
+                unrealized: pnlData.summary.unrealized,
+                total: pnlData.summary.total,
+                totalInvested: pnlData.summary.totalInvested,
+                winPercentage: pnlData.summary.winPercentage,
+                totalWins: pnlData.summary.totalWins,
+                totalLosses: pnlData.summary.totalLosses,
+              });
+            }
+
             return {
               ...trader,
               solBalance: balanceData.balances['SOL']?.amount || 0,
-              balanceUSD: balanceData.totalUsdValue
+              balanceUSD: balanceData.totalUsdValue,
+              // ALWAYS use Solana Tracker data, default to 0 if API fails (don't use cached db values)
+              win_rate: pnlData?.summary.winPercentage ?? 0,
+              // Solana Tracker API returns values in USD already - no need to multiply by SOL price!
+              total_pnl: pnlData?.summary.realized ?? 0,
+              // PnL from Solana Tracker (already in USD)
+              pnl_30d: pnlData?.summary.realized ?? 0,
+              total_trades: pnlData ? (pnlData.summary.totalWins + pnlData.summary.totalLosses) : 0,
+              // Net SOL: convert USD to SOL by dividing by price
+              netSol: pnlData ? pnlData.summary.realized / solPrice : 0,
+              roi: pnlData && pnlData.summary.totalInvested > 0
+                ? (pnlData.summary.realized / pnlData.summary.totalInvested) * 100
+                : 0,
             };
           } catch (e) {
-            console.warn(`Could not fetch balance for ${trader.wallet_address}:`, e);
-            return trader;
+            console.warn(`Could not fetch data for ${trader.wallet_address}:`, e);
+            // Return trader with zeroed metrics instead of potentially inflated cached values
+            return {
+              ...trader,
+              pnl_30d: 0,
+              netSol: 0,
+              total_pnl: 0,
+              win_rate: 0,
+              roi: 0,
+              total_trades: 0,
+            };
           }
         }));
         mergedTraders = enrichedTraders;
       } catch (e) {
-        console.error('Error in balance enrichment:', e);
+        console.error('Error in data enrichment:', e);
       }
 
       setTraders(mergedTraders);
       setActiveTraders(mergedTraders?.length || 0);
       setTotalCopied(mergedTraders?.reduce((sum, t) => sum + (t.assets_under_copy || 0), 0) || 0);
 
-      // Trigger background analysis for traders with no stats
-      mergedTraders.forEach(trader => {
-        if ((trader.total_trades === 0 || !trader.roi) && !analyzingWallets.has(trader.wallet_address)) {
-          setAnalyzingWallets(prev => new Set(prev).add(trader.wallet_address));
-          console.log(`Starting background analysis for ${trader.wallet_address} (Limit: 1000)...`);
-          analyzeTraderPerformance(connection, trader.wallet_address, 1000)
-            .then(metrics => {
-              if (metrics) {
-                console.log(`Analysis complete for ${trader.wallet_address}:`, metrics);
-                updateTraderLeaderboard(metrics).then(() => {
-                  // Update local state for this specific trader
-                  setTraders(prev => {
-                    const updated = prev.map(t =>
-                      t.wallet_address === trader.wallet_address ? { ...t, ...metrics } : t
-                    );
-                    console.log(`Updated state for ${trader.wallet_address}, new ROI:`, updated.find(t => t.wallet_address === trader.wallet_address)?.roi);
-                    return updated;
-                  });
-                });
-              } else {
-                console.log(`Analysis returned no metrics for ${trader.wallet_address}`);
-              }
-            })
-            .catch(err => console.error('Background analysis failed:', err))
-            .finally(() => {
-              setAnalyzingWallets(prev => {
-                const next = new Set(prev);
-                next.delete(trader.wallet_address);
-                return next;
-              });
-            });
-        }
-      });
 
       // Calculate user's P&L from copy trading
       if (user) {
@@ -468,21 +473,12 @@ export default function CopyTradingPage() {
       });
 
       setShowAddWalletModal(false);
-      const addedAddress = newWalletAddress;
       setNewWalletAddress('');
       setNewWalletName('');
 
-      // Perform immediate analysis for the new wallet
-      analyzeTraderPerformance(connection, addedAddress, 1000)
-        .then(metrics => {
-          if (metrics) {
-            console.log(`Initial analysis complete for ${addedAddress}:`, metrics);
-            updateTraderLeaderboard(metrics).then(() => loadTraders());
-          }
-        })
-        .catch(err => console.error('Immediate analysis failed:', err));
-
+      // Reload traders to fetch PnL data from Solana Tracker API
       loadTraders();
+
     } catch (error: any) {
       toast({
         title: 'Error adding wallet',
@@ -911,8 +907,7 @@ export default function CopyTradingPage() {
               <SelectItem value="roi">ROI</SelectItem>
               <SelectItem value="total_pnl">Total P&L</SelectItem>
               <SelectItem value="win_rate">Win Rate</SelectItem>
-              <SelectItem value="sharpe_ratio">Sharpe Ratio</SelectItem>
-              <SelectItem value="follower_count">Followers</SelectItem>
+              <SelectItem value="netSol">Net SOL</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1002,16 +997,14 @@ export default function CopyTradingPage() {
       )}>
         {/* Table Header */}
         <div className={cn(
-          "hidden lg:grid lg:grid-cols-9 gap-4 px-6 py-3 border-b text-sm font-medium",
+          "hidden lg:grid lg:grid-cols-7 gap-4 px-6 py-3 border-b text-sm font-medium",
           isDark ? "border-[#27272a] text-[#6b7280]" : "border-gray-200 text-gray-500"
         )}>
           <span className="col-span-2">Trader</span>
           <span className="text-right">ROI</span>
           <span className="text-right">Win Rate</span>
-          <span className="text-right">PnL (30d)</span>
-          <span className="text-right">Sharpe</span>
-          <span className="text-right">Followers</span>
-          <span className="text-right">30d Trades</span>
+          <span className="text-right">PnL</span>
+          <span className="text-right">Net SOL</span>
           <span className="text-right">Action</span>
         </div>
 
@@ -1048,7 +1041,6 @@ export default function CopyTradingPage() {
                 trader={trader}
                 index={index}
                 isDark={isDark}
-                analyzingWallets={analyzingWallets}
                 handleRemoveWallet={handleRemoveWallet}
                 handleCopyTrader={handleCopyTrader}
                 shortenAddress={shortenAddress}

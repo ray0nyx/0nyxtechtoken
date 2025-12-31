@@ -11,6 +11,7 @@ import {
     User as Shield
 } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
+import { proxyImageUrl } from '@/lib/ipfs-utils';
 import {
     HoverCard,
     HoverCardContent,
@@ -29,6 +30,7 @@ export interface AxiomTokenData {
     price: number;
     priceChange: number;
     marketCap: number;
+    startingMC?: number; // Original market cap at creation
     ath?: number;
     athMultiple?: number;
     volume: number;
@@ -39,6 +41,7 @@ export interface AxiomTokenData {
     snipersHolding?: number;
     top10Holding?: number;
     insidersHolding?: number;
+    bundleHolding?: number;
     isPaid?: boolean;
     isGraduated?: boolean;
     platform?: 'pump' | 'raydium';
@@ -47,6 +50,8 @@ export interface AxiomTokenData {
     telegram?: string;
     // Real price history for sparkline (array of prices, most recent last)
     priceHistory?: number[];
+    // Market cap history for sparkline
+    mcHistory?: number[];
 }
 
 interface AxiomTokenCardProps {
@@ -67,39 +72,37 @@ export default function AxiomTokenCard({
     const [imgSrc, setImgSrc] = useState<string | undefined>(undefined);
     const [retryCount, setRetryCount] = useState(0);
 
-    // Real-time chart history state
-    const [history, setHistory] = useState<number[]>(
-        token.priceHistory && token.priceHistory.length > 0
-            ? token.priceHistory
-            : (token.price ? [token.price] : [])
+    // Real-time chart history state (tracking market cap now)
+    const [mcHistory, setMcHistory] = useState<number[]>(
+        token.mcHistory && token.mcHistory.length > 0
+            ? token.mcHistory
+            : (token.marketCap ? [token.marketCap] : [])
     );
 
-    // Update history when realtimePrice changes
+    // Track ATH dynamically
+    const [athMC, setAthMC] = useState<number>(token.ath || token.marketCap || 0);
+
+    // Update history when realtimePrice changes (derive MC from it)
     useEffect(() => {
         if (!realtimePrice) return;
 
-        setHistory(prev => {
-            // Avoid duplicates if price hasn't changed effectively
-            const last = prev[prev.length - 1];
-            if (last === realtimePrice) return prev;
+        // Estimate new MC based on price movement
+        const newMC = token.price > 0
+            ? (realtimePrice / token.price) * token.marketCap
+            : realtimePrice * 1_000_000_000;
 
-            // Keep last 30 points for sparkline
-            const newHistory = [...prev, realtimePrice];
+        setMcHistory(prev => {
+            const last = prev[prev.length - 1];
+            if (last === newMC) return prev;
+            const newHistory = [...prev, newMC];
             return newHistory.length > 30 ? newHistory.slice(newHistory.length - 30) : newHistory;
         });
-    }, [realtimePrice]);
 
-    // Helper to resolve IPFS urls
-    const resolveIpfsUrl = (url?: string) => {
-        if (!url) return undefined;
-        if (url.startsWith('ipfs://')) {
-            return url.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
+        // Update ATH if new high
+        if (newMC > athMC) {
+            setAthMC(newMC);
         }
-        if (url.includes('cf-ipfs.com')) {
-            return url.replace('cf-ipfs.com', 'gateway.pinata.cloud');
-        }
-        return url;
-    };
+    }, [realtimePrice, token.price, token.marketCap, athMC]);
 
     // Initialize image source
     useEffect(() => {
@@ -107,29 +110,11 @@ export default function AxiomTokenCard({
             setImgSrc(undefined);
             return;
         }
-        setImgSrc(resolveIpfsUrl(token.logoUrl));
-        setRetryCount(0);
+        setImgSrc(proxyImageUrl(token.logoUrl));
     }, [token.logoUrl]);
 
     const handleImgError = () => {
-        if (!imgSrc) return;
-
-        if (retryCount === 0 && imgSrc.includes('gateway.pinata.cloud')) {
-            // Try Cloudflare
-            setImgSrc(imgSrc.replace('gateway.pinata.cloud', 'cf-ipfs.com'));
-            setRetryCount(1);
-        } else if (retryCount <= 1 && (imgSrc.includes('cf-ipfs.com') || imgSrc.includes('pinata'))) {
-            // Try generic as last resort
-            const cid = imgSrc.split('/ipfs/').pop();
-            if (cid) {
-                setImgSrc(`https://ipfs.io/ipfs/${cid}`);
-                setRetryCount(2);
-            } else {
-                setImgSrc(undefined);
-            }
-        } else {
-            setImgSrc(undefined); // Trigger fallback UI
-        }
+        setImgSrc(undefined); // Trigger fallback UI
     };
 
     // Format helpers
@@ -153,37 +138,29 @@ export default function AxiomTokenCard({
     // Estimate MC based on price movement if supply constant
     const displayMC = realtimePrice && token.price > 0
         ? (realtimePrice / token.price) * token.marketCap
-        : (realtimePrice ? realtimePrice * 1_000_000_000 : token.marketCap); // Fallback to 1B supply if token.price is 0
+        : (realtimePrice ? realtimePrice * 1_000_000_000 : token.marketCap);
 
-    // Dynamic price change calculation
-    // If we have distinct realtime price, compare to initial token.price (acting as 'open' or 'prev')
-    // Ensure we handle division by zero or missing initial price
-    const currentPrice = realtimePrice || (history.length > 0 ? history[history.length - 1] : token.price);
-    const initialPrice = token.price || (history.length > 0 ? history[0] : 0);
+    // Dynamic price change calculation relative to STARTING market cap
+    const startingMC = token.startingMC || (mcHistory.length > 0 ? mcHistory[0] : token.marketCap);
+    const currentMC = displayMC;
 
-    const displayChange = currentPrice && initialPrice > 0
-        ? ((currentPrice - initialPrice) / initialPrice) * 100
+    const displayChange = startingMC > 0
+        ? ((currentMC - startingMC) / startingMC) * 100
         : token.priceChange;
 
     const isPositive = displayChange >= 0;
 
-    // Use real price history if available.
-    // If we don't have enough history, show a flat line at current price to indicate "waiting for data"
-    // rather than a fake random walk which is misleading.
+    // Use MC history for chart (market cap movement)
     const chartData = useMemo(() => {
-        // Use accumulated history if we have enough points (>= 2)
-        if (history.length >= 2) {
-            return history.map((val, i) => ({ i, val }));
+        if (mcHistory.length >= 2) {
+            return mcHistory.map((val, i) => ({ i, val }));
         }
-
-        // Fallback: If we only have 1 point or no history, show a flat line
-        // This is better than a fake random walk that implies trend where there isn't one
-        const val = currentPrice || 0;
+        const val = currentMC || 0;
         return [
             { i: 0, val },
             { i: 1, val }
         ];
-    }, [history, currentPrice]);
+    }, [mcHistory, currentMC]);
 
     return (
         <HoverCard openDelay={200} closeDelay={100}>
@@ -237,7 +214,7 @@ export default function AxiomTokenCard({
                             </div>
                         </div>
 
-                        {/* Top Right: Time Change/Value */}
+                        {/* Top Right: Time, Change, and Current MC */}
                         <div className="text-right">
                             <div className="text-gray-400 text-xs font-mono mb-0.5">{token.age}</div>
                             <div className={cn(
@@ -246,10 +223,13 @@ export default function AxiomTokenCard({
                             )}>
                                 {isPositive ? '+' : ''}{displayChange.toFixed(2)}%
                             </div>
+                            <div className="text-[10px] text-gray-500 font-mono mt-0.5">
+                                MC <span className={cn("font-bold", realtimePrice ? "text-green-400" : "text-cyan-400")}>{formatNumber(displayMC)}</span>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Middle: Sparkline Chart */}
+                    {/* Middle: Sparkline Chart (Market Cap Movement) */}
                     <div className="h-12 w-full my-2 relative opacity-80 group-hover:opacity-100 transition-opacity">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={chartData}>
@@ -265,28 +245,32 @@ export default function AxiomTokenCard({
                             </LineChart>
                         </ResponsiveContainer>
 
-                        {/* ATH Indicator line if applicable */}
-                        {token.ath && (
-                            <div className="absolute top-0 right-0 text-[9px] text-gray-500 bg-black/80 px-1 rounded">
-                                ATH {formatNumber(token.ath)} {token.athMultiple ? `(${token.athMultiple.toFixed(1)}x)` : ''}
-                            </div>
-                        )}
+                        {/* ATH Indicator - Bottom Right under chart */}
+                        <div className="absolute bottom-0 right-0 text-[9px] text-gray-500 font-mono">
+                            ATH: <span className="text-cyan-400 font-bold">{formatNumber(athMC)}</span>
+                        </div>
                     </div>
 
-                    {/* Bottom: Stats Row */}
+                    {/* Bottom: Stats Row - New Icon Layout */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-mono mt-2 pt-2 border-t border-white/10">
-                        <div className="flex items-center gap-3">
-                            <span className="flex items-center gap-1" title="Volume">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* Volume */}
+                            <span className="flex items-center gap-0.5" title="Volume">
                                 <span className="font-bold text-gray-400">V</span> {formatNumber(token.volume)}
                             </span>
-                            <span className="flex items-center gap-1" title="Liquidity">
+                            {/* Liquidity */}
+                            <span className="flex items-center gap-0.5" title="Liquidity">
                                 <span className="font-bold text-gray-400">L</span> {formatNumber(token.liquidity)}
                             </span>
-                            <span className="flex items-center gap-1" title="Holders">
-                                <Users className="w-3 h-3 text-gray-400" /> {formatCompact(token.holders)}
+                            {/* Holders */}
+                            <span className="flex items-center gap-0.5" title="Holders">
+                                <Users className="w-3 h-3 text-green-400" /> {formatCompact(token.holders)}
                             </span>
-                            <span className="flex items-center gap-1" title="Transactions">
-                                <Activity className="w-3 h-3 text-gray-400" /> {token.txns}
+                            {/* Transactions */}
+                            <span className="flex items-center gap-0.5" title="Transactions">
+                                <svg className="w-3 h-3 text-green-400" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+                                </svg> {token.txns}
                             </span>
                         </div>
 
@@ -302,17 +286,46 @@ export default function AxiomTokenCard({
                         </button>
                     </div>
 
-                    {/* Badges/Flags Row (Optional) */}
-                    <div className="flex items-center gap-2 mt-1.5 text-[9px]">
-                        <span className="flex items-center gap-0.5 text-red-400/80">
-                            <Users className="w-2.5 h-2.5" /> {token.devHolding || 0}%
+                    {/* Holding Percentages Row - New Icons */}
+                    <div className="flex items-center gap-2 mt-1.5 text-[9px] flex-wrap">
+                        {/* Dev Holding - Star/Octopus */}
+                        <span className="flex items-center gap-0.5 text-red-400" title="Dev Holding">
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                            </svg> {token.devHolding || 0}%
                         </span>
-                        <span className="flex items-center gap-0.5 text-orange-400/80">
-                            <Shield className="w-2.5 h-2.5" /> {token.insidersHolding || 0}%
+                        {/* Top 10 Holding - Whale */}
+                        <span className="flex items-center gap-0.5 text-green-400" title="Top 10 Holding">
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 3C7.03 3 3 7.03 3 12s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9zm0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7zm-1-11h2v6h-2zm0 8h2v2h-2z" />
+                            </svg> {token.top10Holding || 0}%
                         </span>
-                        <span className="flex items-center gap-0.5 text-purple-400/80">
-                            <Rocket className="w-2.5 h-2.5" /> 1%
+                        {/* Insiders Holding - Shield */}
+                        <span className="flex items-center gap-0.5 text-red-400" title="Insiders Holding">
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" />
+                            </svg> {token.insidersHolding || 0}%
                         </span>
+                        {/* Snipers Holding - Face */}
+                        <span className="flex items-center gap-0.5 text-gray-400" title="Snipers Holding">
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="12" r="10" />
+                                <circle cx="9" cy="10" r="1.5" fill="black" />
+                                <circle cx="15" cy="10" r="1.5" fill="black" />
+                                <path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="black" strokeWidth="1" fill="none" />
+                            </svg> {token.snipersHolding || 0}%
+                        </span>
+                        {/* Bundle Holding - Molecule */}
+                        <span className="flex items-center gap-0.5 text-red-400" title="Bundle Holding">
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="6" r="3" />
+                                <circle cx="6" cy="18" r="3" />
+                                <circle cx="18" cy="18" r="3" />
+                                <line x1="12" y1="9" x2="6" y2="15" stroke="currentColor" strokeWidth="2" />
+                                <line x1="12" y1="9" x2="18" y2="15" stroke="currentColor" strokeWidth="2" />
+                            </svg> {token.bundleHolding || 0}%
+                        </span>
+
                         {token.isPaid && (
                             <span className="text-pink-400 bg-pink-400/10 px-1 rounded">Paid</span>
                         )}

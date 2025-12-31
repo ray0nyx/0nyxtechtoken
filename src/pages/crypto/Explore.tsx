@@ -113,26 +113,8 @@ export default function Explore() {
             {/* Top Navigation Tabs - Coins / Surge / DEX Screener / Pump Live */}
             <CryptoNavTabs />
 
-            {/* Secondary Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-[#1e2530] bg-black">
-                <div className="flex items-center gap-3">
-                    <Zap className="w-5 h-5 text-purple-400" />
-                    <h1 className="text-lg font-bold text-white">Pulse</h1>
-                    <span className="text-xs text-gray-500">Real-time token lifecycle</span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <select className="px-2 py-1 text-xs bg-[#0d1117] border border-[#1e2530] text-white rounded">
-                        <option>Standard</option>
-                        <option>Compact</option>
-                    </select>
-                    <button
-                        onClick={fetchData}
-                        className="p-2 text-gray-400 hover:text-white"
-                    >
-                        <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                    </button>
-                </div>
+            {/* Secondary Header - Cleaned up */}
+            <div className="h-2 border-b border-[#1e2530] bg-black">
             </div>
 
             {/* Three Column Layout */}
@@ -184,24 +166,16 @@ function PulseColumn({
     };
 
     return (
-        <div className="flex-1 flex flex-col rounded-lg bg-black border border-[#1e2530] overflow-hidden">
+        <div className="flex-1 flex flex-col bg-black overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-[#1e2530]">
+            <div className="flex items-center justify-between px-3 py-2 bg-black">
                 <div className="flex items-center gap-2">
                     <h3 className="text-white text-sm font-bold">{title}</h3>
-                    <span className={cn("px-1.5 py-0.5 text-[10px] rounded", colorMap[color])}>
-                        {tokens.length}
-                    </span>
-                </div>
-                <div className="flex items-center gap-1">
-                    <button className="px-1.5 py-0.5 text-[10px] bg-cyan-500/20 text-cyan-400 rounded">P1</button>
-                    <button className="px-1.5 py-0.5 text-[10px] text-gray-500">P2</button>
-                    <button className="px-1.5 py-0.5 text-[10px] text-gray-500">P3</button>
                 </div>
             </div>
 
             {/* Scroll button */}
-            <button className="flex items-center justify-center py-1 border-b border-[#1e2530] text-gray-500 hover:text-white">
+            <button className="flex items-center justify-center py-1 text-gray-500 hover:text-white">
                 <ChevronUp className="w-3 h-3" />
             </button>
 

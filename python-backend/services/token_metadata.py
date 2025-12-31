@@ -26,48 +26,90 @@ async def enrich_token_metadata(token: dict) -> dict:
     if not mint:
         return token
     
-    # Skip if already has good metadata
-    if token.get("name") and token.get("symbol") and token.get("image_uri"):
+    logger.debug(f"Enriching token {mint[:8]}... (name={token.get('name')}, symbol={token.get('symbol')}, image={token.get('image_uri', '')[:30] if token.get('image_uri') else 'None'})")
+    
+    # Define what a "real" image looks like
+    def is_real_image(url):
+        if not url: return False
+        url_lower = url.lower()
+        if url_lower.endswith('.json') or "metadata" in url_lower:
+            return False
+        # If it has common image extensions or contains 'image', 'ipfs', etc.
+        return any(ext in url_lower for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']) or \
+               "ipfs" in url_lower or "image" in url_lower or "cdn" in url_lower or \
+               url_lower.startswith('data:')
+    
+    image_uri = token.get("image_uri", "")
+    has_real_image = is_real_image(image_uri)
+    
+    # If we have basic info and a real image, we can skip (but still check cache)
+    if token.get("name") and token.get("name") not in ["Loading...", "New Token"] and \
+       token.get("symbol") and token.get("symbol") != "???" and \
+       has_real_image:
         return token
     
     # Check cache first
     if mint in _metadata_cache:
         cached = _metadata_cache[mint]
-        # Move to end (LRU)
-        _metadata_cache.move_to_end(mint)
-        return {**token, **cached}
+        if is_real_image(cached.get("image_uri")):
+            # Move to end (LRU)
+            _metadata_cache.move_to_end(mint)
+            return {**token, **cached}
     
-    # Try Pump.fun API first
-    metadata = await _fetch_from_pump_fun(mint)
+    metadata = None
     
-    # Fallback to IPFS if no metadata
-    if not metadata and token.get("uri"):
-        metadata = await _fetch_from_ipfs(token.get("uri"))
+    # 1. ALWAYS try Pump.fun API first for brand new tokens
+    # This is more reliable than IPFS for freshly created tokens
+    if not token.get("name") or token.get("name") in ["Loading...", "New Token", ""]:
+        metadata = await _fetch_from_pump_fun(mint)
+        if metadata:
+            logger.debug(f"Got metadata from Pump.fun for {mint[:8]}: name={metadata.get('name')}, image={metadata.get('image_uri', '')[:30] if metadata.get('image_uri') else 'None'}")
+    
+    # 2. If Pump.fun failed or no real image, try IPFS metadata URI
+    if (not metadata or not is_real_image(metadata.get("image_uri"))) and not has_real_image:
+        uri_to_fetch = token.get("uri") or token.get("metadata_uri") or token.get("image_uri")
+        if uri_to_fetch and (uri_to_fetch.endswith('.json') or "metadata" in uri_to_fetch.lower() or "ipfs" in uri_to_fetch.lower()):
+            ipfs_metadata = await _fetch_from_ipfs(uri_to_fetch)
+            if ipfs_metadata:
+                logger.debug(f"Got metadata from IPFS for {mint[:8]}: name={ipfs_metadata.get('name')}, image={ipfs_metadata.get('image_uri', '')[:30] if ipfs_metadata.get('image_uri') else 'None'}")
+                # Merge IPFS data with existing metadata
+                if not metadata:
+                    metadata = ipfs_metadata
+                else:
+                    # IPFS might have better image
+                    if is_real_image(ipfs_metadata.get("image_uri")) and not is_real_image(metadata.get("image_uri")):
+                        metadata["image_uri"] = ipfs_metadata["image_uri"]
     
     if metadata:
-        # Update cache
-        _metadata_cache[mint] = metadata
-        if len(_metadata_cache) > MAX_CACHE_SIZE:
-            _metadata_cache.popitem(last=False)  # Remove oldest
+        # Update cache if we got something useful
+        if metadata.get("name") or is_real_image(metadata.get("image_uri")):
+            _metadata_cache[mint] = metadata
+            if len(_metadata_cache) > MAX_CACHE_SIZE:
+                _metadata_cache.popitem(last=False)
         
         # Merge metadata into token
         enriched = {**token}
-        if metadata.get("name") and not token.get("name"):
+        if metadata.get("name") and (not token.get("name") or token.get("name") in ["Loading...", "New Token"]):
             enriched["name"] = metadata["name"]
-        if metadata.get("symbol") and not token.get("symbol"):
+        if metadata.get("symbol") and (not token.get("symbol") or token.get("symbol") == "???"):
             enriched["symbol"] = metadata["symbol"]
-        if metadata.get("image_uri") and not token.get("image_uri"):
-            enriched["image_uri"] = metadata["image_uri"]
-        if metadata.get("twitter") and not token.get("twitter"):
-            enriched["twitter"] = metadata["twitter"]
-        if metadata.get("telegram") and not token.get("telegram"):
-            enriched["telegram"] = metadata["telegram"]
-        if metadata.get("website") and not token.get("website"):
-            enriched["website"] = metadata["website"]
-        if metadata.get("description"):
-            enriched["description"] = metadata["description"]
+            
+        # IMPORTANT: Overwrite image_uri if it's not a real image OR if metadata has a better one
+        new_image = metadata.get("image_uri")
+        if is_real_image(new_image):
+            if not has_real_image or not enriched.get("image_uri") or "ipfs" in new_image.lower():
+                enriched["image_uri"] = new_image
+        
+        # Other fields
+        for field in ["twitter", "telegram", "website", "description"]:
+            if metadata.get(field) and not token.get(field):
+                enriched[field] = metadata[field]
         
         return enriched
+    
+    # Log when enrichment fails completely for a token that still needs metadata
+    if not token.get("name") or token.get("name") in ["Loading...", "New Token", ""] or not has_real_image:
+        logger.warning(f"Enrichment failed for {mint[:12]}... - name={token.get('name')}, image={token.get('image_uri', '')[:40] if token.get('image_uri') else 'None'}")
     
     return token
 
@@ -126,38 +168,74 @@ async def _fetch_from_ipfs(uri: str) -> Optional[Dict[str, Any]]:
     if not uri:
         return None
     
+    # Extract CID
+    cid = None
+    if uri.startswith("ipfs://"):
+        cid = uri.replace("ipfs://", "")
+    elif "/ipfs/" in uri:
+        cid = uri.split("/ipfs/")[-1]
+    elif not uri.startswith("http") and (len(uri) >= 46): # Likely a CID
+        cid = uri
+
+    # Gateways to try (matching frontend priority)
+    gateways = [
+        "https://gateway.pinata.cloud/ipfs/",
+        "https://ipfs.io/ipfs/",
+        "https://dweb.link/ipfs/",
+        "https://cf-ipfs.com/ipfs/"
+    ]
+    
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
     
-    try:
-        # Convert IPFS URI to HTTP gateway URL if needed
-        if uri.startswith("ipfs://"):
-            uri = uri.replace("ipfs://", "https://ipfs.io/ipfs/")
-        elif not uri.startswith("http"):
-            # May be just the CID
-            uri = f"https://ipfs.io/ipfs/{uri}"
+    # If we have a CID, try multiple gateways
+    if cid:
+        for gateway in gateways:
+            gateway_url = f"{gateway}{cid}"
+            try:
+                timeout = aiohttp.ClientTimeout(total=8)
+                connector = aiohttp.TCPConnector(ssl=ssl_context)
+                
+                async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+                    async with session.get(gateway_url) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            logger.debug(f"Fetched metadata from IPFS gateway {gateway}: {cid[:8]}...")
+                            return {
+                                "name": data.get("name", ""),
+                                "symbol": data.get("symbol", ""),
+                                "image_uri": data.get("image") or data.get("image_uri") or "",
+                                "description": data.get("description", ""),
+                                "twitter": data.get("twitter"),
+                                "telegram": data.get("telegram"),
+                                "website": data.get("website"),
+                            }
+            except Exception as e:
+                logger.debug(f"Failed to fetch from IPFS gateway {gateway}: {e}")
         
-        timeout = aiohttp.ClientTimeout(total=8)
-        connector = aiohttp.TCPConnector(ssl=ssl_context)
-        
-        async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
-            async with session.get(uri) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    logger.debug(f"Fetched metadata from IPFS: {uri[:50]}...")
-                    return {
-                        "name": data.get("name", ""),
-                        "symbol": data.get("symbol", ""),
-                        "image_uri": data.get("image", ""),
-                        "description": data.get("description", ""),
-                        "twitter": data.get("twitter"),
-                        "telegram": data.get("telegram"),
-                        "website": data.get("website"),
-                    }
-                    
-    except Exception as e:
-        logger.warning(f"Error fetching IPFS metadata: {e}")
+        logger.warning(f"Failed to fetch IPFS metadata for {cid[:8]} from all gateways")
+    
+    # If not a standard IPFS CID or gateways failed, try fetching original URI directly
+    if uri.startswith("http"):
+        try:
+            timeout = aiohttp.ClientTimeout(total=8)
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
+            async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+                async with session.get(uri) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return {
+                            "name": data.get("name", ""),
+                            "symbol": data.get("symbol", ""),
+                            "image_uri": data.get("image") or data.get("image_uri") or "",
+                            "description": data.get("description", ""),
+                            "twitter": data.get("twitter"),
+                            "telegram": data.get("telegram"),
+                            "website": data.get("website"),
+                        }
+        except Exception as e:
+            logger.warning(f"Error fetching direct URI {uri[:50]}: {e}")
     
     return None
 

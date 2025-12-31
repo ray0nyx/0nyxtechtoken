@@ -15,7 +15,7 @@ interface TraderRowProps {
     trader: any;
     index: number;
     isDark: boolean;
-    analyzingWallets: Set<string>;
+    analyzingWallets?: Set<string>; // Now optional since we use Solana Tracker API
     handleRemoveWallet: (trader: any) => void;
     handleCopyTrader: (trader: any) => void;
     shortenAddress: (address: string) => string;
@@ -26,7 +26,7 @@ export const TraderRow: React.FC<TraderRowProps> = ({
     trader: initialTrader,
     index,
     isDark,
-    analyzingWallets,
+    analyzingWallets = new Set(), // Default to empty set
     handleRemoveWallet,
     handleCopyTrader,
     shortenAddress,
@@ -43,7 +43,7 @@ export const TraderRow: React.FC<TraderRowProps> = ({
     return (
         <div
             className={cn(
-                "grid grid-cols-2 lg:grid-cols-9 gap-4 px-6 py-4 transition-colors items-center",
+                "grid grid-cols-2 lg:grid-cols-7 gap-4 px-6 py-4 transition-colors items-center",
                 isDark ? "hover:bg-[#27272a]" : "hover:bg-gray-50",
                 isAnalyzing && "opacity-70 animate-pulse"
             )}
@@ -117,20 +117,13 @@ export const TraderRow: React.FC<TraderRowProps> = ({
                 </span>
             </div>
 
-            {/* Sharpe */}
+            {/* Net SOL (replaced Sharpe) */}
             <div className="hidden lg:block text-right">
-                <span className={isDark ? "text-white" : "text-gray-900"}>{trader.sharpe_ratio?.toFixed(2) || '-'}</span>
-            </div>
-
-            {/* Followers */}
-            <div className="hidden lg:block text-right">
-                <span className={isDark ? "text-white" : "text-gray-900"}>{trader.follower_count || 0}</span>
-            </div>
-
-            {/* 30d Trades */}
-            <div className="hidden lg:block text-right">
-                <span className={cn("text-sm", isDark ? "text-slate-300" : "text-slate-600")}>
-                    {trader.trades_30d || '-'}
+                <span className={cn(
+                    "font-medium",
+                    (trader.netSol ?? 0) >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'
+                )}>
+                    {(trader.netSol ?? 0) >= 0 ? '+' : ''}{(trader.netSol ?? 0).toFixed(2)} SOL
                 </span>
             </div>
 

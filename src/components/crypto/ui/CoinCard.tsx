@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Copy, Check } from 'lucide-react';
+import { proxyImageUrl } from '@/lib/ipfs-utils';
 
 export interface CoinCardData {
     symbol: string;
@@ -52,6 +53,16 @@ export default function CoinCard({
     showUsd = true,
 }: CoinCardProps) {
     const isDark = theme === 'dark';
+    const [copied, setCopied] = useState(false);
+
+    const handleCopyAddress = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (coin.address) {
+            navigator.clipboard.writeText(coin.address);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
 
     const formatNumber = (num: number, decimals: number = 2) => {
         if (!num || isNaN(num)) return '$0';
@@ -96,27 +107,20 @@ export default function CoinCard({
                 <div className="relative flex-shrink-0">
                     {coin.logoUrl ? (
                         <img
-                            src={coin.logoUrl}
+                            src={proxyImageUrl(coin.logoUrl)}
                             alt={coin.symbol}
                             className="w-12 h-12 rounded-full object-cover border-2 border-[#1e2530]"
-                            onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const fallback = target.nextElementSibling as HTMLElement;
-                                if (fallback) fallback.style.display = 'flex';
-                            }}
                         />
-                    ) : null}
-                    <div
-                        className={cn(
-                            "w-12 h-12 rounded-full items-center justify-center text-lg font-bold",
-                            "bg-gradient-to-br from-purple-600 to-cyan-500 text-white",
-                            coin.logoUrl ? "hidden" : "flex"
-                        )}
-                        style={{ display: coin.logoUrl ? 'none' : 'flex' }}
-                    >
-                        {coin.symbol.charAt(0)}
-                    </div>
+                    ) : (
+                        <div
+                            className={cn(
+                                "w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold",
+                                "bg-gradient-to-br from-purple-600 to-cyan-500 text-white"
+                            )}
+                        >
+                            {coin.symbol.charAt(0)}
+                        </div>
+                    )}
                     {/* Platform badge - bottom left */}
                     <div className={cn(
                         "absolute -bottom-0.5 -left-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold",
@@ -138,12 +142,22 @@ export default function CoinCard({
                         )}>
                             {coin.symbol}
                         </span>
-                        <span className={cn(
-                            "text-xs truncate max-w-[80px]",
-                            isDark ? "text-gray-500" : "text-gray-400"
-                        )}>
-                            {coin.name}
-                        </span>
+                        <button
+                            onClick={handleCopyAddress}
+                            className={cn(
+                                "flex items-center gap-1 text-xs truncate max-w-[100px] hover:text-cyan-400 transition-colors cursor-pointer group",
+                                isDark ? "text-gray-500" : "text-gray-400",
+                                copied && "text-green-400"
+                            )}
+                            title={`Copy CA: ${coin.address}`}
+                        >
+                            <span className="truncate">{coin.name}</span>
+                            {copied ? (
+                                <Check className="h-3 w-3 flex-shrink-0 text-green-400" />
+                            ) : (
+                                <Copy className="h-3 w-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
+                            )}
+                        </button>
                         {coin.isGraduated && (
                             <span className="text-[9px] px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium">
                                 ✓
