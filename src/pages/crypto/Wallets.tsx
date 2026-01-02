@@ -57,6 +57,7 @@ function WalletsContent() {
   const [timePeriod, setTimePeriod] = useState<'24h' | '7d' | '30d'>('24h');
   const [totalBalance, setTotalBalance] = useState(0);
   const [totalChange, setTotalChange] = useState(0);
+  const [totalSparklineData, setTotalSparklineData] = useState<number[]>([]);
   const [wallets, setWallets] = useState<WalletItem[]>([]);
   const [showWalletManager, setShowWalletManager] = useState(false);
   const [editingWalletAddress, setEditingWalletAddress] = useState<string | null>(null);
@@ -425,6 +426,26 @@ function WalletsContent() {
       setTotalBalance(totalUsdValue);
       setTotalChange(totalChange);
 
+      // Calculate total sparkline (aggregated USD value history)
+      const currentLimit = dataLimitMap[timePeriod];
+      const aggregatedSparkline = new Array(currentLimit).fill(0);
+
+      walletList.forEach(wallet => {
+        if (wallet.sparklineData && wallet.sparklineData.length === currentLimit) {
+          // If we have price history, multiply it by the native amount to get USD history
+          wallet.sparklineData.forEach((price, i) => {
+            aggregatedSparkline[i] += price * (wallet.nativeAmount || 0);
+          });
+        } else {
+          // Fallback: use current total value if sparkline is missing
+          for (let i = 0; i < currentLimit; i++) {
+            aggregatedSparkline[i] += wallet.totalUsdValue;
+          }
+        }
+      });
+
+      setTotalSparklineData(aggregatedSparkline);
+
       // Auto-set first Turnkey wallet as main wallet if none is set
       const savedMainWallet = localStorage.getItem('main_wallet_address');
       if (!savedMainWallet && walletList.length > 0) {
@@ -586,6 +607,45 @@ function WalletsContent() {
                 </span>
               </div>
             </div>
+          </div>
+
+          <div className="flex-1 max-w-[400px] h-[60px] hidden md:block">
+            {totalSparklineData.length > 0 && (
+              <svg className="w-full h-full" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="total-sparkline-gradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={totalChange >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.2" />
+                    <stop offset="100%" stopColor={totalChange >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d={`M ${totalSparklineData.map((val, i) => {
+                    const min = Math.min(...totalSparklineData);
+                    const max = Math.max(...totalSparklineData);
+                    const range = Math.max(max - min, totalBalance * 0.01); // 1% min range
+                    const x = (i / (totalSparklineData.length - 1)) * 400;
+                    const y = 60 - ((val - min) / range) * 50 - 5;
+                    return `${x},${y}`;
+                  }).join(' L ')} V 60 H 0 Z`}
+                  fill="url(#total-sparkline-gradient)"
+                />
+                <polyline
+                  points={totalSparklineData.map((val, i) => {
+                    const min = Math.min(...totalSparklineData);
+                    const max = Math.max(...totalSparklineData);
+                    const range = Math.max(max - min, totalBalance * 0.01);
+                    const x = (i / (totalSparklineData.length - 1)) * 400;
+                    const y = 60 - ((val - min) / range) * 50 - 5;
+                    return `${x},${y}`;
+                  }).join(' ')}
+                  fill="none"
+                  stroke={totalChange >= 0 ? "#10b981" : "#ef4444"}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
           </div>
 
           <div className="flex items-center gap-3">

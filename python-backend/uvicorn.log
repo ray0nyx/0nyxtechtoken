@@ -8309,3 +8309,12 @@ Enrichment failed for 7GWrQqd2CJWu... - name=SLEEP TOKEN, image=None
 Error fetching direct URI https://1ea5c9284bee4d1c815c8bd0.blob.core.windows: 0, message='Attempt to decode JSON with unexpected mimetype: application/octet-stream', url=URL('https://1ea5c9284bee4d1c815c8bd0.blob.core.windows.net/deploy/bb7633dd-4b2e-4d33-93b7-d7db87b8e840.json')
 Enrichment failed for K6bNhfhRarsJ... - name=Sleep Token, image=None
 Enrichment failed for 9dWwm1NRYMof... - name=, image=None
+Error fetching direct URI https://metadata.uxento.io/data/809b5a64-44a2-4f63: 
+Enrichment failed for CxswT2gXgbnD... - name=dogwifcrown, image=None
+Enrichment failed for ESAUe4Hw2FHh... - name=, image=None
+Enrichment failed for 2VRgvCrMb7rF... - name=Sleep Token, image=None
+Enrichment failed for 9WTMbUtrbuEs... - name=Woke Coin, image=None
+Enrichment failed for 6FhsLKw5csW3... - name=, image=None
+Enrichment failed for DPVDUWQsW1dW... - name=Pickle Soul Computer, image=None
+Enrichment failed for 5kRAYoohvVro... - name=Woke Coin, image=None
+Enrichment failed for B9DdBBz8Qrwx... - name=, image=None
