@@ -757,8 +757,23 @@ class DataAggregator:
 
     async def _fetch_birdeye_direct(self, path: str) -> Dict[str, Any]:
         """Internal helper for direct Birdeye API calls via proxy logic"""
-        if not BIRDEYE_API_KEY or not self.session:
-            return {"success": False, "message": "Birdeye API key not configured or session not initialized"}
+        if not BIRDEYE_API_KEY:
+            logger.error("BIRDEYE_API_KEY is missing in environment variables.")
+            return {"success": False, "message": "Birdeye API key not configured"}
+            
+        if not self.session:
+            logger.error("DataAggregator session is not initialized (self.session is None).")
+            # Try to initialize session if missing (should be done in __aenter__)
+            try:
+                if CERTIFI_AVAILABLE:
+                    ssl_context = ssl.create_default_context(cafile=certifi.where())
+                    connector = aiohttp.TCPConnector(ssl=ssl_context)
+                    self.session = aiohttp.ClientSession(connector=connector)
+                else:
+                    self.session = aiohttp.ClientSession()
+            except Exception as init_err:
+                logger.error(f"Failed to auto-initialize session: {init_err}")
+                return {"success": False, "message": "Session initialization failed"}
         
         url = f"{BIRDEYE_API_URL}/{path}"
         headers = {
@@ -769,10 +784,57 @@ class DataAggregator:
         
         try:
             async with self.session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status != 200:
+                    logger.warning(f"Birdeye API returned {resp.status} for {path}")
+                    try:
+                        error_text = await resp.text()
+                        logger.warning(f"Birdeye Error Body: {error_text}")
+                    except:
+                        pass
+                    return {"success": False, "message": f"Birdeye API error: {resp.status}"}
+                    
                 data = await resp.json()
                 return data
         except Exception as e:
-            logger.error(f"Birdeye direct fetch error for {path}: {e}")
+            logger.error(f"Birdeye direct fetch error for {path}: {e}", exc_info=True)
+            return {"success": False, "message": str(e)}
+
+    async def fetch_birdeye_ohlcv(self, address: str, type: str = "1H", limit: int = 100) -> Dict[str, Any]:
+        """Fetch historical OHLCV data from Birdeye API"""
+        # Supported types: 1m, 3m, 5m, 15m, 30m, 1H, 2H, 4H, 6H, 8H, 12H, 1D, 3D, 1W, 1M
+        path = f"defi/ohlcv?address={address}&type={type}&limit={limit}"
+        return await self._fetch_birdeye_direct(path)
+
+    async def fetch_dex_screener_ohlcv(self, chain_id: str, pair_address: str, resolution: str = "1h", limit: int = 100) -> Dict[str, Any]:
+        """Fetch historical OHLCV data from DexScreener charting API"""
+        if not self.session:
+            return {"success": False, "message": "Aiohttp session not initialized"}
+
+        # Resolution map for DexScreener chart API
+        # res=1 (1m), res=5 (5m), res=15 (15m), res=60 (1h), res=240 (4h), res=1D (1d)
+        res_map = {
+            "1m": "1",
+            "5m": "5",
+            "15m": "15",
+            "1h": "60",
+            "4h": "240",
+            "1d": "1D"
+        }
+        res_value = res_map.get(resolution, "60")
+        
+        # DexScreener internal charting API
+        url = f"https://io.dexscreener.com/dex/chart/v1/main/{chain_id}/{pair_address}?res={res_value}"
+        
+        try:
+            async with self.session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    return {"success": True, "data": data}
+                else:
+                    logger.warning(f"DexScreener chart API returned {resp.status} for {pair_address}")
+                    return {"success": False, "status": resp.status}
+        except Exception as e:
+            logger.error(f"DexScreener chart fetch error: {e}")
             return {"success": False, "message": str(e)}
 
 async def get_aggregator():

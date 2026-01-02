@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import AxiomTokenCard, { type AxiomTokenData } from '@/components/crypto/ui/AxiomTokenCard';
 import { fetchNewPumpFunCoins, fetchTrendingPumpFunCoins, type PumpFunCoin } from '@/lib/pump-fun-service';
+import { fetchBulkTokenInfo } from '@/lib/dex-screener-service';
 import { usePumpStream } from '@/lib/helius/usePumpStream';
 import { type TokenEvent } from '@/lib/helius/DataParser';
 
@@ -32,9 +33,115 @@ export default function AxiomSurgePage() {
     const [surgingTokens, setSurgingTokens] = useState<AxiomTokenData[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Extended price cache type for all real-time data
+    type PriceCacheEntry = {
+        marketCap: number;
+        price: number;
+        mcHistory: number[];
+        lastUpdate: number;
+        volume24h: number;
+        liquidity: number;
+    };
+
+    // Price cache that persists across list refreshes - this is the source of truth for live prices
+    const initPriceCache = (): Map<string, PriceCacheEntry> => {
+        try {
+            const saved = localStorage.getItem('solNavigatorPriceCache');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                const map = new Map<string, PriceCacheEntry>();
+                const cutoff = Date.now() - 10 * 60 * 1000;
+                for (const [key, value] of Object.entries(parsed)) {
+                    const entry = value as PriceCacheEntry;
+                    if (entry.lastUpdate && entry.lastUpdate > cutoff) {
+                        map.set(key, entry);
+                    }
+                }
+                return map;
+            }
+        } catch (e) {
+            console.warn('Failed to load price cache:', e);
+        }
+        return new Map();
+    };
+
+    const priceCache = useRef<Map<string, PriceCacheEntry>>(initPriceCache());
+    const [priceUpdateTick, setPriceUpdateTick] = useState(0);
+
+    // Save price cache periodically
     useEffect(() => {
-        console.log('🚀 AxiomSurgePage MOUNTED');
-        return () => console.log('👋 AxiomSurgePage UNMOUNTED');
+        const interval = setInterval(() => {
+            try {
+                const obj: Record<string, any> = {};
+                priceCache.current.forEach((value, key) => {
+                    obj[key] = value;
+                });
+                localStorage.setItem('solNavigatorPriceCache', JSON.stringify(obj));
+            } catch (e) { console.warn('Failed to save cache:', e); }
+        }, 5000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Track visible mints for bulk updates
+    const visibleMintsRef = useRef<string[]>([]);
+    useEffect(() => {
+        const all = [...earlyTokens, ...surgingTokens];
+        visibleMintsRef.current = [...new Set(all.map(t => t.mint))];
+    }, [earlyTokens, surgingTokens]);
+
+    // Periodically update prices for all visible tokens
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            const mints = visibleMintsRef.current;
+            if (mints.length === 0) return;
+
+            // Take top 90 to fit within 3 DexScreener batches
+            const targetMints = mints.slice(0, 90);
+
+            try {
+                const updates = await fetchBulkTokenInfo(targetMints);
+                if (!updates || updates.length === 0) return;
+
+                let hasChanges = false;
+                const now = Date.now();
+
+                for (const update of updates) {
+                    const mint = (update as any).mint;
+                    if (!mint) continue;
+
+                    const existing = priceCache.current.get(mint);
+                    const newMC = update.marketCap || 0;
+                    const newPrice = update.price || 0;
+                    const newVolume = update.volume24h || 0;
+                    const newLiquidity = update.liquidity || 0;
+
+                    if (existing && existing.marketCap === newMC && existing.price === newPrice) {
+                        continue;
+                    }
+
+                    hasChanges = true;
+                    const history = existing?.mcHistory || [];
+                    const newHistory = [...history, newMC];
+                    const trimmedHistory = newHistory.length > 30 ? newHistory.slice(-30) : newHistory;
+
+                    priceCache.current.set(mint, {
+                        marketCap: newMC,
+                        price: newPrice,
+                        mcHistory: trimmedHistory,
+                        lastUpdate: now,
+                        volume24h: newVolume,
+                        liquidity: newLiquidity
+                    });
+                }
+
+                if (hasChanges) {
+                    setPriceUpdateTick(prev => prev + 1);
+                }
+            } catch (e) {
+                // Silent failure
+            }
+        }, 5000);
+        return () => clearInterval(interval);
     }, []);
 
     // Load minMC from localStorage on init
@@ -147,9 +254,12 @@ export default function AxiomSurgePage() {
         const vol = coin.volume_24h || 0;
         const priceChange = coin.price_change_24h || 0;
 
+        const safeSymbol = coin.symbol?.trim() || coin.name?.trim().split(' ')[0]?.substring(0, 8) || 'NEW';
+        const safeName = coin.name?.trim() || 'New Token';
+
         return {
-            symbol: coin.symbol || coin.name?.split(' ')[0]?.substring(0, 8) || 'NEW',
-            name: coin.name || 'New Token',
+            symbol: safeSymbol,
+            name: safeName,
             mint: coin.mint || '',
             logoUrl: coin.image_uri,
             age: calculateAge(createdTimestamp),
@@ -266,13 +376,13 @@ export default function AxiomSurgePage() {
 
     // Handle token click
     const handleTokenClick = (token: AxiomTokenData) => {
-        navigate(`/crypto/coins?pair=${token.symbol}/USD&address=${token.mint}`);
+        navigate(`/crypto/tokens?pair=${token.symbol}/USD&address=${token.mint}`);
     };
 
     const handleBuyClick = (token: AxiomTokenData) => {
         // Implement Quick Buy logic or navigation with buy intent
         console.log("Quick buy", token.symbol);
-        navigate(`/crypto/coins?pair=${token.symbol}/USD&address=${token.mint}&action=buy`);
+        navigate(`/crypto/tokens?pair=${token.symbol}/USD&address=${token.mint}&action=buy`);
     };
 
     return (
@@ -335,6 +445,7 @@ export default function AxiomSurgePage() {
                     onTokenClick={handleTokenClick}
                     onBuyClick={handleBuyClick}
                     isLive={wsConnected}
+                    priceCache={priceCache}
                 />
 
                 <TokenColumn
@@ -343,6 +454,7 @@ export default function AxiomSurgePage() {
                     loading={loading && surgingTokens.length === 0}
                     onTokenClick={handleTokenClick}
                     onBuyClick={handleBuyClick}
+                    priceCache={priceCache}
                 />
             </div>
         </div>
@@ -356,7 +468,8 @@ function TokenColumn({
     loading,
     onTokenClick,
     onBuyClick,
-    isLive = false
+    isLive = false,
+    priceCache
 }: {
     title: string;
     subtitle?: string;
@@ -365,9 +478,24 @@ function TokenColumn({
     onTokenClick: (token: AxiomTokenData) => void;
     onBuyClick: (token: AxiomTokenData) => void;
     isLive?: boolean;
+    priceCache?: React.RefObject<Map<string, { marketCap: number; price: number; mcHistory: number[]; lastUpdate: number; volume24h: number; liquidity: number }>>;
 }) {
-    // Calculate totals for header stats if desired, or keep simple
-    const count = tokens.length;
+    // Helper to merge token with live price data
+    const getTokenWithLivePrice = (token: AxiomTokenData): AxiomTokenData => {
+        if (!priceCache?.current) return token;
+        const cached = priceCache.current.get(token.mint);
+        if (cached) {
+            return {
+                ...token,
+                marketCap: cached.marketCap || token.marketCap,
+                price: cached.price || token.price,
+                mcHistory: cached.mcHistory.length > 0 ? cached.mcHistory : token.mcHistory,
+                volume: cached.volume24h || token.volume,
+                liquidity: cached.liquidity || token.liquidity,
+            };
+        }
+        return token;
+    };
 
     return (
         <div className="flex-1 flex flex-col rounded-xl bg-black border border-[#1e2530] overflow-hidden">
@@ -398,7 +526,7 @@ function TokenColumn({
                     tokens.map(token => (
                         <AxiomTokenCard
                             key={token.mint}
-                            token={token}
+                            token={getTokenWithLivePrice(token)}
                             onClick={() => onTokenClick(token)}
                             onBuyClick={() => onBuyClick(token)}
                         />

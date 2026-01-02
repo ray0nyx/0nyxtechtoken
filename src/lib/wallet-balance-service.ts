@@ -490,7 +490,7 @@ async function fetchJupiterTokenImage(mintAddress: string): Promise<string | nul
  */
 async function fetchJupiterPrice(mint: string): Promise<{ price: number; symbol?: string; name?: string } | null> {
   try {
-    const response = await fetch(`https://api.jup.ag/price/v2?ids=${mint}`);
+    const response = await fetch(`https://price.jup.ag/v4/price?ids=${mint}`);
     if (response.ok) {
       const data = await response.json();
       const priceData = data.data[mint];
@@ -501,7 +501,8 @@ async function fetchJupiterPrice(mint: string): Promise<{ price: number; symbol?
       }
     }
   } catch (error) {
-    console.warn('Jupiter Price API error:', error);
+    // Silently fail or debug log - CoinGecko fallback will handle it
+    // console.debug('Jupiter Price API check failed:', error);
   }
   return null;
 }

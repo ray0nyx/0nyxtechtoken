@@ -884,7 +884,7 @@ async def get_available_symbols(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/ohlcv/{symbol}")
+@app.get("/api/ohlcv/{symbol:path}")
 async def get_ohlcv_data(
     symbol: str,
     timeframe: str = "1h",
@@ -917,6 +917,54 @@ async def get_crypto_ohlcv_data(
             limit=limit
         )
         return {"data": data, "symbol": symbol, "timeframe": timeframe, "source": "crypto_api"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/birdeye/ohlcv")
+async def get_birdeye_ohlcv(
+    address: str,
+    type: str = "1H",
+    limit: int = 100
+):
+    """Proxy Birdeye OHLCV API requests"""
+    try:
+        result = await data_aggregator.fetch_birdeye_ohlcv(
+            address=address,
+            type=type,
+            limit=limit
+        )
+        if result.get("success") is not False:
+            return {"success": True, "data": result.get("data", result)}
+        else:
+            raise HTTPException(
+                status_code=500, 
+                detail=result.get("message", "Birdeye API failed")
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/dex-screener/ohlcv/{chain_id}/{pair_address}")
+async def get_dex_screener_ohlcv(
+    chain_id: str,
+    pair_address: str,
+    resolution: str = "1h",
+    limit: int = 100
+):
+    """Proxy DexScreener charting API requests"""
+    try:
+        result = await data_aggregator.fetch_dex_screener_ohlcv(
+            chain_id=chain_id,
+            pair_address=pair_address,
+            resolution=resolution,
+            limit=limit
+        )
+        if result["success"]:
+            return result["data"]
+        else:
+            raise HTTPException(
+                status_code=result.get("status", 500), 
+                detail=result.get("message", "DexScreener API failed")
+            )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

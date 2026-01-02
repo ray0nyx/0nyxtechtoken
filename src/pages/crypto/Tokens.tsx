@@ -139,7 +139,7 @@ export default function CoinsPage() {
   const [selectedTokenAddress, setSelectedTokenAddress] = useState<string | undefined>(
     urlAddress || 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263'
   );
-  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>(TIMEFRAMES[0]); // Default to 1s
+  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>(TIMEFRAMES[1]); // Default to 1m
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -280,7 +280,8 @@ export default function CoinsPage() {
     setError(null);
 
     try {
-      const baseSymbol = selectedPair.split('/')[0];
+      let baseSymbol = selectedPair.split('/')[0]?.trim();
+      if (!baseSymbol) baseSymbol = 'UNKNOWN';
       console.log('📊 Loading data for:', selectedPair, 'token:', selectedTokenAddress);
 
       // Fetch pair data (includes logo, price, marketCap, liquidity)
@@ -354,7 +355,7 @@ export default function CoinsPage() {
       if (chartCandles.length === 0) {
         try {
           console.log('📉 Birdeye returned no data, trying dex-screener backend...');
-          const ohlcv = await fetchOHLCVData(selectedPair, selectedTimeframe as any, 200);
+          const ohlcv = await fetchOHLCVData(selectedTokenAddress || selectedPair, selectedTimeframe as any, 1000);
           console.log('📉 DexScreener backend returned:', ohlcv?.length || 0, 'candles');
 
           if (ohlcv && ohlcv.length > 0) {
@@ -1522,7 +1523,7 @@ export default function CoinsPage() {
           {/* Chart Container */}
           <div
             ref={chartContainerRef}
-            className="p-5 bg-[#0a0a0a] flex flex-col min-h-[500px] relative"
+            className="p-5 bg-[#0a0a0a] flex flex-col min-h-[700px] relative"
           >
             {/* Chart Header - Removed ChartToolbar and OHLCDisplay per user request */}
 
@@ -1550,7 +1551,7 @@ export default function CoinsPage() {
                   key={`${selectedPair}-${selectedTimeframe.label}-${chartDisplayMode}`}
                   data={chartData}
                   symbol={selectedPair}
-                  height={400}
+                  height={640}
                   showVolume={true}
                   showGrid={true}
                   theme={isDark ? 'dark' : 'light'}

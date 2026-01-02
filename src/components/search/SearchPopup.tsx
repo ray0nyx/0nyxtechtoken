@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, Trash2, Loader2 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { fetchNewPumpFunCoins, fetchPumpFunCoinDetails } from '@/lib/pump-fun-service';
+import { searchTokens } from '@/lib/dex-screener-service';
 import { fetchTokenPrice } from '@/lib/wallet-balance-service';
+import { fetchOHLCV } from '@/lib/birdeye-websocket-service';
 import { Connection } from '@solana/web3.js';
 import { proxyImageUrl } from '@/lib/ipfs-utils';
 import { cn } from '@/lib/utils';
@@ -113,29 +115,50 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // Fetch 24hr historical price data from CoinGecko
+    // Fetch 24hr historical price data from Birdeye
     const fetch24hrHistory = async () => {
         try {
-            const response = await fetch(
-                'https://api.coingecko.com/api/v3/coins/solana/market_chart?vs_currency=usd&days=1'
-            );
-            if (response.ok) {
-                const data = await response.json();
-                // data.prices is an array of [timestamp, price]
-                const formattedData: PriceDataPoint[] = data.prices.map((item: [number, number]) => {
-                    const date = new Date(item[0]);
+            const SOLANA_MINT = 'So11111111111111111111111111111111111111112';
+            const data = await fetchOHLCV(SOLANA_MINT, '1h', 24);
+
+            if (data && data.length > 0) {
+                const formattedData: PriceDataPoint[] = data.map(item => {
+                    const date = new Date(item.unixTime * 1000);
                     const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                    return { time: timeStr, value: item[1] };
+                    return { time: timeStr, value: item.close };
                 });
-                // Sample to ~24 data points for cleaner chart
-                const step = Math.max(1, Math.floor(formattedData.length / 24));
-                const sampledData = formattedData.filter((_, i) => i % step === 0);
-                setPriceHistory(sampledData);
+                setPriceHistory(formattedData);
+            } else {
+                // Fallback to CoinGecko
+                const response = await fetch(
+                    'https://api.coingecko.com/api/v3/coins/solana/market_chart?vs_currency=usd&days=1'
+                );
+                if (response.ok) {
+                    const cgData = await response.json();
+                    const formattedData: PriceDataPoint[] = cgData.prices.map((item: [number, number]) => {
+                        const date = new Date(item[0]);
+                        const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                        return { time: timeStr, value: item[1] };
+                    });
+                    const step = Math.max(1, Math.floor(formattedData.length / 24));
+                    const sampledData = formattedData.filter((_, i) => i % step === 0);
+                    setPriceHistory(sampledData);
+                }
             }
         } catch (e) {
             console.error("Failed to fetch 24hr history", e);
         }
     };
+
+
+    // Cleanup interval on unmount
+    useEffect(() => {
+        return () => {
+            if (priceIntervalRef.current) {
+                clearInterval(priceIntervalRef.current);
+            }
+        };
+    }, []);
 
     // Load search history and start price updates when popup opens
     useEffect(() => {
@@ -181,12 +204,6 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
             setSearchQuery('');
             setSearchResults([]);
         }
-
-        return () => {
-            if (priceIntervalRef.current) {
-                clearInterval(priceIntervalRef.current);
-            }
-        };
     }, [isOpen]);
 
     // Handle Search with debounce
@@ -198,12 +215,16 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
             }
 
             setSearchLoading(true);
-            const query = searchQuery.toLowerCase().trim();
+            const query = searchQuery.trim();
+            const queryLower = query.toLowerCase();
 
             // Check if it's a Solana address (base58, typically 32-44 chars)
-            if (query.length >= 32 && query.length <= 44) {
+            const isSolanaAddress = query.length >= 32 && query.length <= 44 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(query);
+
+            if (isSolanaAddress) {
                 try {
-                    const details = await fetchPumpFunCoinDetails(searchQuery);
+                    // Try Pump.fun first
+                    const details = await fetchPumpFunCoinDetails(query);
                     if (details) {
                         const formatted = [{
                             id: details.mint,
@@ -213,18 +234,56 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
                             image: details.image_uri
                         }];
                         setSearchResults(formatted);
+                        setSearchLoading(false);
+                        return;
+                    }
+
+                    // Fallback to DexScreener for non-Pump.fun tokens
+                    const dexResults = await searchTokens(query);
+                    if (dexResults && dexResults.length > 0) {
+                        const formatted = dexResults.map(token => ({
+                            id: token.baseToken.address,
+                            name: token.baseToken.name,
+                            symbol: token.baseToken.symbol,
+                            mc: token.marketCap ? `$${(token.marketCap / 1000).toFixed(1)}K` : 'N/A',
+                            image: token.baseToken.logoURI
+                        }));
+                        setSearchResults(formatted);
                     } else {
                         setSearchResults([]);
                     }
                 } catch (e) {
+                    console.error('Search by CA failed:', e);
                     setSearchResults([]);
                 }
             } else {
-                // Filter by name or symbol
+                // Filter by name or symbol from loaded tokens
                 const filtered = allTokens.filter(token =>
-                    token.name.toLowerCase().includes(query) ||
-                    token.symbol.toLowerCase().includes(query)
+                    token.name.toLowerCase().includes(queryLower) ||
+                    token.symbol.toLowerCase().includes(queryLower)
                 );
+
+                // If no local results, try DexScreener search
+                if (filtered.length === 0 && query.length >= 2) {
+                    try {
+                        const dexResults = await searchTokens(query);
+                        if (dexResults && dexResults.length > 0) {
+                            const formatted = dexResults.map(token => ({
+                                id: token.baseToken.address,
+                                name: token.baseToken.name,
+                                symbol: token.baseToken.symbol,
+                                mc: token.marketCap ? `$${(token.marketCap / 1000).toFixed(1)}K` : 'N/A',
+                                image: token.baseToken.logoURI
+                            }));
+                            setSearchResults(formatted);
+                            setSearchLoading(false);
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('DexScreener search failed:', e);
+                    }
+                }
+
                 setSearchResults(filtered);
             }
             setSearchLoading(false);
@@ -248,6 +307,10 @@ export function SearchPopup({ children }: { children: React.ReactNode }) {
                 {children}
             </DialogTrigger>
             <DialogContent className="max-w-[1000px] w-[95vw] bg-[#111111] border-none text-gray-200 p-0 overflow-hidden rounded-2xl shadow-2xl">
+                <DialogTitle className="sr-only">Search Tokens</DialogTitle>
+                <DialogDescription className="sr-only">
+                    Search for tokens by name or contract address and view real-time market data.
+                </DialogDescription>
 
                 {/* Header Section */}
                 <div className="p-6 border-b border-white/5 bg-[#111111]">

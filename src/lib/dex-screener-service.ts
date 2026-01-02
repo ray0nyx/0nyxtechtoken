@@ -766,6 +766,64 @@ export async function fetchRecentTrades(
 }
 
 /**
+ * Fetch data for multiple tokens (up to 30) from DexScreener
+ */
+export async function fetchBulkTokenInfo(mints: string[]): Promise<DexPairData[]> {
+  if (!mints.length) return [];
+
+  // Chunk into groups of 30
+  const chunks = [];
+  for (let i = 0; i < mints.length; i += 30) {
+    chunks.push(mints.slice(i, i + 30));
+  }
+
+  const results: DexPairData[] = [];
+
+  for (const chunk of chunks) {
+    try {
+      const ids = chunk.join(',');
+      const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${ids}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.pairs) {
+          const bestPairs = new Map<string, any>();
+
+          for (const pair of data.pairs) {
+            const mint = pair.baseToken.address;
+            const currentBest = bestPairs.get(mint);
+            // Prefer pair with higher liquidity
+            const currentLiq = currentBest?.liquidity?.usd || 0;
+            const newLiq = pair.liquidity?.usd || 0;
+
+            if (!currentBest || newLiq > currentLiq) {
+              bestPairs.set(mint, pair);
+            }
+          }
+
+          for (const pair of bestPairs.values()) {
+            results.push({
+              symbol: pair.baseToken.symbol,
+              pairAddress: pair.pairAddress,
+              liquidity: pair.liquidity?.usd || 0,
+              marketCap: pair.marketCap || pair.fdv || 0,
+              price: parseFloat(pair.priceUsd || pair.priceNative || '0'),
+              change24h: pair.priceChange?.h24 || 0,
+              volume24h: pair.volume?.h24 || 0,
+              priceUsd: parseFloat(pair.priceUsd || '0'),
+              // @ts-ignore
+              mint: pair.baseToken.address
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Bulk fetch failed', e);
+    }
+  }
+  return results;
+}
+
+/**
  * Fetch transactions with full details for TransactionsTable
  */
 export async function fetchTransactions(
@@ -805,28 +863,20 @@ export async function fetchTransactions(
 
         if (response.ok) {
           const data = await response.json();
+          if (data.pair) {
+            const p = data.pair;
+            const txns = p.txns || {};
+            const price = parseFloat(p.priceUsd || '0') || 0;
+            const volume24h = parseFloat(p.volume?.h24 || '0') || 0;
 
-          if (data.pairs && data.pairs.length > 0) {
-            const pair = data.pairs[0];
-            const txns = pair.txns || {};
-            const price = parseFloat(pair.priceUsd || '0') || 0;
-            const volume24h = parseFloat(pair.volume?.h24 || '0') || 0;
-
-            // DexScreener txns contains COUNTS, not arrays
-            // Format: { m5: { buys: 5, sells: 3 }, h1: { buys: 100, sells: 80 }, ... }
             const m5Buys = typeof txns.m5?.buys === 'number' ? txns.m5.buys : 0;
             const m5Sells = typeof txns.m5?.sells === 'number' ? txns.m5.sells : 0;
-            const h1Buys = typeof txns.h1?.buys === 'number' ? txns.h1.buys : 0;
-            const h1Sells = typeof txns.h1?.sells === 'number' ? txns.h1.sells : 0;
 
-            console.log('📈 Transaction counts:', { m5Buys, m5Sells, h1Buys, h1Sells });
-
-            // Generate synthetic transactions based on counts and recent price/volume
+            // Generate synthetic transactions based on counts
             const transactions: any[] = [];
             const now = Date.now();
-
-            // Generate recent transactions (last 5 minutes)
             const totalM5 = Math.min(m5Buys + m5Sells, limit);
+
             for (let i = 0; i < totalM5; i++) {
               const isBuy = i < m5Buys;
               const randomAmount = (volume24h / 1000) * (0.1 + Math.random() * 0.9);
@@ -846,39 +896,22 @@ export async function fetchTransactions(
                 quoteSymbol: quoteToken,
               });
             }
-
             return transactions.slice(0, limit);
           }
-        } else {
-          console.warn('⚠️ DexScreener API returned non-OK status:', response.status);
         }
-      } catch (apiError) {
-        console.warn('DexScreener API transaction fetch failed:', apiError);
+      } catch (e) {
+        console.warn('DexScreener fetch failed', e);
       }
     }
 
-    // Fallback: Generate sample transactions for testing
-    const sampleTransactions: Array<{
-      id: string;
-      date: string;
-      type: 'buy' | 'sell';
-      usd: number;
-      baseAmount: number;
-      quoteAmount: number;
-      price: number;
-      maker: string;
-      txHash: string;
-      baseSymbol: string;
-      quoteSymbol: string;
-    }> = [];
-
-    // Get current price for sample data
+    // Fallback: Generate sample transactions
+    const sampleTransactions: any[] = [];
     const pairData = await fetchDexPairData(pair);
     const currentPrice = pairData?.price || 0.0001;
 
     for (let i = 0; i < Math.min(limit, 20); i++) {
       const isBuy = Math.random() > 0.5;
-      const priceVariation = (Math.random() - 0.5) * 0.1; // ±10% variation
+      const priceVariation = (Math.random() - 0.5) * 0.1;
       const price = currentPrice * (1 + priceVariation);
       const baseAmount = Math.random() * 1000000 + 10000;
       const quoteAmount = baseAmount * price;
@@ -886,14 +919,14 @@ export async function fetchTransactions(
 
       sampleTransactions.push({
         id: `sample-tx-${i}`,
-        date: new Date(Date.now() - i * 10000).toISOString(), // 10 seconds apart
+        date: new Date(Date.now() - i * 10000).toISOString(),
         type: isBuy ? 'buy' : 'sell',
         usd,
         baseAmount,
         quoteAmount,
         price,
-        maker: `${Math.random().toString(36).substring(2, 8)}...${Math.random().toString(36).substring(2, 6)}`,
-        txHash: `${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`,
+        maker: 'Trader',
+        txHash: `tx${i}`,
         baseSymbol: baseToken,
         quoteSymbol: quoteToken,
       });
@@ -1047,7 +1080,7 @@ export async function fetchOHLCVData(
       return candles;
     }
 
-    // Fallback: Try DexScreener for OHLCV if backend doesn't have data (only if not 500 error)
+    // Fallback: Try DexScreener for OHLCV if backend doesn't have data
     if (!ohlcvData || ohlcvData.length === 0) {
       try {
         const searchResults = await searchTokens(baseToken);
@@ -1059,11 +1092,26 @@ export async function fetchOHLCVData(
         });
 
         if (matchingPair && matchingPair.pairAddress) {
-          // Try DexScreener, but catch 500 errors
+          // Try fetching full historical OHLCV from DexScreener via our proxy
+          try {
+            const historicalData = await fetchDexScreenerOHLCV(
+              matchingPair.chainId,
+              matchingPair.pairAddress,
+              timeframeStr,
+              limit
+            );
+
+            if (historicalData && historicalData.length > 0) {
+              return historicalData;
+            }
+          } catch (proxyError) {
+            console.warn('DexScreener proxy fallback failed, trying single candle:', proxyError);
+          }
+
+          // Fallback to single candle with current price if full history fails
           try {
             const pairData = await fetchDexScreenerPairData(matchingPair.pairAddress, matchingPair.chainId);
             if (pairData && pairData.priceUsd > 0) {
-              // Create a single candle with current price
               return [{
                 time: new Date().toISOString(),
                 open: pairData.priceUsd,
@@ -1074,12 +1122,7 @@ export async function fetchOHLCVData(
               }];
             }
           } catch (dexScreenerError: any) {
-            // Skip if 500 error - don't retry
-            if (dexScreenerError?.status === 500 || dexScreenerError?.statusCode === 500) {
-              console.warn('DexScreener returned 500, skipping:', dexScreenerError);
-            } else {
-              console.warn('DexScreener fallback failed:', dexScreenerError);
-            }
+            console.warn('DexScreener single candle fallback failed:', dexScreenerError);
           }
         }
       } catch (searchError) {
@@ -1624,6 +1667,48 @@ export async function fetchGraduatedRaydiumTokens(limit: number = 30): Promise<D
     return graduatedPairs.map((pair: any) => transformPairToSearchResult(pair));
   } catch (error) {
     console.warn('Error fetching graduated Raydium tokens:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch historical OHLCV data from DexScreener via Python backend proxy
+ */
+export async function fetchDexScreenerOHLCV(
+  chainId: string,
+  pairAddress: string,
+  resolution: string = '1h',
+  limit: number = 100
+): Promise<DexOHLCV[]> {
+  try {
+    const response = await fetch(
+      `http://localhost:8001/api/dex-screener/ohlcv/${chainId}/${pairAddress}?resolution=${resolution}&limit=${limit}`,
+      {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      }
+    );
+
+    if (!response.ok) {
+      console.warn('DexScreener proxy fetch failed:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    if (!data || !data.bars || !Array.isArray(data.bars)) {
+      return [];
+    }
+
+    return data.bars.map((bar: any) => ({
+      time: new Date(bar.timestamp).toISOString(),
+      open: parseFloat(bar.open) || 0,
+      high: parseFloat(bar.high) || 0,
+      low: parseFloat(bar.low) || 0,
+      close: parseFloat(bar.close) || 0,
+      volume: parseFloat(bar.volume) || 0,
+    }));
+  } catch (error) {
+    console.warn('Error in fetchDexScreenerOHLCV:', error);
     return [];
   }
 }

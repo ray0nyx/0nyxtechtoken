@@ -704,6 +704,8 @@ class QuickNodeWebSocketManager:
         self.subscribed_tokens: Set[str] = set()
         self._running = False
         self._reconnect_attempts = 0
+        self._max_reconnect_attempts = 10
+        self._base_reconnect_delay = 2.0
     
     @property
     def ws_url(self) -> str:
@@ -717,7 +719,19 @@ class QuickNodeWebSocketManager:
         
         self._running = True
         try:
-            self.ws = await websockets.connect(self.ws_url, ping_interval=30)
+            import ssl
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
+            self.ws = await websockets.connect(
+                self.ws_url, 
+                ping_interval=30,
+                ping_timeout=10,
+                close_timeout=5,
+                ssl=ssl_context,
+            )
+            self._reconnect_attempts = 0
             logger.info("Connected to QuickNode WebSocket")
             asyncio.create_task(self._listen())
             return True
@@ -729,19 +743,59 @@ class QuickNodeWebSocketManager:
         """Disconnect from QuickNode"""
         self._running = False
         if self.ws:
-            await self.ws.close()
+            try:
+                await self.ws.close()
+            except Exception:
+                pass
             self.ws = None
     
     async def _listen(self):
-        """Listen for messages"""
+        """Listen for messages with proper error handling"""
         while self._running and self.ws:
             try:
                 message = await self.ws.recv()
                 # Process QuickNode messages
                 # Implementation similar to Helius
+                
+            except ConnectionClosed as e:
+                # Normal closure (1000) or going away (1001) - don't log as error
+                if e.code in (1000, 1001):
+                    logger.info(f"QuickNode WebSocket closed normally (code: {e.code})")
+                else:
+                    logger.warning(f"QuickNode WebSocket closed unexpectedly (code: {e.code})")
+                await self._schedule_reconnect()
+                break
+                
+            except asyncio.CancelledError:
+                logger.info("QuickNode listener cancelled")
+                break
+                
             except Exception as e:
-                logger.error(f"QuickNode listener error: {e}")
+                # Only log non-closure errors
+                error_str = str(e).lower()
+                if "close frame" not in error_str and "closed" not in error_str:
+                    logger.error(f"QuickNode listener error: {e}")
                 await asyncio.sleep(1)
+    
+    async def _schedule_reconnect(self):
+        """Schedule reconnection with exponential backoff"""
+        if not self._running:
+            return
+        
+        if self._reconnect_attempts >= self._max_reconnect_attempts:
+            logger.error("QuickNode: Max reconnection attempts reached")
+            return
+        
+        delay = min(
+            self._base_reconnect_delay * (2 ** self._reconnect_attempts),
+            60.0  # Cap at 60 seconds
+        )
+        
+        self._reconnect_attempts += 1
+        logger.info(f"QuickNode: Reconnecting in {delay}s (attempt {self._reconnect_attempts})")
+        
+        await asyncio.sleep(delay)
+        await self.connect()
 
 
 class AlchemyWebSocketManager:
@@ -754,6 +808,9 @@ class AlchemyWebSocketManager:
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self.subscribed_tokens: Set[str] = set()
         self._running = False
+        self._reconnect_attempts = 0
+        self._max_reconnect_attempts = 10
+        self._base_reconnect_delay = 2.0
     
     @property
     def ws_url(self) -> str:
@@ -775,8 +832,11 @@ class AlchemyWebSocketManager:
             self.ws = await websockets.connect(
                 self.ws_url, 
                 ping_interval=30,
+                ping_timeout=10,
+                close_timeout=5,
                 ssl=ssl_context
             )
+            self._reconnect_attempts = 0
             logger.info("Connected to Alchemy WebSocket")
             asyncio.create_task(self._listen())
             return True
@@ -788,18 +848,56 @@ class AlchemyWebSocketManager:
         """Disconnect from Alchemy"""
         self._running = False
         if self.ws:
-            await self.ws.close()
+            try:
+                await self.ws.close()
+            except Exception:
+                pass
             self.ws = None
     
     async def _listen(self):
-        """Listen for messages"""
+        """Listen for messages with proper error handling"""
         while self._running and self.ws:
             try:
                 message = await self.ws.recv()
                 # Process Alchemy messages
+                
+            except ConnectionClosed as e:
+                if e.code in (1000, 1001):
+                    logger.info(f"Alchemy WebSocket closed normally (code: {e.code})")
+                else:
+                    logger.warning(f"Alchemy WebSocket closed unexpectedly (code: {e.code})")
+                await self._schedule_reconnect()
+                break
+                
+            except asyncio.CancelledError:
+                logger.info("Alchemy listener cancelled")
+                break
+                
             except Exception as e:
-                logger.error(f"Alchemy listener error: {e}")
+                error_str = str(e).lower()
+                if "close frame" not in error_str and "closed" not in error_str:
+                    logger.error(f"Alchemy listener error: {e}")
                 await asyncio.sleep(1)
+    
+    async def _schedule_reconnect(self):
+        """Schedule reconnection with exponential backoff"""
+        if not self._running:
+            return
+        
+        if self._reconnect_attempts >= self._max_reconnect_attempts:
+            logger.error("Alchemy: Max reconnection attempts reached")
+            return
+        
+        delay = min(
+            self._base_reconnect_delay * (2 ** self._reconnect_attempts),
+            60.0
+        )
+        
+        self._reconnect_attempts += 1
+        logger.info(f"Alchemy: Reconnecting in {delay}s (attempt {self._reconnect_attempts})")
+        
+        await asyncio.sleep(delay)
+        await self.connect()
 
 
 class SwapStreamService:

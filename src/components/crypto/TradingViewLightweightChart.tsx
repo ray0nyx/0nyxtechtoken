@@ -594,7 +594,7 @@ export default function TradingViewLightweightChart({
           timeValue = Math.floor(date.getTime() / 1000);
         } else if (typeof d.time === 'number') {
           // If already in seconds, use as is; if in ms, convert to seconds
-          timeValue = d.time > 1e12 ? Math.floor(d.time / 1000) : d.time;
+          timeValue = Math.floor(d.time > 1e12 ? d.time / 1000 : d.time);
         } else {
           return null; // Invalid time format
         }
@@ -722,7 +722,7 @@ export default function TradingViewLightweightChart({
           // Incremental update - check if we have new candles or just updates
           // Helper to convert time to number safely
           const timeToNumber = (time: any): number => {
-            if (typeof time === 'number') return time > 1e12 ? Math.floor(time / 1000) : time;
+            if (typeof time === 'number') return Math.floor(time > 1e12 ? time / 1000 : time);
             if (typeof time === 'string') return Math.floor(new Date(time).getTime() / 1000);
             if (time && typeof time === 'object' && time.year) {
               // BusinessDay format from lightweight-charts
@@ -1177,12 +1177,7 @@ export default function TradingViewLightweightChart({
 
   return (
     <div className={cn('relative w-full', className)} style={{ height: `${height}px` }}>
-      {/* Symbol Badge - Only show symbol, no price */}
-      {symbol && (
-        <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-[#1a1f2e] rounded text-sm text-white font-medium">
-          {symbol}
-        </div>
-      )}
+      {/* Symbol Badge - Removed per user request */}
 
       {/* Trade Bubble Overlay - Real-time trade visualization */}
       {chartRef.current && candlestickSeriesRef.current && data.length > 0 && (

@@ -10,16 +10,86 @@ import CryptoNavTabs from '@/components/crypto/ui/CryptoNavTabs';
 import { RefreshCw, ChevronUp, Zap } from 'lucide-react';
 import AxiomTokenCard, { type AxiomTokenData } from '@/components/crypto/ui/AxiomTokenCard';
 import { fetchNewPumpFunCoins, fetchTrendingPumpFunCoins, type PumpFunCoin } from '@/lib/pump-fun-service';
-import { fetchGraduatedRaydiumTokens, type DexSearchResult } from '@/lib/dex-screener-service';
+import { fetchGraduatedRaydiumTokens, fetchBulkTokenInfo, type DexSearchResult } from '@/lib/dex-screener-service';
 import { useBackendTokenStream } from '@/lib/useBackendTokenStream';
 import { useMigratedTokenStream } from '@/lib/useMigratedTokenStream';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { quoteAndSwap } from '@/lib/jupiter-sdk-service';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function SolNavigator() {
     const navigate = useNavigate();
+    const { publicKey, signTransaction } = useWallet();
+    const { connection } = useConnection();
+    const { toast } = useToast();
     const [newPairs, setNewPairs] = useState<AxiomTokenData[]>([]);
     const [finalStretch, setFinalStretch] = useState<AxiomTokenData[]>([]);
     const [migrated, setMigrated] = useState<AxiomTokenData[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Extended price cache type for all real-time data
+    type PriceCacheEntry = {
+        marketCap: number;
+        price: number;
+        mcHistory: number[];
+        lastUpdate: number;
+        volume24h: number;
+        liquidity: number;
+    };
+
+    // Price cache that persists across list refreshes - this is the source of truth for live prices
+    // Initialize from localStorage if available
+    const initPriceCache = (): Map<string, PriceCacheEntry> => {
+        try {
+            const saved = localStorage.getItem('solNavigatorPriceCache');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                const map = new Map<string, PriceCacheEntry>();
+                // Only restore entries that are less than 10 minutes old
+                const cutoff = Date.now() - 10 * 60 * 1000;
+                for (const [key, value] of Object.entries(parsed)) {
+                    const entry = value as PriceCacheEntry;
+                    if (entry.lastUpdate && entry.lastUpdate > cutoff) {
+                        map.set(key, entry);
+                    }
+                }
+                return map;
+            }
+        } catch (e) {
+            console.warn('Failed to load price cache from localStorage:', e);
+        }
+        return new Map();
+    };
+
+    const priceCache = React.useRef<Map<string, PriceCacheEntry>>(initPriceCache());
+
+    // Counter to trigger re-renders when prices update (without changing list identity)
+    const [priceUpdateTick, setPriceUpdateTick] = useState(0);
+
+    // Save price cache to localStorage periodically
+    useEffect(() => {
+        const saveCache = () => {
+            try {
+                const obj: Record<string, any> = {};
+                priceCache.current.forEach((value, key) => {
+                    obj[key] = value;
+                });
+                localStorage.setItem('solNavigatorPriceCache', JSON.stringify(obj));
+            } catch (e) {
+                console.warn('Failed to save price cache:', e);
+            }
+        };
+
+        // Save every 5 seconds
+        const interval = setInterval(saveCache, 5000);
+
+        // Also save on unmount
+        return () => {
+            clearInterval(interval);
+            saveCache();
+        };
+    }, []);
 
     // Calculate age
     const calculateAge = useCallback((timestamp: number | undefined): string => {
@@ -45,9 +115,12 @@ export default function SolNavigator() {
         // Calculate progress like in AxiomTokenCard if not provided
         const progress = coin.complete ? 100 : (vSol > 0 ? Math.min(100, (vSol / 85) * 100) : 0);
 
+        const safeSymbol = coin.symbol?.trim() || coin.name?.trim().split(' ')[0]?.substring(0, 8) || 'NEW';
+        const safeName = coin.name?.trim() || 'New Token';
+
         return {
-            symbol: coin.symbol || coin.name?.split(' ')[0] || 'NEW',
-            name: coin.name || '',
+            symbol: safeSymbol,
+            name: safeName,
             mint: coin.mint || '',
             logoUrl: coin.image_uri,
             age: calculateAge(coin.created_timestamp),
@@ -95,6 +168,7 @@ export default function SolNavigator() {
     });
 
     // Real-time updates - trigger refetch when new tokens arrive from stream
+    // Real-time updates - trigger refetch when new tokens arrive from stream
     useEffect(() => {
         if (streamTokens.length > 0) {
             // Update New Pairs immediately with stream tokens
@@ -102,32 +176,116 @@ export default function SolNavigator() {
 
             // Update New Pairs
             setNewPairs(prev => {
-                const all = [...transformed, ...prev];
+                const now = Date.now();
+                const prevMap = new Map(prev.map(t => [t.mint, t]));
+
+                // Only add TRULY new tokens. 
+                // If it exists in prev, we IGNORE the stream update because stream data is usually "initial state"
+                // and we don't want to overwrite our "Live Updated" price.
+                const trulyNew = transformed
+                    .filter(t => !prevMap.has(t.mint))
+                    .map(t => ({ ...t, discoveryTimestamp: now }));
+
+                const all = [...prev, ...trulyNew];
                 const unique = Array.from(new Map(all.map(t => [t.mint, t])).values());
+
                 return unique
-                    .filter(t => !t.isGraduated && (Date.now() - (t.createdTimestamp || 0)) < 600000)
-                    .sort((a, b) => (b.createdTimestamp || 0) - (a.createdTimestamp || 0))
+                    .filter(t => !t.isGraduated && (now - (t.createdTimestamp || 0)) < 600000)
+                    .sort((a, b) => (b.discoveryTimestamp || 0) - (a.discoveryTimestamp || 0))
                     .slice(0, 50);
             });
 
             // Update Final Stretch
             setFinalStretch(prev => {
-                const all = [...transformed, ...prev];
+                const now = Date.now();
+                const prevMap = new Map(prev.map(t => [t.mint, t]));
+
+                const trulyNew = transformed
+                    .filter(t => !prevMap.has(t.mint))
+                    .map(t => ({ ...t, discoveryTimestamp: now }));
+
+                const all = [...prev, ...trulyNew];
                 const unique = Array.from(new Map(all.map(t => [t.mint, t])).values());
 
-                // Filter for Final Stretch: MC 5k-50k OR Progress >= 20%
                 return unique
                     .filter(t => {
                         const mc = t.marketCap || 0;
                         const progress = t.progress || 0;
                         return (mc >= 5000 && mc < 50000) || progress >= 20;
                     })
-                    // Sort by MC desc (standard for this section)
-                    .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0))
+                    .sort((a, b) => (b.discoveryTimestamp || 0) - (a.discoveryTimestamp || 0))
                     .slice(0, 50);
             });
         }
     }, [streamTokens, transformToken]);
+
+    // Track visible mints for bulk updates
+    const visibleMintsRef = React.useRef<string[]>([]);
+
+    useEffect(() => {
+        const all = [...newPairs, ...finalStretch, ...migrated];
+        visibleMintsRef.current = [...new Set(all.map(t => t.mint))];
+    }, [newPairs, finalStretch, migrated]);
+
+    // Periodically update prices for all visible tokens - updates price cache, not list state
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            const mints = visibleMintsRef.current;
+            if (mints.length === 0) return;
+
+            // Take top 90 to fit within 3 DexScreener batches (max 30 each)
+            const targetMints = mints.slice(0, 90);
+
+            try {
+                const updates = await fetchBulkTokenInfo(targetMints);
+                if (!updates || updates.length === 0) return;
+
+                let hasChanges = false;
+                const now = Date.now();
+
+                for (const update of updates) {
+                    const mint = (update as any).mint;
+                    if (!mint) continue;
+
+                    const existing = priceCache.current.get(mint);
+                    const newMC = update.marketCap || 0;
+                    const newPrice = update.price || 0;
+                    const newVolume = update.volume24h || 0;
+                    const newLiquidity = update.liquidity || 0;
+
+                    // Skip if no meaningful change
+                    if (existing && existing.marketCap === newMC && existing.price === newPrice) {
+                        continue;
+                    }
+
+                    hasChanges = true;
+
+                    // Update or create cache entry with history
+                    const history = existing?.mcHistory || [];
+                    const newHistory = [...history, newMC];
+                    // Keep last 30 points
+                    const trimmedHistory = newHistory.length > 30 ? newHistory.slice(-30) : newHistory;
+
+                    priceCache.current.set(mint, {
+                        marketCap: newMC,
+                        price: newPrice,
+                        mcHistory: trimmedHistory,
+                        lastUpdate: now,
+                        volume24h: newVolume,
+                        liquidity: newLiquidity
+                    });
+                }
+
+                // Trigger re-render only if we have changes
+                if (hasChanges) {
+                    setPriceUpdateTick(prev => prev + 1);
+                }
+            } catch (e) {
+                // Silent failure desirable here
+            }
+        }, 5000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Handle Migrated Stream Updates
     useEffect(() => {
@@ -136,13 +294,19 @@ export default function SolNavigator() {
             const transformedMigrated = migratedStreamTokens.map(transformToken);
 
             setMigrated(prev => {
-                const all = [...transformedMigrated, ...prev];
+                const now = Date.now();
+                const prevMap = new Map(prev.map(t => [t.mint, t]));
+
+                const trulyNew = transformedMigrated
+                    .filter(t => !prevMap.has(t.mint))
+                    .map(t => ({ ...t, discoveryTimestamp: now }));
+
+                const all = [...prev, ...trulyNew];
                 const unique = Array.from(new Map(all.map(t => [t.mint, t])).values());
 
-                // These are all migrated by definition of the stream
                 return unique
                     .map(t => ({ ...t, isGraduated: true, platform: 'raydium' as const }))
-                    .sort((a, b) => (b.createdTimestamp || 0) - (a.createdTimestamp || 0)) // Newest migrated on top
+                    .sort((a, b) => (b.discoveryTimestamp || 0) - (a.discoveryTimestamp || 0)) // Newest migrated on top
                     .slice(0, 50);
             });
         }
@@ -226,9 +390,62 @@ export default function SolNavigator() {
             console.log('Final Stretch tokens:', stretchArr.length);
 
             // Set state - New Pairs and Final Stretch from Pump.fun, Migrated from Raydium
-            setNewPairs(newArr.slice(0, 50));
-            setFinalStretch(stretchArr.slice(0, 50));
-            setMigrated(transformedGraduated.slice(0, 50));
+            // Merge with previous state to preserve discovery timestamps
+            const now = Date.now();
+
+            setNewPairs(prev => {
+                const now = Date.now();
+                const prevMap = new Map(prev.map(t => [t.mint, t]));
+
+                const trulyNewPoints = newArr
+                    .filter(t => !prevMap.has(t.mint))
+                    .map(t => ({ ...t, discoveryTimestamp: now }));
+
+                const all = [...prev, ...trulyNewPoints];
+                const unique = Array.from(new Map(all.map(t => [t.mint, t])).values());
+                return unique
+                    .filter(t => !t.isGraduated && (now - (t.createdTimestamp || 0)) < 600000)
+                    .sort((a, b) => (b.discoveryTimestamp || 0) - (a.discoveryTimestamp || 0))
+                    .slice(0, 50);
+            });
+
+            setFinalStretch(prev => {
+                const now = Date.now();
+                const prevMap = new Map(prev.map(t => [t.mint, t]));
+
+                const newStretch = stretchArr
+                    .filter(t => !prevMap.has(t.mint))
+                    .map(t => ({ ...t, discoveryTimestamp: now }));
+
+                const all = [...prev, ...newStretch];
+                const unique = Array.from(new Map(all.map(t => [t.mint, t])).values());
+
+                return unique
+                    .filter(t => {
+                        const mc = t.marketCap || 0;
+                        const progress = t.progress || 0;
+                        return (mc >= 5000 && mc < 50000) || progress >= 20;
+                    })
+                    .sort((a, b) => (b.discoveryTimestamp || 0) - (a.discoveryTimestamp || 0))
+                    .slice(0, 50);
+            });
+
+            setMigrated(prev => {
+                const now = Date.now();
+                const prevMap = new Map(prev.map(t => [t.mint, t]));
+
+                const newMigrated = transformedGraduated
+                    .filter(t => !prevMap.has(t.mint))
+                    .map(t => ({ ...t, discoveryTimestamp: now }));
+
+                const all = [...prev, ...newMigrated];
+                const unique = Array.from(new Map(all.map(t => [t.mint, t])).values());
+
+                return unique
+                    .map(t => ({ ...t, isGraduated: true, platform: 'raydium' as const }))
+                    .sort((a, b) => (b.discoveryTimestamp || 0) - (a.discoveryTimestamp || 0))
+                    .slice(0, 50);
+            });
         } catch (error) {
             console.error('Error fetching Sol Navigator data:', error);
         } finally {
@@ -238,13 +455,53 @@ export default function SolNavigator() {
 
     useEffect(() => {
         fetchData();
-        // Periodic fetch every 15 seconds for real-time updates across all sections
-        const interval = setInterval(fetchData, 15000);
+        // Periodic fetch every 60 seconds for discovering new tokens (prices are updated via priceCache every 5s)
+        const interval = setInterval(fetchData, 60000);
         return () => clearInterval(interval);
     }, [fetchData]);
 
     const handleTokenClick = (token: AxiomTokenData) => {
         navigate(`/crypto/tokens?pair=${token.symbol}/USD&address=${token.mint}`);
+    };
+
+    const handleQuickBuy = async (token: AxiomTokenData, amountInSol: number = 0.1) => {
+        if (!publicKey || !signTransaction) {
+            toast({ title: 'Wallet not connected', description: 'Please connect your wallet to trade.', variant: 'destructive' });
+            return;
+        }
+
+        try {
+            toast({ title: 'Initiating Quick Buy', description: `Buying ${amountInSol} SOL of ${token.symbol}...` });
+
+            const result = await quoteAndSwap(
+                connection,
+                {
+                    inputMint: 'So11111111111111111111111111111111111111112', // SOL
+                    outputMint: token.mint,
+                    amount: amountInSol * LAMPORTS_PER_SOL,
+                    slippageBps: 100, // 1% default slippage for meme coins
+                    platformFeeBps: 100, // 1% fee to 0nyx Tech
+                },
+                {
+                    userPublicKey: publicKey.toString(),
+                    wrapAndUnwrapSol: true,
+                },
+                signTransaction
+            );
+
+            if (result.success) {
+                toast({
+                    title: 'Quick Buy Successful',
+                    description: `Successfully swapped ${amountInSol} SOL for ${token.symbol}.`,
+                    variant: 'default',
+                });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error: any) {
+            console.error('Quick buy failed:', error);
+            toast({ title: 'Quick Buy Failed', description: error.message || 'Transaction failed', variant: 'destructive' });
+        }
     };
 
     return (
@@ -263,21 +520,27 @@ export default function SolNavigator() {
                     tokens={newPairs}
                     loading={loading}
                     onTokenClick={handleTokenClick}
+                    onBuyClick={handleQuickBuy}
                     color="cyan"
+                    priceCache={priceCache}
                 />
                 <PulseColumn
                     title="Final Stretch"
                     tokens={finalStretch}
                     loading={loading}
                     onTokenClick={handleTokenClick}
+                    onBuyClick={handleQuickBuy}
                     color="yellow"
+                    priceCache={priceCache}
                 />
                 <PulseColumn
                     title="Migrated"
                     tokens={migrated}
                     loading={loading}
                     onTokenClick={handleTokenClick}
+                    onBuyClick={handleQuickBuy}
                     color="green"
+                    priceCache={priceCache}
                 />
             </div>
         </div>
@@ -290,18 +553,39 @@ function PulseColumn({
     tokens,
     loading,
     onTokenClick,
+    onBuyClick,
     color = 'cyan',
+    priceCache,
 }: {
     title: string;
     tokens: AxiomTokenData[];
     loading: boolean;
     onTokenClick: (token: AxiomTokenData) => void;
+    onBuyClick: (token: AxiomTokenData, amount?: number) => void;
     color?: 'cyan' | 'yellow' | 'green';
+    priceCache?: React.RefObject<Map<string, { marketCap: number; price: number; mcHistory: number[]; lastUpdate: number; volume24h: number; liquidity: number }>>;
 }) {
     const colorMap = {
         cyan: 'text-cyan-400 bg-cyan-500/20',
         yellow: 'text-yellow-400 bg-yellow-500/20',
         green: 'text-green-400 bg-green-500/20',
+    };
+
+    // Helper to merge token with live price data
+    const getTokenWithLivePrice = (token: AxiomTokenData): AxiomTokenData => {
+        if (!priceCache?.current) return token;
+        const cached = priceCache.current.get(token.mint);
+        if (cached) {
+            return {
+                ...token,
+                marketCap: cached.marketCap || token.marketCap,
+                price: cached.price || token.price,
+                mcHistory: cached.mcHistory.length > 0 ? cached.mcHistory : token.mcHistory,
+                volume: cached.volume24h || token.volume,
+                liquidity: cached.liquidity || token.liquidity,
+            };
+        }
+        return token;
     };
 
     return (
@@ -329,14 +613,18 @@ function PulseColumn({
                         No tokens
                     </div>
                 ) : (
-                    tokens.map(token => (
-                        <AxiomTokenCard
-                            key={token.mint}
-                            token={token}
-                            onClick={() => onTokenClick(token)}
-                            compact
-                        />
-                    ))
+                    tokens.map(token => {
+                        const liveToken = getTokenWithLivePrice(token);
+                        return (
+                            <AxiomTokenCard
+                                key={token.mint}
+                                token={liveToken}
+                                onClick={() => onTokenClick(token)}
+                                onBuyClick={(amount) => onBuyClick(token, amount)}
+                                compact
+                            />
+                        );
+                    })
                 )}
             </div>
         </div>
