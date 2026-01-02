@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, TrendingDown, ChevronDown, Wallet as WalletIcon, Edit, Check, Trash2, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,8 @@ interface WalletItem {
   label: string;
   blockchain: 'solana' | 'bitcoin';
   totalUsdValue: number;
+  nativeAmount?: number;
+  nativeSymbol?: string;
   change24h: number;
   sparklineData: number[];
 }
@@ -61,6 +63,12 @@ function WalletsContent() {
   const [editingLabel, setEditingLabel] = useState('');
   const [mainWalletAddress, setMainWalletAddress] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<{ totalSolanaTrades: number; lastSyncAt: string | null } | null>(null);
+
+  // Use a ref to store the latest wallets state for persistence in interval closure
+  const walletsRef = useRef<WalletItem[]>([]);
+  useEffect(() => {
+    walletsRef.current = wallets;
+  }, [wallets]);
 
   // Load main wallet from localStorage on mount
   useEffect(() => {
@@ -176,6 +184,13 @@ function WalletsContent() {
 
   useEffect(() => {
     loadWalletData();
+
+    // Set up polling interval for real-time updates every 10 seconds
+    const interval = setInterval(() => {
+      loadWalletData(false); // Silent update
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, [timePeriod]);
 
   // Auto-track connected Solana wallets
@@ -218,8 +233,8 @@ function WalletsContent() {
   }, [connected, publicKey, user]);
 
 
-  const loadWalletData = async () => {
-    setIsLoading(true);
+  const loadWalletData = async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       // Support both Supabase and SIWS wallet auth
       const authUser = await getCurrentUser();
@@ -314,26 +329,23 @@ function WalletsContent() {
         Object.keys(wallet.balances).forEach(symbol => allSymbols.add(symbol));
       });
 
-      const symbolToId: Record<string, string> = {
-        'BTC': 'bitcoin',
-        'SOL': 'solana',
-        'ETH': 'ethereum',
-        'ADA': 'cardano',
-        'USDT': 'tether',
-        'USDC': 'usd-coin',
-      };
-      const coinIds = Array.from(allSymbols).map(s => symbolToId[s] || s.toLowerCase());
+      const allSymbolsArray = Array.from(allSymbols);
 
       // Fetch real prices from CoinGecko to get 24h change
+      // Now using the updated service that handles mapping internally
       const prices = await Promise.race<[Promise<Record<string, TokenPrice>>, Promise<Record<string, TokenPrice>>]>([
-        fetchTokenPrices(coinIds),
+        fetchTokenPrices(allSymbolsArray),
         new Promise<Record<string, TokenPrice>>((resolve) => {
           setTimeout(() => resolve({}), 5000);
         })
       ]);
 
       // Build wallet list with per-wallet data
-      const walletList: WalletItem[] = walletBalances.map((wallet, index) => {
+      const { generateSparklineData } = await import('@/lib/wallet-balance-service');
+      const timeframeMap: Record<string, string> = { '24h': '1h', '7d': '4h', '30d': '1d' };
+      const dataLimitMap: Record<string, number> = { '24h': 24, '7d': 42, '30d': 30 };
+
+      const walletList: WalletItem[] = await Promise.all(walletBalances.map(async (wallet, index) => {
         // Calculate weighted average change for this wallet
         let walletChange = 0;
         if (wallet.totalUsdValue > 0) {
@@ -345,8 +357,42 @@ function WalletsContent() {
           });
         }
 
-        // Simple sparkline based on current value (will be updated in background if needed)
-        const simpleSparkline = Array.from({ length: 24 }, () => wallet.totalUsdValue);
+        // Fetch actual historical data for sparkline
+        let sparkline = [];
+        try {
+          // If it's a primary wallet like SOL, fetch its price history
+          // Otherwise use a summary history
+          const primarySymbol = wallet.blockchain === 'solana' ? 'SOL' : 'BTC';
+          sparkline = await generateSparklineData(
+            primarySymbol,
+            timeframeMap[timePeriod],
+            dataLimitMap[timePeriod]
+          );
+        } catch (e) {
+          console.warn('Failed to fetch sparkline:', e);
+        }
+
+        // Use new sparkline, or existing one if fetch failed and timeframe matches
+        const currentLimit = dataLimitMap[timePeriod];
+        // Use walletsRef.current instead of wallets state to avoid stale closure in setInterval
+        const existingWallet = walletsRef.current.find(w => w.address.toLowerCase() === wallet.address.toLowerCase());
+
+        let finalSparkline = (sparkline && sparkline.length >= currentLimit)
+          ? sparkline
+          : (existingWallet?.sparklineData && existingWallet.sparklineData.length === currentLimit)
+            ? existingWallet.sparklineData
+            : null;
+
+        // If no sparkline data yet, generate a synthetic one based on 24h change
+        if (!finalSparkline || finalSparkline.length === 0) {
+          const changeFactor = 1 + (walletChange / 100);
+          const startValue = wallet.totalUsdValue / (changeFactor || 1);
+          finalSparkline = Array.from({ length: currentLimit }, (_, i) => {
+            // Create a simple trend line with some noise
+            const progress = i / (currentLimit - 1);
+            return startValue + (wallet.totalUsdValue - startValue) * progress;
+          });
+        }
 
         return {
           id: `wallet-${index}`,
@@ -354,10 +400,12 @@ function WalletsContent() {
           label: wallet.label || (wallet.blockchain === 'solana' ? 'Solana Wallet' : 'Bitcoin Wallet'),
           blockchain: wallet.blockchain,
           totalUsdValue: wallet.totalUsdValue,
+          nativeAmount: wallet.nativeAmount,
+          nativeSymbol: wallet.nativeSymbol,
           change24h: walletChange,
-          sparklineData: simpleSparkline,
+          sparklineData: finalSparkline,
         };
-      });
+      }));
 
       // Sort by USD value (descending)
       walletList.sort((a, b) => b.totalUsdValue - a.totalUsdValue);
@@ -771,7 +819,7 @@ function WalletsContent() {
                   </div>
                 </div>
 
-                {/* Amount (Total USD Value) */}
+                {/* Amount (Total USD Value & Native Amount) */}
                 <div className="md:text-left">
                   <p className={cn(
                     "font-semibold text-lg",
@@ -779,6 +827,14 @@ function WalletsContent() {
                   )}>
                     ${wallet.totalUsdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
+                  {wallet.nativeAmount !== undefined && (
+                    <p className={cn(
+                      "text-xs",
+                      isDark ? "text-gray-500" : "text-gray-500"
+                    )}>
+                      {wallet.nativeAmount.toFixed(4)} {wallet.nativeSymbol}
+                    </p>
+                  )}
                 </div>
 
                 {/* 24h Change */}
@@ -810,11 +866,21 @@ function WalletsContent() {
                         stroke={wallet.change24h >= 0 ? "#10b981" : "#ef4444"}
                         strokeWidth="2"
                         points={wallet.sparklineData.map((val, i) => {
-                          const min = Math.min(...wallet.sparklineData);
-                          const max = Math.max(...wallet.sparklineData);
-                          const range = max - min || 1;
+                          // Normalize to show percent change from start of period
+                          // This reflects the 24hr percent price change in a time series manner
+                          const startValue = wallet.sparklineData[0] || val || 1;
+                          const percentChanges = wallet.sparklineData.map(v =>
+                            startValue !== 0 ? ((v - startValue) / startValue) * 100 : 0
+                          );
+
+                          const min = Math.min(...percentChanges);
+                          const max = Math.max(...percentChanges);
+                          const range = Math.max(max - min, 0.5); // Sensitive range (min 0.5%)
+
                           const x = (i / (wallet.sparklineData.length - 1)) * 100;
-                          const y = 32 - ((val - min) / range) * 28 - 2;
+                          // Center the chart vertically relative to min/max
+                          const y = 32 - ((percentChanges[i] - min) / range) * 28 - 2;
+                          if (isNaN(y)) return `${x},16`;
                           return `${x},${y}`;
                         }).join(' ')}
                       />

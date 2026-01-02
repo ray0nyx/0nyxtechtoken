@@ -20,9 +20,8 @@ import {
     WifiOff
 } from 'lucide-react';
 import AxiomTokenCard, { type AxiomTokenData } from '@/components/crypto/ui/AxiomTokenCard';
-import { fetchNewPumpFunCoins, type PumpFunCoin } from '@/lib/pump-fun-service';
+import { fetchNewPumpFunCoins, fetchTrendingPumpFunCoins, type PumpFunCoin } from '@/lib/pump-fun-service';
 import { usePumpStream } from '@/lib/helius/usePumpStream';
-import { useTrendingTokenStream } from '@/lib/useTrendingTokenStream';
 import { type TokenEvent } from '@/lib/helius/DataParser';
 
 type TabType = 'coins' | 'surge' | 'dex' | 'pump';
@@ -97,7 +96,7 @@ export default function AxiomSurgePage() {
     const filteredSurging = surgingTokens.filter(t => unlockedMints.has(t.mint));
     const [autoRefresh, setAutoRefresh] = useState(true);
 
-    // Use Helius WebSocket for real-time pump.fun token streaming (Early Alpha Pairs)
+    // Use Helius WebSocket for real-time token detections
     const {
         tokens: streamTokens,
         connected: wsConnected,
@@ -106,24 +105,8 @@ export default function AxiomSurgePage() {
         clearTokens
     } = usePumpStream({
         autoConnect: true,
-        maxTokens: 50,
         onTokenCreated: (token) => {
-            console.log('New token from Helius stream:', token.mint, token.name);
-        },
-        onConnectionChange: (isConnected) => {
-            console.log('Helius stream:', isConnected ? 'connected' : 'disconnected');
-        },
-    });
-
-    // Use trending tokens WebSocket for Live Momentum
-    const {
-        tokens: trendingStreamTokens,
-        connected: trendingConnected,
-        connecting: trendingConnecting,
-    } = useTrendingTokenStream({
-        autoConnect: true,
-        onConnectionChange: (isConnected) => {
-            console.log('Trending stream:', isConnected ? 'connected' : 'disconnected');
+            console.log('New token detected by Helius:', token.mint, token.symbol);
         },
     });
 
@@ -246,82 +229,39 @@ export default function AxiomSurgePage() {
         }
     }, [streamTokens, transformStreamToken]);
 
-    // Transform trending stream tokens for Live Momentum (using WebSocket data)
-    // Falls back to API fetch if WebSocket is not connected or has no tokens
+    // Live Momentum and Early Alpha Pairs: Initial Load from API for instant content
     useEffect(() => {
-        const loadTrendingTokens = async () => {
-            // First check if we have WebSocket data
-            if (trendingStreamTokens.length > 0) {
-                console.log(`Live Momentum: Received ${trendingStreamTokens.length} trending tokens from WebSocket`);
-
-                const momentumTokens = trendingStreamTokens
-                    .map(transformToken)
-                    .filter(t => t.marketCap > 0)
-                    .sort((a, b) => b.marketCap - a.marketCap);
-
-                console.log(`Live Momentum: ${momentumTokens.length} tokens after transform, top MC: ${momentumTokens[0]?.marketCap}`);
-                setSurgingTokens(momentumTokens.slice(0, 30));
-                return;
-            }
-
-            // Fallback: If no WebSocket data after 2 seconds, fetch from API
-            if (!trendingConnected) {
-                console.log('Live Momentum: WebSocket not connected, fetching from API...');
-                try {
-                    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
-                    const response = await fetch(
-                        `${apiUrl}/api/pump-fun/coins?offset=0&limit=30&sort=usd_market_cap&order=DESC&include_nsfw=false&_t=${Date.now()}`
-                    );
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.coins && Array.isArray(data.coins)) {
-                            console.log(`Live Momentum: Fetched ${data.coins.length} tokens from API fallback`);
-
-                            const momentumTokens = data.coins
-                                .map(transformToken)
-                                .filter((t: AxiomTokenData) => t.marketCap > 0)
-                                .sort((a: AxiomTokenData, b: AxiomTokenData) => b.marketCap - a.marketCap);
-
-                            console.log(`Live Momentum: ${momentumTokens.length} tokens after transform, top MC: ${momentumTokens[0]?.marketCap}`);
-                            setSurgingTokens(momentumTokens.slice(0, 30));
-                        }
-                    }
-                } catch (e) {
-                    console.error('Live Momentum: Failed to fetch from API', e);
-                }
-            }
-        };
-
-        loadTrendingTokens();
-    }, [trendingStreamTokens, trendingConnected, transformToken]);
-
-    // Fetch early tokens from API as backup (in case WebSocket is slow to start)
-    useEffect(() => {
-        const loadData = async () => {
+        const loadInitialData = async () => {
             try {
-                const newCoins = await fetchNewPumpFunCoins(50);
-                const earlyData = newCoins
-                    .map(transformToken)
-                    .sort((a, b) => (b.createdTimestamp || 0) - (a.createdTimestamp || 0));
+                setLoading(true);
 
-                // Merge with existing stream tokens
-                setEarlyTokens(prev => {
-                    const existingMints = new Set(prev.map(t => t.mint));
-                    const newFromApi = earlyData.filter(t => !existingMints.has(t.mint));
-                    return [...prev, ...newFromApi].slice(0, 50);
-                });
+                // 1. Load Early Alpha (Newest)
+                const earlyCoins = await fetchNewPumpFunCoins(30);
+                const earlyData = earlyCoins.map(transformToken);
+                setEarlyTokens(earlyData);
+
+                // 2. Load Live Momentum - use same API as Early Alpha since fetchTrendingPumpFunCoins returns very few results
+                const momentumCoins = await fetchNewPumpFunCoins(30);
+                console.log(`[LIVE MOMENTUM] Fetched ${momentumCoins.length} coins`);
+
+                const momentumData = momentumCoins.map(transformToken);
+                console.log(`[LIVE MOMENTUM] Transformed to ${momentumData.length} tokens`);
+
+                // Sort by market cap (highest first) for "momentum" feel
+                const sortedMomentum = momentumData.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+                console.log(`[LIVE MOMENTUM] Sorted. Top 3:`, sortedMomentum.slice(0, 3).map(t => t.symbol));
+
+                setSurgingTokens(sortedMomentum);
 
                 setLoading(false);
-
-            } catch (e) {
-                console.error("Failed to load early tokens", e);
+            } catch (error) {
+                console.error('Error loading initial surge data:', error);
                 setLoading(false);
             }
         };
 
-        loadData();
-    }, [refreshKey, transformToken]);
+        loadInitialData();
+    }, [transformToken]);
 
 
     // Handle token click
@@ -399,7 +339,7 @@ export default function AxiomSurgePage() {
 
                 <TokenColumn
                     title="Live Momentum"
-                    tokens={filteredSurging}
+                    tokens={surgingTokens}
                     loading={loading && surgingTokens.length === 0}
                     onTokenClick={handleTokenClick}
                     onBuyClick={handleBuyClick}
@@ -412,7 +352,6 @@ export default function AxiomSurgePage() {
 // Token Column Component
 function TokenColumn({
     title,
-    subtitle,
     tokens,
     loading,
     onTokenClick,

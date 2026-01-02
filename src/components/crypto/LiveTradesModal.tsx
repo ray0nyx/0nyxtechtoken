@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Connection } from '@solana/web3.js';
 import {
     Dialog,
     DialogContent,
@@ -8,15 +7,13 @@ import {
     DialogDescription
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, RefreshCw, Trophy, Activity } from 'lucide-react';
+import { ExternalLink, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { searchTokens } from '@/lib/dex-screener-service';
-import { fetchWalletTrades, ParsedSwapTransaction } from '@/lib/helius-service';
+import { fetchWalletTrades, SolanaTrackerTrade } from '@/lib/solana-tracker-service';
 
-interface Trade extends ParsedSwapTransaction {
+interface Trade extends SolanaTrackerTrade {
     traderLabel?: string;
-    tokenSymbol: string;
-    marketCap: number;
+    id: string; // Use tx as id
 }
 
 interface LiveTradesModalProps {
@@ -35,14 +32,14 @@ export default function LiveTradesModal({ open, onOpenChange, trackedWallets, is
     useEffect(() => {
         if (!open) return;
 
-        const cachedData = localStorage.getItem('axiom_live_trades_cache');
+        const cachedData = localStorage.getItem('axiom_live_trades_cache_v2');
         if (cachedData) {
             try {
                 const parsed = JSON.parse(cachedData);
                 // Filter cache to only show trades for currently tracked wallets
                 const relevantTrades = parsed.filter((t: Trade) =>
                     trackedWallets.some(w =>
-                        w.address.toLowerCase() === (t.maker || (t as any).wallet || '').toLowerCase()
+                        w.address.toLowerCase() === (typeof t.maker === 'string' ? t.maker : '').toLowerCase()
                     )
                 );
                 if (relevantTrades.length > 0) {
@@ -64,21 +61,20 @@ export default function LiveTradesModal({ open, onOpenChange, trackedWallets, is
     const fetchRealTrades = async () => {
         if (!open || trackedWallets.length === 0) return;
 
-        // Don't set loading to true if we already have data (background refresh)
-        // setTrades will trigger re-render anyway
         if (trades.length === 0) setLoading(true);
 
         try {
             // Fetch trades for each wallet in parallel
             const walletTradesPromises = trackedWallets.map(wallet =>
-                fetchWalletTrades(wallet.address, 50).then(trades => { // Fetch 50 to dig deeper
-                    if (trades.length > 0) {
-                        console.log(`[Helius] Found ${trades.length} trades for ${wallet.address}`);
+                fetchWalletTrades(wallet.address).then(fetchedTrades => {
+                    if (fetchedTrades.length > 0) {
+                        console.log(`[SolanaTracker] Found ${fetchedTrades.length} trades for ${wallet.address}`);
                     }
                     // Add trader label to each trade
-                    return trades.map(t => ({
+                    return fetchedTrades.map(t => ({
                         ...t,
-                        traderLabel: wallet.label
+                        traderLabel: wallet.label,
+                        id: t.tx // Map tx to id for consistency
                     }));
                 }).catch(err => {
                     console.error(`Failed to fetch trades for ${wallet.address}:`, err);
@@ -90,68 +86,33 @@ export default function LiveTradesModal({ open, onOpenChange, trackedWallets, is
             const allTradesRaw = allWalletTradesResults.flat();
             console.log(`Total raw trades found: ${allTradesRaw.length}`);
 
-            // Enrich with token meta and market cap if missing
-            const enrichedTradesPromise = Promise.all(
-                allTradesRaw.map(async (trade) => {
-                    // If we already have this trade in state with enriched data, reuse it
-                    const existing = trades.find(t => t.id === trade.id);
-                    if (existing && existing.priceUsd > 0 && existing.tokenSymbol !== '???') {
-                        return existing;
-                    }
-
-                    try {
-                        const tokenMeta = await searchTokens(trade.tokenAddress);
-                        const pair = tokenMeta?.[0];
-                        return {
-                            ...trade,
-                            tokenSymbol: pair?.baseToken?.symbol || trade.tokenAddress.slice(0, 4),
-                            marketCap: pair?.marketCap || 0,
-                        } as Trade;
-                    } catch (e) {
-                        return {
-                            ...trade,
-                            tokenSymbol: trade.tokenAddress.slice(0, 4),
-                            marketCap: 0,
-                        } as Trade;
-                    }
-                })
-            );
-
-            const enrichedTrades = await enrichedTradesPromise;
-
             // Merge with existing trades (deduplicate by ID)
             setTrades(prev => {
-                const combined = [...enrichedTrades, ...prev];
+                const combined = [...allTradesRaw, ...prev];
                 const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
-                const sorted = unique.sort((a, b) => b.timestamp - a.timestamp).slice(0, 100); // Keep last 100
+                const sorted = unique.sort((a, b) => b.time - a.time).slice(0, 100); // Keep last 100
 
                 // Update cache
-                localStorage.setItem('axiom_live_trades_cache', JSON.stringify(sorted));
+                localStorage.setItem('axiom_live_trades_cache_v2', JSON.stringify(sorted));
                 return sorted;
             });
 
         } catch (err) {
-            console.error('Error fetching real trades from Helius:', err);
+            console.error('Error fetching real trades from Solana Tracker:', err);
         } finally {
             setLoading(false);
         }
     };
 
-    const formatTimeAgo = (timestamp: string | number) => {
-        const time = typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
+    const formatTimeAgo = (timestamp: number) => {
+        // Solana Tracker returns timestamp in seconds
+        const time = timestamp * 1000;
         const mins = Math.floor((Date.now() - time) / (1000 * 60));
         if (mins < 1) return 'now';
         if (mins < 60) return `${mins}m ago`;
         const hours = Math.floor(mins / 60);
         if (hours < 24) return `${hours}h ago`;
         return new Date(time).toLocaleDateString();
-    };
-
-    const formatMC = (mc: number) => {
-        if (!mc || mc === 0) return '-';
-        if (mc >= 1000000) return `$${(mc / 1000000).toFixed(1)}M`;
-        if (mc >= 1000) return `$${(mc / 1000).toFixed(1)}K`;
-        return `$${mc.toFixed(0)}`;
     };
 
     return (
@@ -170,7 +131,7 @@ export default function LiveTradesModal({ open, onOpenChange, trackedWallets, is
                                 Live Activity Feed
                             </DialogTitle>
                             <DialogDescription className={isDark ? "text-slate-400" : "text-gray-500"}>
-                                Real-time activity from your tracked wallets
+                                Real-time activity from your tracked wallets via Solana Tracker
                             </DialogDescription>
                         </div>
                     </div>
@@ -199,7 +160,7 @@ export default function LiveTradesModal({ open, onOpenChange, trackedWallets, is
                                 <th className="pb-3 pr-4">Name</th>
                                 <th className="pb-3 pr-4">Token</th>
                                 <th className="pb-3 pr-4 text-right">Amount</th>
-                                <th className="pb-3 pr-4 text-right">$MC</th>
+                                <th className="pb-3 pr-4 text-right">Value</th>
                                 <th className="pb-3 text-right">Link</th>
                             </tr>
                         </thead>
@@ -207,7 +168,7 @@ export default function LiveTradesModal({ open, onOpenChange, trackedWallets, is
                             "divide-y",
                             isDark ? "divide-[#1f2937]" : "divide-gray-100"
                         )}>
-                            {loading ? (
+                            {loading && trades.length === 0 ? (
                                 Array.from({ length: 10 }).map((_, i) => (
                                     <tr key={i} className="animate-pulse">
                                         <td colSpan={6} className="py-4">
@@ -228,18 +189,17 @@ export default function LiveTradesModal({ open, onOpenChange, trackedWallets, is
                             ) : (
                                 trades.map((trade, idx) => {
                                     const isBuy = trade.type === 'buy';
-                                    const tokenMint = trade.tokenAddress;
-                                    const amountToken = trade.tokenAmount;
-                                    const amountSol = trade.solAmount;
-                                    const tokenSymbol = (trade as any).tokenSymbol || '???';
+                                    const token = trade.token || {};
+                                    const tokenSymbol = token.symbol || '???';
+                                    const tokenMint = token.mint || '';
 
                                     return (
-                                        <tr key={`${trade.txHash}-${idx}`} className={cn(
+                                        <tr key={`${trade.tx}-${idx}`} className={cn(
                                             "transition-colors group",
                                             isDark ? "hover:bg-white/5 border-slate-800" : "hover:bg-gray-50 border-gray-100"
                                         )}>
                                             <td className="py-4 whitespace-nowrap text-gray-400 font-mono text-xs">
-                                                {formatTimeAgo(trade.timestamp)}
+                                                {formatTimeAgo(trade.time)}
                                             </td>
                                             <td className="py-4 whitespace-nowrap">
                                                 <div className="flex flex-col">
@@ -247,21 +207,30 @@ export default function LiveTradesModal({ open, onOpenChange, trackedWallets, is
                                                         {trade.traderLabel}
                                                     </span>
                                                     <span className="text-[10px] text-slate-500 font-mono">
-                                                        {trade.maker.slice(0, 4)}...{trade.maker.slice(-4)}
+                                                        {typeof trade.maker === 'string' ? `${trade.maker.slice(0, 4)}...${trade.maker.slice(-4)}` : 'Unknown'}
                                                     </span>
                                                 </div>
                                             </td>
                                             <td className="py-4 whitespace-nowrap">
                                                 <div
                                                     className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-                                                    onClick={() => navigate(`/crypto/tokens?pair=${trade.tokenSymbol}/USD&address=${tokenMint}`)}
+                                                    onClick={() => tokenMint && navigate(`/crypto/tokens?pair=${tokenSymbol}/USD&address=${tokenMint}`)}
                                                 >
-                                                    <div className={cn(
-                                                        "w-8 h-8 rounded-full flex items-center justify-center font-bold",
-                                                        isBuy ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
-                                                    )}>
-                                                        {tokenSymbol[0]}
-                                                    </div>
+                                                    {token.image && (
+                                                        <img
+                                                            src={token.image}
+                                                            alt={tokenSymbol}
+                                                            className="w-8 h-8 rounded-full object-cover"
+                                                        />
+                                                    )}
+                                                    {!token.image && (
+                                                        <div className={cn(
+                                                            "w-8 h-8 rounded-full flex items-center justify-center font-bold",
+                                                            isBuy ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
+                                                        )}>
+                                                            {tokenSymbol[0]}
+                                                        </div>
+                                                    )}
                                                     <div className="flex flex-col">
                                                         <span className={cn("font-bold text-sm", isDark ? "text-gray-100" : "text-gray-900")}>
                                                             {tokenSymbol}
@@ -276,18 +245,13 @@ export default function LiveTradesModal({ open, onOpenChange, trackedWallets, is
                                                 </div>
                                             </td>
                                             <td className="py-4 whitespace-nowrap text-right font-medium">
-                                                <div className="flex flex-col items-end">
-                                                    <span className={cn("text-sm", isDark ? "text-white" : "text-gray-900")}>
-                                                        {amountToken.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tokenSymbol}
-                                                    </span>
-                                                    <span className="text-xs text-slate-500">
-                                                        {amountSol.toFixed(3)} SOL
-                                                    </span>
-                                                </div>
+                                                <span className={cn("text-sm", isDark ? "text-white" : "text-gray-900")}>
+                                                    {(trade.amount || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} {tokenSymbol}
+                                                </span>
                                             </td>
                                             <td className="py-4 whitespace-nowrap text-right">
                                                 <span className={cn("text-sm font-mono", isDark ? "text-gray-400" : "text-gray-600")}>
-                                                    {formatMC(trade.marketCap)}
+                                                    ${(trade.volume || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                                 </span>
                                             </td>
                                             <td className="py-4 whitespace-nowrap text-right">
@@ -295,7 +259,7 @@ export default function LiveTradesModal({ open, onOpenChange, trackedWallets, is
                                                     variant="ghost"
                                                     size="sm"
                                                     className={cn("h-8 w-8 p-0", isDark ? "hover:bg-white/10" : "hover:bg-gray-100")}
-                                                    onClick={() => window.open(`https://solscan.io/tx/${trade.txHash}`, '_blank')}
+                                                    onClick={() => window.open(`https://solscan.io/tx/${trade.tx}`, '_blank')}
                                                 >
                                                     <ExternalLink className="w-4 h-4 text-slate-500" />
                                                 </Button>
@@ -311,3 +275,4 @@ export default function LiveTradesModal({ open, onOpenChange, trackedWallets, is
         </Dialog>
     );
 }
+

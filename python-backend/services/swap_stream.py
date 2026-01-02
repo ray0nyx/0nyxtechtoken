@@ -430,7 +430,8 @@ class HeliusWebSocketManager:
             
         except Exception as e:
             logger.error(f"Failed to connect to Helius: {e}")
-            await self._schedule_reconnect()
+            # Do NOT await reconnection here - let the caller handle fallback
+            # We only schedule reconnection if we were previously connected (in listen loop)
             return False
     
     async def disconnect(self):

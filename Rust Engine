@@ -1,0 +1,37 @@
+ ┌────────────────────────────────────────────────────────────────────────────────┐
+ │                            RUST EXECUTION ENGINE                               │
+ │                      (Direct Solana Network Interaction)                       │
+ └───────────────────────────────────────┬────────────────────────────────────────┘
+                                         │
+                 ┌───────────────────────▼───────────────────────┐
+                 │          API / MESSAGE INGESTION              │
+                 │  (RPC Handlers, WS Subscriptions, Commands)   │
+                 └───────────┬───────────────────────┬───────────┘
+                             │                       │
+              ┌──────────────▼──────┐         ┌──────▼─────────────┐
+              │  TRANSACTION PREP   │         │ ANALYSIS SERVICES  │
+              │ - Jupiter Routing   │         │ - Honeypot Checker │
+              │ - Priortity Fees    │         │ - Sandwich Det.    │
+              │ - Token Enrichment  │         │ - Tx Replay Sim.   │
+              └──────────────┬──────┘         └────────────────────┘
+                             │
+              ┌──────────────▼─────────────────────────────────────┐
+              │             EXECUTION STRATEGIES                   │
+              │  (Logic in src/execution/ & src/services/)         │
+              ├────────────────────────┬───────────────────────────┤
+              │      SNIPER MODE       │      MULTI-BUNDLE         │
+              │ (Instant Liquidity)    │ (Concurrent Buy/Sell)     │
+              └──────────────┬─────────┴────────────┬──────────────┘
+                             │                      │
+              ┌──────────────▼──────┐        ┌──────▼──────────────┐
+              │   MEV / FAST LANE   │        │     RPC FALLBACK    │
+              │ - Jito Bundles      │        │ - Direct Send       │
+              │ - BloXroute         │        │ - Multi-Node Retry  │
+              └──────────────┬──────┘        └──────┬──────────────┘
+                             │                      │
+                             └──────────┬───────────┘
+                                        │
+                    ┌───────────────────▼───────────────────┐
+                    │          SOLANA MAINNET-BETA          │
+                    │      (Confirmed/Finalized Tx)         │
+                    └───────────────────────────────────────┘

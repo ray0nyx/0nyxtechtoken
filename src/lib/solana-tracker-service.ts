@@ -126,8 +126,106 @@ export async function fetchWalletMetrics(walletAddress: string): Promise<{
     };
 }
 
+// ... (existing exports)
+
+export interface SolanaTrackerTrade {
+    tx: string;
+    from: string;
+    to: string;
+    token: {
+        mint: string;
+        symbol: string;
+        decimals: number;
+        image: string;
+    };
+    amount: number;
+    price: number;
+    volume: number;
+    time: number;
+    type: 'buy' | 'sell';
+    maker: string;
+}
+
+/**
+ * Fetch wallet trades from Solana Tracker
+ */
+export async function fetchWalletTrades(walletAddress: string): Promise<SolanaTrackerTrade[]> {
+    try {
+        const response = await fetch(`${SOLANA_TRACKER_BASE_URL}/wallet/${walletAddress}/trades`, {
+            headers: {
+                'x-api-key': SOLANA_TRACKER_API_KEY,
+                'Accept': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            console.error(`[SolanaTracker] Failed to fetch trades: ${response.status}`);
+            return [];
+        }
+
+        const data = await response.json();
+        const trades = Array.isArray(data) ? data : (data.trades || []);
+
+        if (trades.length > 0) {
+            console.log('[SolanaTracker] Sample trade:', trades[0]);
+        }
+
+        return trades.map((t: any) => {
+            // Determine if it's a buy or sell based on the wallet address
+            // Note: In Sol Tracker, sometimes 'maker' is the wallet, sometimes it's 'from'.
+            const isBuy = t.to && t.to.address === walletAddress;
+
+            // Intelligent token extraction
+            // We want the token that ISN'T SOL or USDC, usually.
+            const fromToken = t.from?.token;
+            const toToken = t.to?.token;
+
+            let targetToken = fromToken || {};
+            let amount = t.from?.amount || 0;
+
+            // If fromToken is SOL/USDC and toToken is something else, use toToken (it's a BUY)
+            if (fromToken?.symbol === 'SOL' || fromToken?.symbol === 'USDC') {
+                if (toToken?.symbol && toToken.symbol !== 'SOL' && toToken.symbol !== 'USDC') {
+                    targetToken = toToken;
+                    amount = t.to?.amount || 0;
+                }
+            }
+            // If toToken is SOL/USDC and fromToken is something else, keep fromToken (it's a SELL)
+            else if (toToken?.symbol === 'SOL' || toToken?.symbol === 'USDC') {
+                if (fromToken?.symbol && fromToken.symbol !== 'SOL' && fromToken.symbol !== 'USDC') {
+                    targetToken = fromToken;
+                    amount = t.from?.amount || 0;
+                }
+            }
+            // Fallback: if we still don't have a good symbol, try to find one that exists
+            if (!targetToken.symbol || targetToken.symbol === '???') {
+                if (toToken?.symbol && toToken.symbol !== 'SOL') targetToken = toToken;
+            }
+
+            return {
+                ...t,
+                volume: typeof t.volume === 'object' ? (t.volume.usd || t.volume.value || 0) : (t.volume || 0),
+                amount: amount || t.amount || 0,
+                token: {
+                    symbol: targetToken.symbol || '???',
+                    mint: targetToken.mint || '',
+                    image: targetToken.image || ''
+                },
+                time: t.time || t.timestamp || Math.floor(Date.now() / 1000),
+                maker: walletAddress,
+                type: isBuy ? 'buy' : 'sell',
+                tx: t.tx || t.signature || t.transactionId || ''
+            };
+        });
+    } catch (error) {
+        console.error('[SolanaTracker] Error fetching trades:', error);
+        return [];
+    }
+}
+
 export default {
     fetchWalletPnL,
     fetchWalletMetrics,
+    fetchWalletTrades,
     calculateNetSol,
 };

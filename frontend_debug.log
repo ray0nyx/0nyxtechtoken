@@ -1,0 +1,10 @@
+
+> 0nyx-trading-platform@0.0.0 dev
+> vite --port 8081
+
+
+  VITE v7.3.0  ready in 462 ms
+
+  ➜  Local:   http://localhost:8081/
+  ➜  Network: http://192.168.1.176:8081/
+  ➜  press h + enter to show help

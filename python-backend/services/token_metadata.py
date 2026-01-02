@@ -64,6 +64,12 @@ async def enrich_token_metadata(token: dict) -> dict:
         metadata = await _fetch_from_pump_fun(mint)
         if metadata:
             logger.debug(f"Got metadata from Pump.fun for {mint[:8]}: name={metadata.get('name')}, image={metadata.get('image_uri', '')[:30] if metadata.get('image_uri') else 'None'}")
+        else:
+            # Fallback to DexScreener if Pump.fun failed or blocked
+            logger.debug(f"Pump.fun metadata failed for {mint[:8]}, trying DexScreener fallback...")
+            metadata = await _fetch_from_dexscreener(mint)
+            if metadata:
+                logger.debug(f"Got metadata from DexScreener fallback for {mint[:8]}: name={metadata.get('name')}")
     
     # 2. If Pump.fun failed or no real image, try IPFS metadata URI
     if (not metadata or not is_real_image(metadata.get("image_uri"))) and not has_real_image:
@@ -160,6 +166,45 @@ async def _fetch_from_pump_fun(mint: str) -> Optional[Dict[str, Any]]:
         return None
     except Exception as e:
         logger.warning(f"Error fetching metadata from Pump.fun: {e}")
+        return None
+
+
+async def _fetch_from_dexscreener(mint: str) -> Optional[Dict[str, Any]]:
+    """Fetch token metadata from DexScreener as a fallback"""
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    
+    try:
+        url = f"https://api.dexscreener.com/latest/dex/tokens/{mint}"
+        timeout = aiohttp.ClientTimeout(total=5)
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        
+        async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    pairs = data.get("pairs")
+                    if pairs and len(pairs) > 0:
+                        # Grab the first Solana pair
+                        solana_pairs = [p for p in pairs if p.get("chainId") == "solana"]
+                        pair = solana_pairs[0] if solana_pairs else pairs[0]
+                        
+                        base_token = pair.get("baseToken", {})
+                        info = pair.get("info", {})
+                        
+                        return {
+                            "name": base_token.get("name", ""),
+                            "symbol": base_token.get("symbol", ""),
+                            "image_uri": info.get("imageUrl", ""),
+                            "description": "",  # DexScreener doesn't usually give description in this endpoint
+                            "twitter": next((s.get("url") for s in info.get("socials", []) if s.get("type") == "twitter"), None),
+                            "telegram": next((s.get("url") for s in info.get("socials", []) if s.get("type") == "telegram"), None),
+                            "website": next((s.get("url") for s in info.get("websites", [])), None),
+                        }
+        return None
+    except Exception as e:
+        logger.warning(f"Error fetching metadata from DexScreener: {e}")
         return None
 
 

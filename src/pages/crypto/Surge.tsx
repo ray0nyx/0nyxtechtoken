@@ -10,8 +10,9 @@ import { RefreshCw, Zap, TrendingUp, Settings, BarChart2, Wifi, WifiOff } from '
 import SurgeColumn from '@/components/crypto/ui/SurgeColumn';
 import { type CoinCardData } from '@/components/crypto/ui/CoinCard';
 import { fetchNewTokens, fetchSurgingTokens } from '@/lib/dex-screener-service';
-import { fetchNewPumpFunCoins, fetchTrendingPumpFunCoins, type PumpFunCoin } from '@/lib/pump-fun-service';
+import { fetchNewPumpFunCoins, fetchTrendingPumpFunCoins, fetchMigratingTokens, type PumpFunCoin } from '@/lib/pump-fun-service';
 import { useBackendTokenStream } from '@/lib/useBackendTokenStream';
+import { useMigratedTokenStream } from '@/lib/useMigratedTokenStream';
 import CryptoNavTabs from '@/components/crypto/ui/CryptoNavTabs';
 type CurrencyMode = 'usd' | 'sol';
 
@@ -43,6 +44,19 @@ export default function SurgePage() {
         maxTokens: 30,
         onTokenCreated: (token) => {
             console.log('New token from stream:', token.symbol || token.mint?.slice(0, 8));
+        },
+    });
+
+    // Real-time WebSocket stream for migrated tokens (Live Momentum)
+    const {
+        tokens: migratedTokens,
+        connected: migratedConnected,
+        connecting: migratedConnecting
+    } = useMigratedTokenStream({
+        autoConnect: true,
+        maxTokens: 30,
+        onNewMigration: (token) => {
+            console.log('New migration from stream:', token.symbol || token.mint?.slice(0, 8));
         },
     });
 
@@ -146,12 +160,12 @@ export default function SurgePage() {
             address: token.baseToken?.address || token.address || token.mint || '',
             pairAddress: token.pairAddress || token.bonding_curve || '',
             logoUrl,
-            price: token.price || 0,
+            price: token.price || token.priceUsd || token.usd_market_cap || 0,
             priceUsd: token.priceUsd || token.price || token.usd_market_cap || 0,
             marketCap: token.marketCap || token.fdv || token.usd_market_cap || token.market_cap || 0,
-            change24h: token.change24h || 0,
-            volume24h: token.volume24h || 0,
-            liquidity: token.liquidity || 0,
+            change24h: token.change24h || token.price_change_24h || 0,
+            volume24h: token.volume24h || token.volume_24h || 0,
+            liquidity: token.liquidity || (token.liquidity_usd || token.liquidity) || 0,
             holders: token.holders,
             txns: token.txns,
             age: calculateAge(token.pairCreatedAt || token.created_timestamp),
@@ -269,11 +283,15 @@ export default function SurgePage() {
 
             console.log(`Filtered to ${newPumpFunTokens.length} new Pump.fun tokens (from ${pumpFunCoins.length} total)`);
 
-            // Fetch trending tokens (by market cap) for Live Momentum section
+            // Fetch migrating tokens (graduated + approaching) for Live Momentum
+            const migratingCoins = await fetchMigratingTokens(30);
+            console.log(`Fetched ${migratingCoins.length} migrating Pump.fun coins`);
+
+            // ALWAYS fetch trending tokens as reliable fallback (uses backend proxy)
             const trendingCoins = await fetchTrendingPumpFunCoins(30);
             console.log(`Fetched ${trendingCoins.length} trending Pump.fun coins`);
 
-            // Also fetch surging tokens from DexScreener as fallback/supplement
+            // Also fetch surging tokens from DexScreener as additional fallback
             const surgingTokensData = await fetchSurgingTokens(10);
             console.log(`Fetched ${surgingTokensData.length} surging tokens from DexScreener`);
 
@@ -283,11 +301,18 @@ export default function SurgePage() {
             // Transform Pump.fun coins for Early section
             const filteredEarly = newPumpFunTokens.map(transformPumpFunCoin);
 
-            // Transform trending tokens for Live Momentum (high market cap = usually more holders)
+            // Transform migrating tokens for Live Momentum (priority)
+            const transformedMigrating = migratingCoins
+                .map(transformPumpFunCoin)
+                .filter(coin => coin.marketCap >= minMc);
+            console.log(`[DEBUG] transformedMigrating: ${transformedMigrating.length} tokens`);
+
+            // Transform trending tokens as fallback
             const transformedTrending = trendingCoins
                 .map(transformPumpFunCoin)
                 .filter(coin => coin.marketCap >= minMc)
-                .sort((a, b) => b.marketCap - a.marketCap); // Sort by market cap (highest first)
+                .sort((a, b) => b.marketCap - a.marketCap);
+            console.log(`[DEBUG] transformedTrending: ${transformedTrending.length} tokens (from ${trendingCoins.length} raw)`);
 
             // Transform surging tokens from DexScreener
             const transformedSurging = surgingTokensData
@@ -296,11 +321,13 @@ export default function SurgePage() {
                     return mc >= minMc;
                 })
                 .map(transformToCoinCard);
+            console.log(`[DEBUG] transformedSurging: ${transformedSurging.length} tokens (from ${surgingTokensData.length} raw)`);
 
-            // Combine trending and surging tokens for Live Momentum
+            // Combine migrating, trending and surging tokens for Live Momentum
+            // Priority: migrating first, then trending, then surging
             // Deduplicate by address
             const seenAddresses = new Set<string>();
-            const allMomentum = [...transformedTrending, ...transformedSurging]
+            const allMomentum = [...transformedMigrating, ...transformedTrending, ...transformedSurging]
                 .filter(coin => {
                     if (seenAddresses.has(coin.address)) return false;
                     seenAddresses.add(coin.address);
@@ -308,6 +335,7 @@ export default function SurgePage() {
                 })
                 .slice(0, 20); // Limit to 20
 
+            console.log(`[DEBUG] allMomentum FINAL: ${allMomentum.length} tokens`);
             console.log(`Setting ${filteredEarly.length} early coins and ${allMomentum.length} momentum coins`);
 
             setEarlyCoins(filteredEarly);
@@ -374,6 +402,35 @@ export default function SurgePage() {
         return filtered.slice(0, 20);
     }, [streamTokens, earlyCoins, transformPumpFunCoin, minMarketCap]);
 
+    // Merge WebSocket migrated tokens with fetched tokens for Live Momentum
+    const mergedMomentumCoins = useMemo(() => {
+        console.log(`[RENDER] mergedMomentumCoins useMemo - migratedTokens: ${migratedTokens.length}, surgingCoins: ${surgingCoins.length}`);
+
+        // Transform migrated stream tokens to CoinCardData format
+        // use transformPumpFunCoin because migrated tokens have Pump.fun format
+        const streamMigratedCards = migratedTokens.map(transformPumpFunCoin);
+
+        // Combine: stream tokens first (newest updates), then fetched tokens
+        const allCoins = [...streamMigratedCards, ...surgingCoins];
+        console.log(`[RENDER] allCoins combined: ${allCoins.length}`);
+
+        // Deduplicate by address
+        const seenAddresses = new Set<string>();
+        const deduped = allCoins.filter(coin => {
+            if (seenAddresses.has(coin.address)) return false;
+            seenAddresses.add(coin.address);
+            return true;
+        });
+
+        // Filter by market cap
+        const minMc = parseInt(minMarketCap) || 0;
+        const filtered = deduped.filter(coin => coin.marketCap >= minMc);
+
+        console.log(`[RENDER] mergedMomentumCoins RESULT: ${filtered.slice(0, 20).length}`);
+        // Limit to 20 tokens
+        return filtered.slice(0, 20);
+    }, [migratedTokens, surgingCoins, transformPumpFunCoin, minMarketCap]);
+
 
     // Handle coin click - navigate to Coins
     const handleCoinClick = (coin: CoinCardData) => {
@@ -416,8 +473,9 @@ export default function SurgePage() {
                 {/* Live Momentum - Trending tokens with high market cap */}
                 <SurgeColumn
                     title="Live Momentum"
-                    coins={surgingCoins}
-                    loading={loading}
+                    subtitle={`${migratedConnected ? '🟢 Live' : migratedConnecting ? '🟡 Connecting' : '⚫ Offline'} (REST: ${surgingCoins.length}, WS: ${migratedTokens.length})`}
+                    coins={surgingCoins.length > 0 ? surgingCoins : mergedMomentumCoins}
+                    loading={loading && surgingCoins.length === 0}
                     onCoinClick={handleCoinClick}
                     onBuyClick={handleBuyClick}
                     onRefresh={() => fetchData(false)}

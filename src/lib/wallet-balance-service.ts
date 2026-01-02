@@ -13,6 +13,8 @@ export interface WalletBalance {
     };
   };
   totalUsdValue: number;
+  nativeAmount?: number;
+  nativeSymbol?: string;
 }
 
 export interface TokenPrice {
@@ -57,9 +59,11 @@ export async function fetchSolanaWalletBalance(address: string): Promise<WalletB
 
   const solBalance = balance / LAMPORTS_PER_SOL;
 
-  // Fetch SOL price from CoinGecko
+  // Fetch SOL price from CoinGecko/Jupiter
   const solPrice = await fetchTokenPrice('solana');
   const solUsdValue = solBalance * solPrice.price;
+
+  console.log(`[DEBUG] Wallet ${address} Native SOL: ${solBalance}, Price: ${solPrice.price}, USD: ${solUsdValue}`);
 
   const balances: Record<string, { amount: number; usdValue: number }> = {
     SOL: {
@@ -116,10 +120,18 @@ export async function fetchSolanaWalletBalance(address: string): Promise<WalletB
         const priceData = prices[tokenInfo.symbol] || { price: 0, change24h: 0 };
         const usdValue = uiAmount * priceData.price;
 
-        balances[tokenInfo.symbol] = {
-          amount: uiAmount,
-          usdValue,
-        };
+        console.log(`[DEBUG] Wallet ${address} Token ${tokenInfo.symbol}: ${uiAmount}, Price: ${priceData.price}, USD: ${usdValue}`);
+
+        // Aggregate if balance already exists (e.g. WSOL + Native SOL)
+        if (balances[tokenInfo.symbol]) {
+          balances[tokenInfo.symbol].amount += uiAmount;
+          balances[tokenInfo.symbol].usdValue += usdValue;
+        } else {
+          balances[tokenInfo.symbol] = {
+            amount: uiAmount,
+            usdValue,
+          };
+        }
         totalUsdValue += usdValue;
       } else {
         // Unknown token - try to get image from Jupiter in background
@@ -153,6 +165,8 @@ export async function fetchSolanaWalletBalance(address: string): Promise<WalletB
     blockchain: 'solana',
     balances,
     totalUsdValue,
+    nativeAmount: balances['SOL']?.amount || solBalance,
+    nativeSymbol: 'SOL',
   };
 }
 
@@ -208,21 +222,27 @@ export async function fetchBitcoinWalletBalance(address: string): Promise<Wallet
       },
     },
     totalUsdValue: btcUsdValue,
+    nativeAmount: balance,
+    nativeSymbol: 'BTC',
   };
 }
 
 // Price cache to avoid rate limiting
 const priceCache: Record<string, { data: TokenPrice; timestamp: number }> = {};
-const PRICE_CACHE_TTL = 60000; // 1 minute cache
+const PRICE_CACHE_TTL = 10000; // 10 seconds active cache
+const STALE_CACHE_TTL = 300000; // 5 minutes stale cache (to prevent jumps to fallback)
 
-// Fallback prices when API is unavailable
-const FALLBACK_PRICES: Record<string, { price: number; name: string }> = {
-  solana: { price: 180, name: 'Solana' },
-  bitcoin: { price: 95000, name: 'Bitcoin' },
-  ethereum: { price: 3300, name: 'Ethereum' },
-  cardano: { price: 0.95, name: 'Cardano' },
-  tether: { price: 1.0, name: 'Tether' },
-  'usd-coin': { price: 1.0, name: 'USD Coin' },
+// Fallback prices removed as requested
+const FALLBACK_PRICES: Record<string, { price: number; name: string }> = {};
+
+// Symbol to CoinGecko ID mapping
+const SYMBOL_TO_ID: Record<string, string> = {
+  'SOL': 'solana',
+  'BTC': 'bitcoin',
+  'ETH': 'ethereum',
+  'ADA': 'cardano',
+  'USDT': 'tether',
+  'USDC': 'usd-coin',
 };
 
 /**
@@ -238,62 +258,135 @@ export async function fetchTokenPrice(coinId: string): Promise<TokenPrice> {
   const symbol = coinId === 'solana' ? 'SOL' : coinId === 'bitcoin' ? 'BTC' : coinId.toUpperCase();
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    // Fetch from Jupiter for SOL/SPL real-time price and CoinGecko for 24h change in parallel
+    const [jupResult, cgResult] = await Promise.allSettled([
+      (coinId === 'solana' || coinId.length > 30)
+        ? fetchJupiterPrice(coinId === 'solana' ? 'So11111111111111111111111111111111111111112' : coinId)
+        : Promise.resolve(null),
+      fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`)
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null)
+    ]);
 
-    // Try direct CoinGecko API first
-    const priceResponse = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`,
-      {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        signal: controller.signal,
-      }
-    );
+    let price = 0;
+    let change24h = cached?.data.change24h || 0;
+    let name = symbol;
 
-    clearTimeout(timeoutId);
-
-    if (priceResponse.ok) {
-      const priceData = await priceResponse.json();
-      const coinPriceData = priceData[coinId];
-
-      if (coinPriceData) {
-        const result: TokenPrice = {
-          symbol,
-          price: coinPriceData.usd || 0,
-          change24h: coinPriceData.usd_24h_change || 0,
-          name: FALLBACK_PRICES[coinId]?.name,
-        };
-
-        // Cache the result
-        priceCache[coinId] = { data: result, timestamp: Date.now() };
-        return result;
-      }
+    // Use Jupiter price if available (more accurate for Solana)
+    if (jupResult.status === 'fulfilled' && jupResult.value) {
+      price = jupResult.value.price;
     }
 
-    // If response is 429 (rate limit) or CORS error, use cached or fallback
-    throw new Error(`CoinGecko API returned ${priceResponse.status}`);
-  } catch (error) {
-    console.warn('Error fetching token price, using fallback:', error);
+    // Use CoinGecko for change24h and as fallback for price
+    if (cgResult.status === 'fulfilled' && cgResult.value && cgResult.value[coinId]) {
+      const cgData = cgResult.value[coinId];
+      if (price === 0) price = cgData.usd;
+      change24h = cgData.usd_24h_change || change24h;
+    }
 
-    // Return cached data if available (even if expired)
-    if (cached) {
+    if (price > 0) {
+      const result: TokenPrice = {
+        symbol: (jupResult.status === 'fulfilled' && jupResult.value?.symbol) || symbol,
+        price,
+        change24h,
+        name: (jupResult.status === 'fulfilled' && jupResult.value?.name) || symbol,
+      };
+      priceCache[coinId] = { data: result, timestamp: Date.now() };
+      return result;
+    }
+
+    throw new Error(`Price fetch failed for ${coinId}`);
+  } catch (error) {
+    console.warn(`Price fetch failed for ${coinId}:`, error);
+
+    // If fetch failed, try to use stale cache (up to 5 mins)
+    if (cached && Date.now() - cached.timestamp < STALE_CACHE_TTL) {
       return cached.data;
     }
 
-    // Return fallback price
-    const fallback = FALLBACK_PRICES[coinId] || { price: 0, name: coinId };
-    const result: TokenPrice = {
-      symbol,
-      price: fallback.price,
-      change24h: 0,
-      name: fallback.name,
-    };
-
-    // Cache fallback to prevent repeated failed requests
-    priceCache[coinId] = { data: result, timestamp: Date.now() };
-    return result;
+    return { symbol, price: 0, change24h: 0, name: symbol };
   }
+}
+
+/**
+ * Fetch multiple token prices in one batch
+ */
+export async function fetchTokenPrices(inputs: string[]): Promise<Record<string, TokenPrice>> {
+  if (inputs.length === 0) return {};
+
+  const prices: Record<string, TokenPrice> = {};
+  const uncachedInputs: string[] = [];
+
+  // Standardize inputs to symbols for consistency in return
+  const inputToId = (input: string) => SYMBOL_TO_ID[input.toUpperCase()] || input.toLowerCase();
+  const idToSymbol = (id: string) => {
+    const entry = Object.entries(SYMBOL_TO_ID).find(([s, i]) => i === id);
+    return entry ? entry[0] : id.toUpperCase();
+  };
+
+  inputs.forEach(input => {
+    const id = inputToId(input);
+    const cached = priceCache[id];
+    if (cached && Date.now() - cached.timestamp < PRICE_CACHE_TTL) {
+      prices[input.toUpperCase()] = cached.data;
+    } else {
+      uncachedInputs.push(input);
+    }
+  });
+
+  if (uncachedInputs.length === 0) return prices;
+
+  const uncachedIds = uncachedInputs.map(inputToId);
+  const uniqueIds = Array.from(new Set(uncachedIds));
+
+  try {
+    const idsString = uniqueIds.join(',');
+    const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${idsString}&vs_currencies=usd&include_24hr_change=true`);
+
+    if (response.ok) {
+      const data = await response.json();
+
+      uncachedInputs.forEach(input => {
+        const id = inputToId(input);
+        const symbol = input.toUpperCase();
+
+        if (data[id]) {
+          const result: TokenPrice = {
+            symbol,
+            price: data[id].usd,
+            change24h: data[id].usd_24h_change || 0,
+            name: symbol,
+          };
+          priceCache[id] = { data: result, timestamp: Date.now() };
+          prices[symbol] = result;
+        } else if (priceCache[id] && Date.now() - priceCache[id].timestamp < STALE_CACHE_TTL) {
+          prices[symbol] = priceCache[id].data;
+        } else {
+          prices[symbol] = {
+            symbol,
+            price: 0,
+            change24h: 0,
+            name: symbol,
+          };
+        }
+      });
+    } else {
+      throw new Error('Batch price fetch failed');
+    }
+  } catch (error) {
+    console.warn('Batch price fetch failed, using stale cache or zeros');
+    uncachedInputs.forEach(input => {
+      const id = inputToId(input);
+      const symbol = input.toUpperCase();
+      if (priceCache[id]) {
+        prices[symbol] = priceCache[id].data;
+      } else {
+        prices[symbol] = { symbol, price: 0, change24h: 0, name: symbol };
+      }
+    });
+  }
+
+  return prices;
 }
 
 /**
@@ -391,115 +484,27 @@ async function fetchJupiterTokenImage(mintAddress: string): Promise<string | nul
   return null;
 }
 
-// Batch price cache
-const batchPriceCache: { data: Record<string, TokenPrice>; timestamp: number } | null = null;
 
 /**
- * Fetch prices and images for multiple tokens from CoinGecko (optimized for speed)
- * Returns prices immediately with caching and fallback support
+ * Fetch price from Jupiter Price API
  */
-export async function fetchTokenPrices(coinIds: string[]): Promise<Record<string, TokenPrice>> {
-  if (coinIds.length === 0) return {};
-
-  const prices: Record<string, TokenPrice> = {};
-
-  // First, check individual cache for each coin
-  const uncachedIds: string[] = [];
-  coinIds.forEach(coinId => {
-    const cached = priceCache[coinId];
-    if (cached && Date.now() - cached.timestamp < PRICE_CACHE_TTL) {
-      prices[cached.data.symbol] = cached.data;
-    } else {
-      uncachedIds.push(coinId);
-    }
-  });
-
-  // If all coins are cached, return immediately
-  if (uncachedIds.length === 0) {
-    return prices;
-  }
-
+async function fetchJupiterPrice(mint: string): Promise<{ price: number; symbol?: string; name?: string } | null> {
   try {
-    const ids = uncachedIds.join(',');
-
-    // Fetch prices with timeout (fast, don't wait too long)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
-
-    const priceResponse = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`,
-      {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        signal: controller.signal,
+    const response = await fetch(`https://api.jup.ag/price/v2?ids=${mint}`);
+    if (response.ok) {
+      const data = await response.json();
+      const priceData = data.data[mint];
+      if (priceData) {
+        return {
+          price: parseFloat(priceData.price),
+        };
       }
-    );
-
-    clearTimeout(timeoutId);
-
-    if (!priceResponse.ok) {
-      throw new Error(`CoinGecko API returned ${priceResponse.status}`);
     }
-
-    const priceData = await priceResponse.json();
-
-    // Build prices object
-    uncachedIds.forEach(coinId => {
-      const coinPriceData = priceData[coinId];
-      const symbol = coinId === 'solana' ? 'SOL' :
-        coinId === 'bitcoin' ? 'BTC' :
-          coinId === 'ethereum' ? 'ETH' :
-            coinId === 'cardano' ? 'ADA' :
-              coinId === 'tether' ? 'USDT' :
-                coinId === 'usd-coin' ? 'USDC' :
-                  coinId.toUpperCase();
-
-      const tokenPrice: TokenPrice = {
-        symbol,
-        price: coinPriceData?.usd || FALLBACK_PRICES[coinId]?.price || 0,
-        change24h: coinPriceData?.usd_24h_change || 0,
-        name: FALLBACK_PRICES[coinId]?.name,
-      };
-
-      prices[symbol] = tokenPrice;
-
-      // Cache the result
-      priceCache[coinId] = { data: tokenPrice, timestamp: Date.now() };
-    });
-
-    return prices;
   } catch (error) {
-    console.warn('Error fetching batch token prices, using fallbacks:', error);
-
-    // Use fallback prices for uncached coins
-    uncachedIds.forEach(coinId => {
-      const symbol = coinId === 'solana' ? 'SOL' :
-        coinId === 'bitcoin' ? 'BTC' :
-          coinId === 'ethereum' ? 'ETH' :
-            coinId === 'cardano' ? 'ADA' :
-              coinId === 'tether' ? 'USDT' :
-                coinId === 'usd-coin' ? 'USDC' :
-                  coinId.toUpperCase();
-
-      const fallback = FALLBACK_PRICES[coinId] || { price: 0, name: coinId };
-      const tokenPrice: TokenPrice = {
-        symbol,
-        price: fallback.price,
-        change24h: 0,
-        name: fallback.name,
-      };
-
-      prices[symbol] = tokenPrice;
-
-      // Cache fallback to prevent repeated failed requests
-      priceCache[coinId] = { data: tokenPrice, timestamp: Date.now() };
-    });
-
-    return prices;
+    console.warn('Jupiter Price API error:', error);
   }
+  return null;
 }
-
-
 
 /**
  * Generate sparkline data from price history (optimized with timeout)
@@ -512,7 +517,7 @@ export async function generateSparklineData(
 ): Promise<number[]> {
   // Add timeout to prevent hanging
   const timeoutPromise = new Promise<number[]>((resolve) => {
-    setTimeout(() => resolve([]), 2000); // 2s timeout
+    setTimeout(() => resolve([]), 5000); // 5s timeout
   });
 
   const fetchPromise = (async () => {
@@ -520,7 +525,7 @@ export async function generateSparklineData(
       // Try to fetch from Python backend (with timeout)
       const backendUrl = import.meta.env.VITE_MARKET_DATA_API || 'http://localhost:8001';
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // Increased to 3s timeout
 
       const response = await fetch(
         `${backendUrl}/api/ohlcv/${symbol}?timeframe=${timeframe}&limit=${limit}`,

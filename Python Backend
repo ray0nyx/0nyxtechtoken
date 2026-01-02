@@ -1,0 +1,43 @@
+ ┌────────────────────────────────────────────────────────────────────────────────┐
+ │                            PYTHON BACKEND (FastAPI)                            │
+ │                  (The Intelligence & Data Orchestration Layer)                 │
+ └───────────────────────────────────────┬────────────────────────────────────────┘
+                                         │
+                 ┌───────────────────────▼───────────────────────┐
+                 │          API GATEWAY / WEBSOCKETS             │
+                 │  - Main FastAPI App (main.py)                 │
+                 │  - Real-time WS Server (ws_server.py)         │
+                 │  - Wagyu External API (run_wagyu_api.py)      │
+                 └───────────┬───────────────────────┬───────────┘
+                             │                       │
+      ┌──────────────────────▼──────┐         ┌──────▼─────────────────────┐
+      │   DATA CONDUITS (STREAMS)   │         │    ANALYTICS & AI ENGINE   │
+      │ - PumpPortal / Pump.fun     │         │ - Analytics Intelligence   │
+      │ - Yellowstone Geyser (gRPC) │         │ - Indicator Precomputation │
+      │ - Alchemy / Helius Streams  │         │ - Pulse Categorization     │
+      │ - Swap / Migration Streams  │         │ - Smart Money Tracker      │
+      └──────────────┬──────────────┘         └──────────────┬─────────────┘
+                             │                               │
+      ┌──────────────────────▼───────────────────────────────▼─────────────┐
+      │                       SERVICE ORCHESTRATOR                         │
+      │                 (In-memory processing & Logic)                     │
+      ├────────────────────────┬───────────────────────────┬───────────────┤
+      │    DATA AGGREGATOR     │     MARKET SERVICES       │ USER SERVICES │
+      │ - Multi-source merge   │ - DexScreener Fallback    │ - Turnkey Auth│
+      │ - Token Metadata       │ - MarketCap Tracking      │ - Email/OTP   │
+      │ - Lifecycle Tracking   │ - Priority Fee Estimator  │ - Rediscache  │
+      └──────────────┬─────────┴────────────┬──────────────┴───────┬───────┘
+                     │                      │                      │
+      ┌──────────────▼──────┐        ┌──────▼──────────────┐  ┌────▼───────┐
+      │   STRATEGY ENGINE   │        │     OFF-CHAIN       │  │ PERSISTENCE│
+      │ - Backtest Runner   │        │ - Twitter Scraper   │  │ - Supabase │
+      │ - Notebook Manager  │        │ - Headless Browser  │  │ - Redis    │
+      │ - Metrics Calc      │        │ - Data Loader       │  │ - Postgres │
+      └──────────────┬──────┘        └──────┬──────────────┘  └────┬───────┘
+                     │                      │                      │
+                     └──────────┬───────────┴──────────────────────┘
+                                │
+          ┌─────────────────────▼─────────────────────────────┐
+          │               EXTERNAL API ECOSYSTEM               │
+          │  - Helius, Birdeye, Alchemy, Solscan, DexScreener  │
+          └────────────────────────────────────────────────────┘

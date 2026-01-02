@@ -18,6 +18,7 @@ from services.market_data_service import MarketDataService
 from services.data_aggregator import DataAggregator
 import logging
 import ssl
+import os
 
 # GLOBAL SSL FIX for macOS/Request issues
 try:
@@ -125,19 +126,35 @@ async def lifespan(app: FastAPI):
                 from services.migration_tracker import get_migration_tracker
                 
                 # Initialize services (they're singletons, so this just ensures they exist)
+                print("Step: Initializing supply_tracker...")
                 await get_supply_tracker()
+                
+                print("Step: Initializing pump_fun_tracker...")
                 await get_pump_fun_tracker()
+                
+                print("Step: Initializing raydium_tracker...")
                 await get_raydium_tracker()
+                
+                print("Step: Initializing indicator_precomputer...")
                 await get_indicator_precomputer()
+                
+                print("Step: Initializing priority_fee_service...")
                 await get_priority_fee_service()
+                
+                print("Step: Initializing tx_simulator...")
                 await get_tx_simulator()
+                
+                print("Step: Initializing migration_tracker...")
                 await get_migration_tracker()
                 
                 # Initialize Axiom Pulse services
                 try:
+                    print("Step: Initializing migration_detector...")
                     from services.migration_detector import get_migration_detector
                     from services.pulse_categorizer import get_pulse_categorizer
                     await get_migration_detector()
+                    
+                    print("Step: Initializing pulse_categorizer...")
                     await get_pulse_categorizer()
                     print("Axiom Pulse services initialized")
                 except Exception as e:
@@ -171,23 +188,45 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 print(f"Warning: Could not start Alchemy stream: {e}")
             
+            
             # Initialize migration stream (tracks bonding curve progress)
             try:
                 from services.migration_stream import start_migration_stream
                 await start_migration_stream()
-                print("Migration stream started")
+                print("✅ Migration stream started")
             except Exception as e:
                 print(f"Warning: Could not start migration stream: {e}")
             
-            print("Trading services initialized (Redis, WebSocket, SwapStream)")
+            print("Step: Trading services initialized (Redis, WebSocket, SwapStream)")
         except Exception as e:
             print(f"Warning: Could not initialize trading services: {e}")
+            
+    print("Step: Proceeding to connection initialization...")
     
     # Initialize connections
-    await market_data_service.initialize()
-    await data_aggregator.initialize()
+    async def background_initialization():
+        print("⏳ Starting background service initialization...")
+        try:
+            print("⏳ Initializing market_data_service...")
+            await market_data_service.initialize()
+            print("✅ market_data_service initialized")
+            
+            print("⏳ Initializing data_aggregator...")
+            await data_aggregator.initialize()
+            print("✅ data_aggregator initialized")
+            print("🎉 All background services initialized!")
+            
+        except Exception as e:
+            print(f"❌ Error in background initialization: {e}")
+            import traceback
+            traceback.print_exc()
+
+    # Start the background initialization task
+    asyncio.create_task(background_initialization())
     
+    print("🚀 Application startup complete (yielding immediately to unblock WebSockets)")
     yield
+    print("🛑 Application shutdown starting")
     
     # Cleanup on shutdown
     await market_data_service.cleanup()
@@ -214,7 +253,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://localhost:3000", "https://your-domain.com"],
+    allow_origins=["http://localhost:8080", "http://localhost:8081", "http://localhost:3000", "https://your-domain.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -268,6 +307,59 @@ async def health_check():
         "version": "1.0.0"
     }
 
+
+@app.get("/api/tokens/migrating")
+async def get_migrating_tokens(limit: int = 20):
+    """
+    Get tokens that are migrating (approaching graduation) or recently graduated.
+    These are tokens moving from Pump.fun bonding curve to Raydium.
+    """
+    try:
+        from services.migration_stream import (
+            get_graduated_tokens,
+            get_approaching_tokens,
+            fetch_high_progress_tokens
+        )
+        
+        # Get cached graduated and approaching tokens
+        graduated = get_graduated_tokens(limit // 2)
+        approaching = get_approaching_tokens(limit // 2)
+        
+        # Combine and deduplicate
+        tokens = []
+        seen_mints = set()
+        
+        for t in graduated:
+            mint = t.get("mint")
+            if mint and mint not in seen_mints:
+                seen_mints.add(mint)
+                tokens.append(t)
+        
+        for t in approaching:
+            mint = t.get("mint")
+            if mint and mint not in seen_mints:
+                seen_mints.add(mint)
+                tokens.append(t)
+        
+        # If we don't have enough tokens, try fetching fresh high-progress tokens
+        if len(tokens) < 5:
+            try:
+                fresh_tokens = await fetch_high_progress_tokens()
+                for t in fresh_tokens:
+                    mint = t.get("mint")
+                    if mint and mint not in seen_mints:
+                        seen_mints.add(mint)
+                        tokens.append(t)
+                        if len(tokens) >= limit:
+                            break
+            except Exception as e:
+                logger.warning(f"Failed to fetch fresh high-progress tokens: {e}")
+        
+        return {"tokens": tokens[:limit], "count": len(tokens[:limit])}
+    
+    except Exception as e:
+        logger.error(f"Error fetching migrating tokens: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ============ Real-time Pump.fun Token WebSocket ============
 
@@ -358,6 +450,106 @@ async def websocket_pump_tokens(websocket: WebSocket):
             pass
 
 
+@app.websocket("/ws/migrated-tokens")
+async def websocket_migrated_tokens(websocket: WebSocket):
+    """
+    Real-time migrated (graduated) tokens WebSocket endpoint.
+    Sends tokens as they graduate from Pump.fun bonding curve to Raydium.
+    """
+    await websocket.accept()
+    print("🎓 Migrated tokens WebSocket connection accepted")
+    
+    # Send initial status
+    await websocket.send_json({
+        "type": "connected",
+        "message": "Connected to migrated tokens stream"
+    })
+    
+    # Queue for sending tokens to this client
+    token_queue = asyncio.Queue()
+    
+    async def migration_callback(token):
+        await token_queue.put(token)
+    
+    try:
+        from services.migration_stream import (
+            subscribe_to_migrations,
+            unsubscribe_from_migrations,
+            get_graduated_tokens,
+            get_approaching_tokens,
+            is_migration_stream_connected
+        )
+        
+        # Send stream status
+        await websocket.send_json({
+            "type": "stream_status",
+            "connected": is_migration_stream_connected()
+        })
+        
+        # Send recent graduated tokens first
+        graduated = get_graduated_tokens(30)
+        approaching = get_approaching_tokens(20)
+        initial_tokens = graduated + [t for t in approaching if t.get("mint") not in [g.get("mint") for g in graduated]]
+        
+        if initial_tokens:
+            await websocket.send_json({
+                "type": "initial_tokens",
+                "tokens": initial_tokens,
+                "count": len(initial_tokens)
+            })
+        
+        # Subscribe to new migration events
+        subscribe_to_migrations(migration_callback)
+        
+        # Create task to receive messages from client
+        async def receive_messages():
+            try:
+                while True:
+                    data = await websocket.receive_json()
+                    if data.get("type") == "ping":
+                        await websocket.send_json({"type": "pong"})
+                    elif data.get("type") == "refresh":
+                        # Send current tokens on refresh
+                        graduated = get_graduated_tokens(30)
+                        approaching = get_approaching_tokens(20)
+                        tokens = graduated + [t for t in approaching if t.get("mint") not in [g.get("mint") for g in graduated]]
+                        await websocket.send_json({
+                            "type": "migration_update",
+                            "tokens": tokens,
+                            "count": len(tokens)
+                        })
+            except WebSocketDisconnect:
+                pass
+        
+        receive_task = asyncio.create_task(receive_messages())
+        
+        # Send tokens as they migrate
+        try:
+            while True:
+                # Wait for new token with timeout
+                try:
+                    token = await asyncio.wait_for(token_queue.get(), timeout=30)
+                    await websocket.send_json({
+                        "type": "new_migration",
+                        "token": token
+                    })
+                except asyncio.TimeoutError:
+                    # Send heartbeat to keep connection alive
+                    await websocket.send_json({"type": "heartbeat"})
+        finally:
+            receive_task.cancel()
+            unsubscribe_from_migrations(migration_callback)
+            
+    except WebSocketDisconnect:
+        logger.info("Client disconnected from migrated-tokens WebSocket")
+    except Exception as e:
+        logger.error(f"Migrated tokens WebSocket error: {e}")
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except:
+            pass
+
+
 @app.websocket("/ws/trending-tokens")
 async def websocket_trending_tokens(websocket: WebSocket):
     """
@@ -365,84 +557,166 @@ async def websocket_trending_tokens(websocket: WebSocket):
     Periodically fetches and broadcasts trending tokens with high market cap.
     """
     await websocket.accept()
+    print("🧨🧨🧨 Websocket accepted connection! Starting handler... 🧨🧨🧨")
     
     import aiohttp
     import ssl
+    import traceback
     
     # Send initial status
     await websocket.send_json({
         "type": "connected",
         "message": "Connected to trending tokens stream"
     })
+    print("🧨 Sent connected message")
     
     async def fetch_trending():
-        """Fetch trending tokens from DexScreener or Pump.fun"""
+        """Fetch trending tokens with high market cap (> $50K) from Birdeye API"""
+        print("🔍 Starting fetch_trending...")
         ssl_context = ssl.create_default_context()
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE
         
+        # Get API key from environment OR aggregator (which might have its own)
+        birdeye_api_key = os.getenv("BIRDEYE_API_KEY", "")
+        if not birdeye_api_key:
+            try:
+                from services.wagyu_api.data_aggregator import get_aggregator
+                agg = await get_aggregator()
+                birdeye_api_key = agg.birdeye_key
+            except:
+                pass
+        
+        # Try Birdeye API first for high market cap tokens
+        if birdeye_api_key:
+            try:
+                print(f"🔍 Trying Birdeye for trending tokens (key starts with {birdeye_api_key[:4]}...)")
+                # Use Birdeye token list to get trending Solana tokens
+                url = "https://public-api.birdeye.so/defi/tokenlist"
+                headers = {
+                    "X-API-KEY": birdeye_api_key,
+                    "Accept": "application/json"
+                }
+                params = {
+                    "sort_by": "mc",  # Sort by market cap
+                    "sort_type": "desc",
+                    "offset": 0,
+                    "limit": 50
+                }
+                
+                timeout = aiohttp.ClientTimeout(total=10)
+                connector = aiohttp.TCPConnector(ssl=ssl_context)
+                
+                async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+                    async with session.get(url, headers=headers, params=params) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            tokens = []
+                            
+                            if data.get("success") and data.get("data", {}).get("tokens"):
+                                for token in data["data"]["tokens"]:
+                                    mc = float(token.get("mc") or token.get("marketCap") or 0)
+                                    
+                                    # Filter: market cap > $50K and skip pump.fun tokens
+                                    if mc < 50000:
+                                        continue
+                                        
+                                    # Filter: Minimum 500 holders (if available)
+                                    # This ensures "many holders" as requested
+                                    holder_count = float(token.get("holder") or 0)
+                                    if holder_count > 0 and holder_count < 500:
+                                        continue
+                                    
+                                    token_name = (token.get("name") or "").lower()
+                                    token_symbol = (token.get("symbol") or "").lower()
+                                    
+                                    # Skip pump.fun tokens - they typically have "pump" in name
+                                    if "pump" in token_name or token_symbol == "pump":
+                                        continue
+                                    
+                                    tokens.append({
+                                        "mint": token.get("address", ""),
+                                        "symbol": token.get("symbol", ""),
+                                        "name": token.get("name", ""),
+                                        "image_uri": token.get("logoURI") or token.get("image"),
+                                        "usd_market_cap": mc,
+                                        "market_cap": mc,
+                                        "volume_24h": float(token.get("v24hUSD") or 0),
+                                        "liquidity": float(token.get("liquidity") or 0),
+                                        "price_change_24h": float(token.get("v24hChangePercent") or 0),
+                                        "complete": True,
+                                        "created_timestamp": int(datetime.utcnow().timestamp() * 1000),
+                                        "source": "birdeye"
+                                    })
+                                    
+                                    if len(tokens) >= 30:
+                                        break
+                            
+                            if tokens:
+                                logger.info(f"Fetched {len(tokens)} trending tokens from Birdeye (MC > $50K)")
+                                return tokens
+                        else:
+                            logger.debug(f"Birdeye returned {resp.status}")
+                            print(f"❌ Birdeye returned {resp.status}")
+            except Exception as e:
+                logger.warning(f"Failed to fetch trending from Birdeye: {e}")
+                print(f"❌ Birdeye error: {e}")
+        
+        # Fallback to DexScreener for high market cap tokens
         try:
-            # Try Pump.fun first
-            url = "https://frontend-api.pump.fun/coins"
-            params = {
-                "offset": 0,
-                "limit": 30,
-                "sort": "usd_market_cap",
-                "order": "DESC",
-                "includeNsfw": "false"
-            }
+            print("🔍 Trying DexScreener fallback for trending tokens (Query: Raydium)...")
+            # Use search endpoint with 'Raydium' to get active Solana pairs, which is very reliable for trending list
+            url = "https://api.dexscreener.com/latest/dex/search"
+            params = {"q": "Raydium"}
             
             timeout = aiohttp.ClientTimeout(total=10)
             connector = aiohttp.TCPConnector(ssl=ssl_context)
             
             async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
-                async with session.get(url, params=params, headers={
-                    "User-Agent": "Mozilla/5.0",
-                    "Accept": "application/json"
-                }) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        if isinstance(data, list):
-                            return data
-                        return []
-                    elif resp.status in (530, 503):
-                        # Cloudflare blocked, try DexScreener
-                        logger.debug("Pump.fun blocked, trying DexScreener")
-                    else:
-                        logger.debug(f"Pump.fun returned {resp.status}")
-        except Exception as e:
-            logger.warning(f"Failed to fetch trending from Pump.fun: {e}")
-        
-        # Fallback to DexScreener
-        try:
-            url = "https://api.dexscreener.com/latest/dex/tokens/solana"
-            params = {"sort": "mc", "order": "desc", "limit": 30}
-            
-            async with aiohttp.ClientSession(timeout=timeout, connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
                 async with session.get(url, params=params) as resp:
                     if resp.status == 200:
                         data = await resp.json()
-                        # Transform DexScreener format to match our format
                         tokens = []
-                        for pair in data.get("pairs", []) or []:
+                        pairs = data.get("pairs") or []
+                        
+                        # Sort pairs by volume or FDV if possible, as search is unsorted
+                        valid_pairs = [p for p in pairs if p and p.get("chainId") == "solana"]
+                        print(f"🔍 DexScreener returned {len(valid_pairs)} Solana pairs")
+                        valid_pairs.sort(key=lambda x: float(x.get("volume", {}).get("h24") or 0), reverse=True)
+                        
+                        for pair in valid_pairs:
                             if not pair:
                                 continue
+                            
                             base = pair.get("baseToken") or {}
                             info = pair.get("info") or {}
                             volume = pair.get("volume") or {}
                             liquidity = pair.get("liquidity") or {}
                             price_change = pair.get("priceChange") or {}
                             
+                            mc = float(pair.get("fdv") or pair.get("marketCap") or 0)
+                            
+                            # Filter: market cap > $50K
+                            if mc < 50000:
+                                continue
+                            
+                            token_name = (base.get("name") or "").lower()
+                            token_symbol = (base.get("symbol") or "").lower()
+                            
+                            # Skip pump.fun tokens
+                            if "pump" in token_name or token_symbol == "pump":
+                                continue
+                            
                             tokens.append({
                                 "mint": base.get("address", ""),
                                 "symbol": base.get("symbol", ""),
                                 "name": base.get("name", ""),
                                 "image_uri": info.get("imageUrl"),
-                                "usd_market_cap": pair.get("fdv") or 0,
-                                "market_cap": pair.get("fdv") or 0,
-                                "volume_24h": volume.get("h24") or 0,
-                                "liquidity": liquidity.get("usd") or 0,
-                                "price_change_24h": price_change.get("h24") or 0,
+                                "usd_market_cap": mc,
+                                "market_cap": mc,
+                                "volume_24h": float(volume.get("h24") or 0),
+                                "liquidity": float(liquidity.get("usd") or 0),
+                                "price_change_24h": float(price_change.get("h24") or 0),
                                 "complete": True,
                                 "created_timestamp": int(datetime.utcnow().timestamp() * 1000),
                                 "source": "dexscreener"
@@ -450,13 +724,16 @@ async def websocket_trending_tokens(websocket: WebSocket):
                             
                             if len(tokens) >= 30:
                                 break
-                        return tokens
-
+                        
+                        if tokens:
+                            logger.info(f"Fetched {len(tokens)} trending tokens from DexScreener (MC > $50K)")
+                            print(f"✅ Found {len(tokens)} trending tokens via DexScreener")
+                            return tokens
         except Exception as e:
-            logger.warning(f"Failed to fetch trending from DexScreener: {e}")
-        
+            logger.warning(f"DexScreener fetch failed: {e}")
+            
         return []
-    
+
     try:
         # Fetch and send initial trending tokens
         trending = await fetch_trending()
@@ -2193,19 +2470,34 @@ async def fetch_dexscreener_graduated_tokens(limit: int = 20):
                             if any(t["token_address"] == address for t in graduated_tokens):
                                 continue
                             
+                            # CRITICAL FILTER: Ensure it's a pump.fun token (mint ends in 'pump')
+                            # Generic "PUMP" platform tokens often don't follow this convention
+                            if not address.lower().endswith("pump"):
+                                continue
+
                             # Only include newer pairs (created in last 48h)
                             pair_age = pair.get("pairCreatedAt", 0)
                             if pair_age and time.time() * 1000 - pair_age > 48 * 60 * 60 * 1000:
                                 continue
                             
-                            # Get logo from info
-                            info = pair.get("info", {})
+                            symbol = (base_token.get("symbol") or "").upper()
+                            name = (base_token.get("name") or "").upper()
+                            
+                            # CRITICAL FILTER: Filter out generic platform tokens and billion-dollar junk
+                            # Meme coins on pump.fun reaching Raydium are usually $60k-$1M initially.
+                            # Generic platform tokens often show up as $1B+.
+                            if symbol in ["PUMP", "PUMPFUN", "PUMP.FUN", "PUMPSWAP", "INDEX"] or "PUMP FUN" in name or "PLATFORM" in name:
+                                if float(pair.get("fdv", 0) or pair.get("marketCap", 0) or 0) > 10_000_000:
+                                    continue
+                            
+                            # Extract logo properly
+                            info = pair.get("info", {}) or {}
                             logo_url = info.get("imageUrl", "") or base_token.get("logoURI", "")
                             
                             graduated_tokens.append({
                                 "token_address": address,
-                                "token_symbol": base_token.get("symbol", "???"),
-                                "token_name": base_token.get("name", ""),
+                                "token_symbol": (base_token.get("symbol") or "???").upper(),
+                                "token_name": base_token.get("name", "Unknown"),
                                 "market_cap_usd": float(pair.get("fdv", 0) or pair.get("marketCap", 0) or 0),
                                 "graduation_status": "graduated",
                                 "raydium_pool_address": pair.get("pairAddress", ""),
@@ -2217,10 +2509,10 @@ async def fetch_dexscreener_graduated_tokens(limit: int = 20):
                             if len(graduated_tokens) >= limit:
                                 break
         
-        # Sort by market cap (highest first), then by timestamp (newest first)
-        graduated_tokens.sort(key=lambda x: (x.get("market_cap_usd", 0), x.get("graduation_timestamp", 0)), reverse=True)
+        # Final cleaning: sort by recency
+        graduated_tokens.sort(key=lambda x: x.get("graduation_timestamp") or 0, reverse=True)
         
-        logger.info(f"DexScreener graduated tokens fallback: fetched {len(graduated_tokens)} tokens")
+        logger.info(f"DexScreener graduated tokens fallback: fetched {len(graduated_tokens)} filtered tokens")
         return graduated_tokens[:limit]
         
     except Exception as e:
@@ -2388,6 +2680,17 @@ async def fetch_dexscreener_fallback(limit: int = 50):
                             
                         token = pair.get("baseToken", {})
                         mint = token.get("address", "")
+                        symbol = (token.get("symbol") or "").upper()
+                        name = (token.get("name") or "").upper()
+                        
+                        # CRITICAL FILTER: Ensure it's a pump.fun token (mint ends in 'pump')
+                        if not mint.lower().endswith("pump"):
+                            continue
+                            
+                        # Filter out generic platform tokens and billion-dollar junk
+                        if symbol in ["PUMP", "PUMPFUN", "PUMP.FUN", "PUMPSWAP", "INDEX"] or "PUMP FUN" in name or "PLATFORM" in name:
+                            if float(pair.get("fdv", 0) or pair.get("marketCap", 0) or 0) > 10_000_000:
+                                continue
                         
                         # Skip if we've already seen this token
                         if mint in seen_mints:

@@ -248,7 +248,7 @@ export async function fetchTrendingPumpFunCoins(limit: number = 50): Promise<Pum
 
     try {
       const response = await fetch(
-        `${apiUrl}/api/pump-fun/coins?offset=0&limit=${limit}&sort=usd_market_cap&order=DESC&include_nsfw=false&_t=${Date.now()}`,
+        `${apiUrl}/api/pump-fun/coins?offset=0&limit=${limit}&sort=market_cap&order=DESC&include_nsfw=false&_t=${Date.now()}`,
         {
           method: 'GET',
           headers: {
@@ -287,6 +287,52 @@ export async function fetchTrendingPumpFunCoins(limit: number = 50): Promise<Pum
     }
   } catch (error) {
     console.warn('Failed to fetch trending coins:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch tokens migrating to Raydium (high progress or recently graduated)
+ */
+export async function fetchMigratingTokens(limit: number = 20): Promise<PumpFunCoin[]> {
+  try {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+    const response = await fetch(`${apiUrl}/api/tokens/migrating?limit=${limit}`);
+
+    if (!response.ok) {
+      console.warn('Failed to fetch migrating tokens:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    console.log('Migrating tokens API response:', data);
+
+    if (data.tokens && Array.isArray(data.tokens)) {
+      // Map migrating token metadata to PumpFunCoin format
+      // The API returns tokens with standard field names (mint, symbol, name, etc.)
+      return data.tokens.map((token: any) => ({
+        mint: token.mint || token.token_address || '',
+        name: token.name || token.token_name || 'Unknown',
+        symbol: token.symbol || token.token_symbol || '???',
+        image_uri: proxyImageUrl(token.image_uri || token.logo_url || ''),
+        usd_market_cap: token.usd_market_cap || token.market_cap_usd || 0,
+        market_cap: token.usd_market_cap || token.market_cap || 0,
+        complete: token.complete || token.graduation_status === 'graduated' || false,
+        raydium_pool: token.raydium_pool || token.raydium_pool_address || null,
+        created_timestamp: token.created_timestamp || token.graduation_timestamp || Date.now(),
+        virtual_sol_reserves: token.virtual_sol_reserves || token.sol_in_curve || 0,
+        virtual_token_reserves: token.virtual_token_reserves || 0,
+        twitter: token.twitter || null,
+        telegram: token.telegram || null,
+        website: token.website || null,
+        show_name: true,
+        nsfw: false
+      } as PumpFunCoin));
+    }
+
+    return [];
+  } catch (error) {
+    console.warn('Error fetching migrating tokens:', error);
     return [];
   }
 }

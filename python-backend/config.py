@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     alchemy_api_key: str = os.getenv("ALCHEMY_API_KEY", "")
     
     class Config:
-        env_file = ".env"
+        env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
         extra = "ignore"
 
 settings = Settings()

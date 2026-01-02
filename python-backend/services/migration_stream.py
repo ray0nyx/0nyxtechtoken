@@ -23,6 +23,7 @@ APPROACHING_THRESHOLD_SOL = 60
 approaching_tokens: deque = deque(maxlen=50)  # Tokens approaching graduation
 graduated_tokens: deque = deque(maxlen=50)     # Recently graduated tokens
 _token_progress: OrderedDict = OrderedDict()   # Track bonding curve progress
+migration_subscribers = set()  # Callbacks for migration events
 
 
 class MigrationStream:
@@ -79,6 +80,14 @@ class MigrationStream:
             
             # Detect newly graduated tokens
             if (is_complete or raydium_pool) and mint not in [t.get("mint") for t in graduated_tokens]:
+                symbol = (token.get("symbol") or "").upper()
+                name = (token.get("name") or "").upper()
+                
+                # CRITICAL FILTER: Filter out generic platform tokens and billion-dollar junk
+                if symbol in ["PUMP", "PUMPFUN", "PUMP.FUN", "PUMPSWAP", "INDEX"] or "PUMP FUN" in name or "PLATFORM" in name:
+                    if float(token.get("usd_market_cap", 0) or 0) > 10_000_000:
+                        continue
+                        
                 token_with_status = {
                     **token,
                     "graduation_status": "graduated",
@@ -88,9 +97,20 @@ class MigrationStream:
                 newly_graduated.append(token_with_status)
                 graduated_tokens.appendleft(token_with_status)
                 logger.info(f"Token graduated! {token.get('symbol', mint[:8])} -> Raydium: {raydium_pool}")
+                
+                # Notify subscribers
+                await self._notify_subscribers(token_with_status)
             
             # Detect tokens approaching graduation
             elif progress >= 70 and prev_progress < 70:
+                symbol = (token.get("symbol") or "").upper()
+                name = (token.get("name") or "").upper()
+                
+                # Filter out generic junk
+                if symbol in ["PUMP", "PUMPFUN", "PUMP.FUN", "PUMPSWAP", "INDEX"] or "PUMP FUN" in name or "PLATFORM" in name:
+                    if float(token.get("usd_market_cap", 0) or 0) > 10_000_000:
+                        continue
+
                 token_with_status = {
                     **token,
                     "graduation_status": "approaching",
@@ -100,8 +120,22 @@ class MigrationStream:
                 newly_approaching.append(token_with_status)
                 approaching_tokens.appendleft(token_with_status)
                 logger.info(f"Token approaching graduation: {token.get('symbol', mint[:8])} ({progress:.1f}%)")
+                
+                # Notify subscribers
+                await self._notify_subscribers(token_with_status)
         
         return newly_approaching, newly_graduated
+    
+    async def _notify_subscribers(self, token: dict):
+        """Notify all subscribers of a migration event"""
+        for callback in list(migration_subscribers):
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    await callback(token)
+                else:
+                    callback(token)
+            except Exception as e:
+                logger.error(f"Migration subscriber callback error: {e}")
     
     async def stop(self):
         """Stop monitoring"""
@@ -117,8 +151,42 @@ async def start_migration_stream():
     global _migration_stream
     if _migration_stream is None:
         _migration_stream = MigrationStream()
+        
+        # Seed the cache at startup with high-progress tokens
+        try:
+            logger.info("Seeding migration cache at startup...")
+            seed_tokens = await fetch_high_progress_tokens()
+            
+            for token in seed_tokens:
+                status = token.get("graduation_status", "approaching")
+                if status == "graduated":
+                    if token.get("mint") not in [t.get("mint") for t in graduated_tokens]:
+                        graduated_tokens.appendleft(token)
+                else:
+                    if token.get("mint") not in [t.get("mint") for t in approaching_tokens]:
+                        approaching_tokens.appendleft(token)
+            
+            logger.info(f"Seeded cache with {len(graduated_tokens)} graduated and {len(approaching_tokens)} approaching tokens")
+        except Exception as e:
+            logger.warning(f"Failed to seed migration cache: {e}")
+        
         asyncio.create_task(_migration_stream.start())
         logger.info("Started migration monitoring stream")
+
+
+def subscribe_to_migrations(callback):
+    """Subscribe to migration events"""
+    migration_subscribers.add(callback)
+    
+
+def unsubscribe_from_migrations(callback):
+    """Unsubscribe from migration events"""
+    migration_subscribers.discard(callback)
+
+
+def is_migration_stream_connected() -> bool:
+    """Check if migration stream is running"""
+    return _migration_stream is not None and _migration_stream._running
 
 
 def get_approaching_tokens(limit: int = 20) -> List[dict]:
@@ -156,7 +224,7 @@ def get_all_migrating_tokens(limit: int = 20) -> List[dict]:
 async def fetch_high_progress_tokens() -> List[dict]:
     """
     Fetch tokens with high bonding curve progress directly from Pump.fun API.
-    This is a batch operation to seed the migration tracker.
+    Falls back to DexScreener for high market cap Solana tokens if Pump.fun fails.
     """
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
@@ -164,8 +232,8 @@ async def fetch_high_progress_tokens() -> List[dict]:
     
     high_progress_tokens = []
     
+    # Try Pump.fun API first
     try:
-        # Fetch top tokens by market cap (likely to be close to graduation)
         url = "https://frontend-api.pump.fun/coins?offset=0&limit=50&sort=market_cap&order=DESC&includeNsfw=false"
         timeout = aiohttp.ClientTimeout(total=10)
         connector = aiohttp.TCPConnector(ssl=ssl_context)
@@ -185,6 +253,14 @@ async def fetch_high_progress_tokens() -> List[dict]:
                         
                         progress = min(100, (sol_reserves / GRADUATION_THRESHOLD_SOL) * 100) if sol_reserves else 0
                         
+                        symbol = (coin.get("symbol") or "").upper()
+                        name = (coin.get("name") or "").upper()
+                        
+                        # CRITICAL FILTER: Filter out generic platform tokens
+                        if symbol in ["PUMP", "PUMPFUN", "PUMP.FUN", "PUMPSWAP", "INDEX"] or "PUMP FUN" in name or "PLATFORM" in name:
+                            if float(coin.get("usd_market_cap", 0) or 0) > 10_000_000:
+                                continue
+
                         # Only include tokens approaching or completed graduation
                         if progress >= 50 or is_complete or raydium_pool:
                             status = "graduated" if (is_complete or raydium_pool) else "approaching"
@@ -195,12 +271,76 @@ async def fetch_high_progress_tokens() -> List[dict]:
                                 "sol_in_curve": sol_reserves,
                             })
                     
-                    logger.info(f"Fetched {len(high_progress_tokens)} high-progress tokens")
-                    
+                    if high_progress_tokens:
+                        logger.info(f"Fetched {len(high_progress_tokens)} high-progress tokens from Pump.fun")
+                        return high_progress_tokens
+                        
                 elif resp.status in (530, 503):
-                    logger.warning("Pump.fun API blocked by Cloudflare")
+                    logger.warning("Pump.fun API blocked by Cloudflare, trying DexScreener fallback")
                     
     except Exception as e:
-        logger.error(f"Error fetching high-progress tokens: {e}")
+        logger.warning(f"Pump.fun API failed: {e}, trying DexScreener fallback")
+    
+    # DexScreener fallback - get high volume Solana pairs
+    try:
+        logger.info("Trying DexScreener fallback for high market cap tokens...")
+        url = "https://api.dexscreener.com/latest/dex/search"
+        params = {"q": "Raydium"}  # Raydium pairs are graduated from Pump.fun
+        
+        timeout = aiohttp.ClientTimeout(total=10)
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        
+        async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+            async with session.get(url, params=params) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    pairs = data.get("pairs") or []
+                    
+                    # Filter to Solana pairs with high market cap
+                    solana_pairs = [p for p in pairs if p and p.get("chainId") == "solana"]
+                    solana_pairs.sort(key=lambda x: float(x.get("fdv") or x.get("marketCap") or 0), reverse=True)
+                    
+                    for pair in solana_pairs[:30]:
+                        base = pair.get("baseToken") or {}
+                        info = pair.get("info") or {}
+                        volume = pair.get("volume") or {}
+                        liquidity = pair.get("liquidity") or {}
+                        price_change = pair.get("priceChange") or {}
+                        
+                        mc = float(pair.get("fdv") or pair.get("marketCap") or 0)
+                        
+                        # Only include tokens with market cap > $50K (graduated tokens)
+                        if mc < 50000:
+                            continue
+                        
+                        symbol = (base.get("symbol") or "").upper()
+                        name = (base.get("name") or "").upper()
+                        
+                        # Filter out generic pump tokens
+                        if symbol in ["PUMP", "PUMPFUN", "PUMP.FUN", "PUMPSWAP"] or "PUMP FUN" in name:
+                            continue
+                        
+                        high_progress_tokens.append({
+                            "mint": base.get("address", ""),
+                            "symbol": base.get("symbol", ""),
+                            "name": base.get("name", ""),
+                            "image_uri": info.get("imageUrl"),
+                            "usd_market_cap": mc,
+                            "market_cap": mc,
+                            "volume_24h": float(volume.get("h24") or 0),
+                            "liquidity": float(liquidity.get("usd") or 0),
+                            "price_change_24h": float(price_change.get("h24") or 0),
+                            "complete": True,  # Raydium pairs are graduated
+                            "raydium_pool": pair.get("pairAddress"),
+                            "graduation_status": "graduated",
+                            "graduation_progress": 100,
+                            "source": "dexscreener"
+                        })
+                    
+                    if high_progress_tokens:
+                        logger.info(f"Fetched {len(high_progress_tokens)} high market cap tokens from DexScreener")
+                        
+    except Exception as e:
+        logger.error(f"DexScreener fallback also failed: {e}")
     
     return high_progress_tokens

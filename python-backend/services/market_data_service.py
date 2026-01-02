@@ -244,6 +244,10 @@ class MarketDataService:
         async with self.rate_limiter:
             # Try crypto API first if it's a crypto symbol and we have the key
             if self.crypto_api_key and self._is_crypto_symbol(symbol):
+                # Standardize symbol for crypto APIs (e.g., SOL -> SOL/USDT)
+                if "/" not in symbol and "-" not in symbol:
+                    symbol = f"{symbol.upper()}/USDT"
+                
                 try:
                     data = await self.fetch_crypto_ohlcv(symbol, timeframe, limit)
                     if data:
@@ -337,7 +341,15 @@ class MarketDataService:
             interval = interval_map.get(timeframe, "1h")
             period = f"{limit}d" if interval in ["1m", "5m", "15m", "30m", "1h"] else f"{limit}d"
             
-            ticker = yf.Ticker(symbol)
+            # Standardize for yfinance (e.g. SOL/USDT -> SOL-USD)
+            yf_symbol = symbol
+            if "/" in symbol:
+                base = symbol.split("/")[0]
+                yf_symbol = f"{base}-USD"
+            elif "-" not in symbol and self._is_crypto_symbol(symbol):
+                yf_symbol = f"{symbol}-USD"
+
+            ticker = yf.Ticker(yf_symbol)
             hist = await asyncio.get_event_loop().run_in_executor(
                 None,
                 lambda: ticker.history(period=period, interval=interval)

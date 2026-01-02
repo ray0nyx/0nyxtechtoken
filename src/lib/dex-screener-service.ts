@@ -1576,3 +1576,54 @@ function transformPairToSearchResult(pair: any): DexSearchResult {
   };
 }
 
+/**
+ * Fetch tokens that have graduated from Pump.fun to Raydium
+ * These are tokens that have completed the bonding curve and now trade on Raydium
+ */
+export async function fetchGraduatedRaydiumTokens(limit: number = 30): Promise<DexSearchResult[]> {
+  try {
+    // Search for recent Raydium pairs - these include graduated Pump.fun tokens
+    const response = await fetch(
+      `https://api.dexscreener.com/latest/dex/search?q=raydium`,
+      {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      }
+    );
+
+    if (!response.ok) {
+      console.warn('DexScreener search failed:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    if (!data.pairs || !Array.isArray(data.pairs)) {
+      return [];
+    }
+
+    // Filter for Solana Raydium pairs with reasonable market caps
+    // Graduated Pump.fun tokens typically have:
+    // - dexId containing 'raydium'
+    // - Market cap > $50k (graduation threshold)
+    // - Recent creation time
+    const graduatedPairs = data.pairs
+      .filter((p: any) => {
+        const isRaydium = p.dexId?.toLowerCase().includes('raydium');
+        const isSolana = p.chainId === 'solana';
+        const marketCap = parseFloat(p.marketCap || p.fdv || '0') || 0;
+        const hasReasonableMC = marketCap >= 50000 && marketCap <= 10000000; // $50k to $10M
+        const hasLiquidity = parseFloat(p.liquidity?.usd || '0') >= 10000; // Min $10k liquidity
+
+        return isRaydium && isSolana && hasReasonableMC && hasLiquidity;
+      })
+      .sort((a: any, b: any) => (b.pairCreatedAt || 0) - (a.pairCreatedAt || 0))
+      .slice(0, limit);
+
+    console.log(`Found ${graduatedPairs.length} graduated Raydium tokens`);
+
+    return graduatedPairs.map((pair: any) => transformPairToSearchResult(pair));
+  } catch (error) {
+    console.warn('Error fetching graduated Raydium tokens:', error);
+    return [];
+  }
+}
